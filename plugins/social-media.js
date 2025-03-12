@@ -1,8 +1,13 @@
-import { bot } from '../Lib/chat/commandHandler.js';
+import { bot, listCommands } from '../Lib/chat/commandHandler.js';
 import message from '../Lib/chat/messageHandler.js';
 import { downloadMedia } from '../Lib/Functions/Download_Functions/downloader.js';
 import config from '../Config.js';
 import axios from 'axios';
+import fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 // YouTube video/audio downloader
 bot({

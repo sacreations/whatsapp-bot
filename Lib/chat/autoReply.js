@@ -95,6 +95,26 @@ async function handleMediaDownload(m, sock, url, platform) {
 }
 
 /**
+ * Check if group is allowed for auto-downloads
+ * @param {string} groupId - The group ID to check
+ * @returns {boolean} - True if group is allowed, false otherwise
+ */
+function isGroupAllowedForDownloads(groupId) {
+    // If not a group, return false as we only want downloads in groups
+    if (!groupId.endsWith('@g.us')) {
+        return false;
+    }
+    
+    // If no specific groups are specified, allow all groups
+    if (config.ALLOWED_DOWNLOAD_GROUPS.length === 0) {
+        return true;
+    }
+    
+    // Check if the group is in the allowed list
+    return config.ALLOWED_DOWNLOAD_GROUPS.includes(groupId);
+}
+
+/**
  * Main auto-reply handler
  */
 export async function handleAutoReply(m, sock) {
@@ -105,8 +125,19 @@ export async function handleAutoReply(m, sock) {
         const messageText = getMessageText(m);
         const isGroup = m.key.remoteJid.endsWith('@g.us');
         
-        // Social media link processing
+        // Social media link processing - only in groups
         if (messageType === 'text' && config.ENABLE_SOCIAL_MEDIA_DOWNLOAD) {
+            // Only process in allowed groups
+            if (!isGroupAllowedForDownloads(m.key.remoteJid)) {
+                // Skip auto-download in non-group chats or unauthorized groups
+                if (isGroup) {
+                    console.log(`Skipping auto-download in unauthorized group: ${m.key.remoteJid}`);
+                } else {
+                    console.log(`Skipping auto-download in private chat: ${m.key.remoteJid}`);
+                }
+                return false;
+            }
+            
             const urls = extractUrls(messageText);
             
             for (const url of urls) {
@@ -118,7 +149,7 @@ export async function handleAutoReply(m, sock) {
             }
         }
         
-        // Simple auto-responses
+        // Simple auto-responses - these can work in both private and group chats
         if (messageType === 'text') {
             const greetings = ['hi', 'hello', 'hey', 'hola', 'howdy'];
             

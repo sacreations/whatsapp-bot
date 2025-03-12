@@ -26,6 +26,9 @@ const config = {
   // Paths
   DOWNLOAD_FOLDER: process.env.DOWNLOAD_FOLDER || './downloads',
   
+  // Group settings
+  ALLOWED_DOWNLOAD_GROUPS: (process.env.ALLOWED_DOWNLOAD_GROUPS || '').split(',').filter(id => id.trim() !== ''),
+  
   // Create required directories
   createDirectories: () => {
     const dirs = [config.DOWNLOAD_FOLDER];

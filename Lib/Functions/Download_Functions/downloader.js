@@ -14,6 +14,12 @@ if (!fs.existsSync(downloadDir)) {
     fs.mkdirSync(downloadDir, { recursive: true });
 }
 
+// API Endpoints for social media platforms
+const Tiktok_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/tiktok?url=';
+const Instagram_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/instagram?url=';
+// Not used for YouTube - using youtubedl-core instead
+const Facebook_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/facebook?url=';
+
 /**
  * Generate a random filename
  */
@@ -24,7 +30,7 @@ function generateFilename(platform, extension) {
 }
 
 /**
- * Download media from YouTube
+ * Download media from YouTube using youtubedl-core
  */
 async function downloadFromYouTube(url) {
     try {
@@ -61,18 +67,18 @@ async function downloadFromYouTube(url) {
  */
 async function downloadFromTikTok(url) {
     try {
-        // This is just a placeholder - you'd need to implement an actual TikTok downloader
-        // Either using a third-party API or a library
-        const apiUrl = `https://api-example.com/tiktok?url=${encodeURIComponent(url)}`;
-        
-        const response = await axios.get(apiUrl);
-        const videoUrl = response.data.video_url;
-        
-        if (!videoUrl) {
-            throw new Error('Could not extract video URL');
+        const response = await axios.get(Tiktok_apiEndpoint + url);
+        if (!response.data || !response.data.data || !response.data.data.meta || !response.data.data.meta.media) {
+            throw new Error('Invalid API response structure');
         }
         
-        // Download the video
+        const media = response.data.data.meta.media[0];
+        const videoUrl = media.hd || media.org;
+        
+        if (!videoUrl) {
+            throw new Error('No valid video URL found in response');
+        }
+        
         const filename = generateFilename('TikTok', 'mp4');
         const writeStream = fs.createWriteStream(filename);
         
@@ -99,20 +105,22 @@ async function downloadFromTikTok(url) {
  */
 async function downloadFromInstagram(url) {
     try {
-        // This is just a placeholder - you'd need to implement an actual Instagram downloader
-        // Either using a third-party API or a library
-        const apiUrl = `https://api-example.com/instagram?url=${encodeURIComponent(url)}`;
-        
-        const response = await axios.get(apiUrl);
-        const mediaUrl = response.data.media_url;
-        const isVideo = response.data.is_video;
-        
-        if (!mediaUrl) {
-            throw new Error('Could not extract media URL');
+        const response = await axios.get(Instagram_apiEndpoint + url);
+        if (!response.data || !response.data.data || !response.data.data[0]) {
+            throw new Error('Invalid API response structure');
         }
         
-        // Download the media
+        const media = response.data.data[0];
+        const mediaUrl = media.url;
+        
+        if (!mediaUrl) {
+            throw new Error('No media URL found in response');
+        }
+        
+        // Determine if it's a video or image based on URL
+        const isVideo = mediaUrl.includes('.mp4');
         const extension = isVideo ? 'mp4' : 'jpg';
+        
         const filename = generateFilename('Instagram', extension);
         const writeStream = fs.createWriteStream(filename);
         
@@ -139,18 +147,35 @@ async function downloadFromInstagram(url) {
  */
 async function downloadFromFacebook(url) {
     try {
-        // This is just a placeholder - you'd need to implement an actual Facebook downloader
-        // Either using a third-party API or a library
-        const apiUrl = `https://api-example.com/facebook?url=${encodeURIComponent(url)}`;
+        const response = await axios.get(Facebook_apiEndpoint + url);
+        if (!response.data) {
+            throw new Error('Invalid API response');
+        }
         
-        const response = await axios.get(apiUrl);
-        const videoUrl = response.data.video_url;
+        let videoUrl;
+        
+        if (response.data.isHdAvailable && response.data.urls && response.data.urls.length > 0) {
+            // Get HD version if available
+            if (response.data.urls[0].hd) {
+                videoUrl = response.data.urls[0].hd;
+            } 
+            // Fallback to SD if HD isn't available
+            else if (response.data.urls[0].sd) {
+                videoUrl = response.data.urls[0].sd;
+            } else {
+                throw new Error('No valid video URL found in response');
+            }
+        } else if (response.data.urls && response.data.urls.length > 0 && response.data.urls[0].sd) {
+            // If HD is not available, use SD
+            videoUrl = response.data.urls[0].sd;
+        } else {
+            throw new Error('No valid video URL found in response');
+        }
         
         if (!videoUrl) {
             throw new Error('Could not extract video URL');
         }
         
-        // Download the video
         const filename = generateFilename('Facebook', 'mp4');
         const writeStream = fs.createWriteStream(filename);
         
