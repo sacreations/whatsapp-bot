@@ -855,6 +855,20 @@ input:checked + .slider:before {
     border-bottom: 1px solid var(--light-gray);
 }
 
+.status-contact, .status-date, .status-time, .status-number {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #666;
+}
+
+.status-contact {
+    font-weight: bold;
+    color: var(--dark-color);
+}
+
 .status-contact, .status-date, .status-time {
     display: flex;
     align-items: center;
@@ -862,6 +876,11 @@ input:checked + .slider:before {
     margin-bottom: 5px;
     font-size: 14px;
     color: #666;
+}
+
+.status-contact {
+    font-weight: bold;
+    color: var(--dark-color);
 }
 
 .status-contact {

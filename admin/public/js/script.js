@@ -288,6 +288,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const formattedDate = date.toLocaleDateString();
             const formattedTime = date.toLocaleTimeString();
             
+            // Use contact name if available, otherwise use contactId
+            const contactDisplay = status.contactName || status.contactId;
+            
             html += `
                 <div class="status-card" data-id="${status.id}" data-contact="${status.contactId}" data-type="${status.type}">
                     <div class="status-preview">
@@ -298,7 +301,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="status-info">
                         <div class="status-contact">
-                            <i class="fas fa-user"></i> ${status.contactId}
+                            <i class="fas fa-user"></i> ${contactDisplay}
+                        </div>
+                        <div class="status-number">
+                            <i class="fas fa-phone"></i> ${status.contactId}
                         </div>
                         <div class="status-date">
                             <i class="fas fa-calendar"></i> ${formattedDate}
@@ -349,6 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const search = contactSearch.value.toLowerCase();
         if (search) {
             filtered = filtered.filter(status => 
+                (status.contactName && status.contactName.toLowerCase().includes(search)) || 
                 status.contactId.toLowerCase().includes(search)
             );
         }

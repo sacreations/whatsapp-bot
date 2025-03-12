@@ -12,6 +12,47 @@ if (!fs.existsSync(statusDir)) {
     fs.mkdirSync(statusDir, { recursive: true });
 }
 
+// Data directory for storing contact information
+const dataDir = path.join(process.cwd(), 'data');
+if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Contacts file path
+const contactsPath = path.join(dataDir, 'contacts.json');
+
+// Load existing contacts
+let contacts = {};
+if (fs.existsSync(contactsPath)) {
+    try {
+        contacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+    } catch (error) {
+        console.error('Error reading contacts file:', error);
+    }
+}
+
+/**
+ * Save contact information to contacts.json
+ * @param {string} jid - WhatsApp JID
+ * @param {string} name - Contact name
+ */
+function saveContactInfo(jid, name) {
+    if (!jid || !name) return;
+    
+    try {
+        // Update the contacts object
+        contacts[jid] = {
+            name,
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Write to file
+        fs.writeFileSync(contactsPath, JSON.stringify(contacts, null, 2));
+    } catch (error) {
+        console.error('Error saving contact info:', error);
+    }
+}
+
 /**
  * Handle incoming status updates
  * @param {Object} status - Status update object
@@ -26,8 +67,29 @@ export async function handleStatus(status, sock) {
         const sender = status.key.remoteJid;
         const statusType = getStatusType(status);
         
+        // Try to get contact name
+        let contactName = null;
+        try {
+            // Different ways to get contact name based on what's available
+            if (sock.contacts && sock.contacts[sender]) {
+                contactName = sock.contacts[sender].name || sock.contacts[sender].notify;
+            } else if (status.pushName) {
+                contactName = status.pushName;
+            } else if (sock.store && sock.store.contacts && sock.store.contacts[sender]) {
+                contactName = sock.store.contacts[sender].name || sock.store.contacts[sender].notify;
+            }
+            
+            // If we found a name, save it
+            if (contactName) {
+                saveContactInfo(sender, contactName);
+                console.log(`Found contact name for ${sender}: ${contactName}`);
+            }
+        } catch (error) {
+            console.error('Error getting contact name:', error);
+        }
+        
         // Log status update
-        console.log(`New status from ${sender}: ${statusType}`);
+        console.log(`New status from ${contactName || sender}: ${statusType}`);
         
         // Save status update to logs
         await logStatusUpdate(status, sock);
@@ -37,7 +99,7 @@ export async function handleStatus(status, sock) {
         
         // Optionally download and save status media
         if (statusType !== 'text' && statusType !== 'unknown') {
-            await saveStatusMedia(status, statusType);
+            await saveStatusMedia(status, statusType, contactName);
         }
     } catch (error) {
         console.error('Error handling status update:', error);
@@ -86,7 +148,7 @@ async function logStatusUpdate(status, sock) {
 /**
  * Save status media to downloads/statuses folder
  */
-async function saveStatusMedia(status, statusType) {
+async function saveStatusMedia(status, statusType, contactName) {
     try {
         // Skip if not media
         if (statusType === 'text' || statusType === 'unknown') return null;
@@ -110,19 +172,9 @@ async function saveStatusMedia(status, statusType) {
         // Save file
         fs.writeFileSync(filepath, buffer);
         
-        // Try to get contact info (can be enhanced later)
-        let contactName = sender;
-        try {
-            // This will need to be adapted based on how you store contacts
-            // This is just a placeholder
-            if (global.store && global.store.contacts && global.store.contacts[status.key.remoteJid]) {
-                contactName = global.store.contacts[status.key.remoteJid].name || sender;
-            }
-        } catch (error) {
-            console.log('Could not get contact name:', error.message);
-        }
+        // Use the contact name we retrieved earlier
+        console.log(`Saved status media: ${filepath} from ${contactName || sender}`);
         
-        console.log(`Saved status media: ${filepath} from ${contactName}`);
         return {
             filepath,
             sender,

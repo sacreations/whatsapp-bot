@@ -189,6 +189,17 @@ app.get('/api/statuses', requireAuth, (req, res) => {
         // Read status directory
         const files = fs.readdirSync(statusDir);
         
+        // Read contact information from the contacts.json file
+        const contactsPath = path.join(__dirname, '..', 'data', 'contacts.json');
+        let contacts = {};
+        if (fs.existsSync(contactsPath)) {
+            try {
+                contacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+            } catch (error) {
+                console.error('Error reading contacts file:', error);
+            }
+        }
+        
         // Get status data with metadata
         const statuses = files.map(file => {
             const filePath = path.join(statusDir, file);
@@ -197,11 +208,18 @@ app.get('/api/statuses', requireAuth, (req, res) => {
             // Extract contact from filename (status_contactId_timestamp.ext)
             let contactId = 'Unknown';
             let timestamp = 0;
+            let contactName = null;
             
             const match = file.match(/status_(\d+)_(\d+)\.(jpg|mp4)/);
             if (match) {
                 contactId = match[1];
                 timestamp = parseInt(match[2]);
+                
+                // Look up contact name from contacts.json
+                const contactKey = `${contactId}@s.whatsapp.net`;
+                if (contacts[contactKey]) {
+                    contactName = contacts[contactKey].name || null;
+                }
             }
             
             const isVideo = file.endsWith('.mp4');
@@ -210,6 +228,7 @@ app.get('/api/statuses', requireAuth, (req, res) => {
                 id: file,
                 path: filePath,
                 contactId: contactId,
+                contactName: contactName,
                 timestamp: timestamp || stats.mtimeMs,
                 date: new Date(timestamp || stats.mtimeMs).toLocaleString(),
                 type: isVideo ? 'video' : 'image',
