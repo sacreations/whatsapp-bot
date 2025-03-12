@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot - Admin Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <i class="fas fa-robot logo-icon"></i>
+                <h1>WhatsApp Bot</h1>
+                <p>Admin Panel</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="password"><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Login</button>
+            </form>
+            <div class="login-footer">
+                <p id="login-message"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const messageEl = document.getElementById('login-message');
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    messageEl.textContent = 'Login successful! Redirecting...';
+                    messageEl.className = 'success';
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    messageEl.textContent = data.message || 'Invalid password. Please try again.';
+                    messageEl.className = 'error';
+                }
+            } catch (error) {
+                messageEl.textContent = 'An error occurred. Please try again.';
+                messageEl.className = 'error';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot - Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-robot"></i>
+                <h2>WhatsApp Bot</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
+                    <li data-section="settings"><i class="fas fa-cog"></i> Settings</li>
+                    <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
+                    <li data-section="logs"><i class="fas fa-list"></i> Logs</li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="hamburger" id="sidebar-toggle">
+                    <i class="fas fa-bars"></i>
+                </div>
+                <h2 id="section-title">Dashboard</h2>
+                <div class="user-info">
+                    <span id="status-indicator" class="status online"></span>
+                    <span>Admin</span>
+                </div>
+            </header>
+
+            <!-- Content Sections -->
+            <section class="content-section active" id="dashboard">
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-users"></i></div>
+                        <div class="stat-info">
+                            <h3>Groups</h3>
+                            <p id="groups-count">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-plug"></i></div>
+                        <div class="stat-info">
+                            <h3>Plugins</h3>
+                            <p id="plugins-count">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-download"></i></div>
+                        <div class="stat-info">
+                            <h3>Downloads</h3>
+                            <p id="downloads-count">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-info">
+                            <h3>Uptime</h3>
+                            <p id="uptime">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="features-section">
+                    <h3><i class="fas fa-toggle-on"></i> Quick Settings</h3>
+                    <div class="feature-toggles">
+                        <div class="toggle-card">
+                            <div class="toggle-info">
+                                <h4>Auto Reply</h4>
+                                <p>Automatically respond to messages</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="auto-reply-toggle">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-card">
+                            <div class="toggle-info">
+                                <h4>Social Media Download</h4>
+                                <p>Download content from social media links</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="social-media-toggle">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="content-section" id="settings">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-wrench"></i> Bot Configuration</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="config-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="prefix">Command Prefix</label>
+                                    <input type="text" id="prefix" name="PREFIX">
+                                </div>
+                                <div class="form-group">
+                                    <label for="owner-number">Owner Number</label>
+                                    <input type="text" id="owner-number" name="OWNER_NUMBER">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="bot-name">Bot Name</label>
+                                    <input type="text" id="bot-name" name="BOT_NAME">
+                                </div>
+                                <div class="form-group">
+                                    <label for="session-id">Session ID</label>
+                                    <input type="text" id="session-id" name="SESSION_ID">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="download-folder">Download Folder</label>
+                                    <input type="text" id="download-folder" name="DOWNLOAD_FOLDER">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Configuration</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section class="content-section" id="groups">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-users"></i> Group Management</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="allowed-groups">Allowed Download Groups</label>
+                            <div class="tag-input-container">
+                                <input type="text" id="group-input" placeholder="Add a group ID">
+                                <button id="add-group" class="btn btn-sm"><i class="fas fa-plus"></i></button>
+                            </div>
+                            <div id="groups-container" class="tags-container">
+                                <!-- Group tags will be inserted here -->
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <button id="save-groups" class="btn btn-primary"><i class="fas fa-save"></i> Save Groups</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="content-section" id="logs">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-list"></i> Recent Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-container">
+                            <div class="log-entry">
+                                <span class="log-time">10:23:45</span>
+                                <span class="log-type info">INFO</span>
+                                <span class="log-message">Bot started successfully</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:24:12</span>
+                                <span class="log-type success">SUCCESS</span>
+                                <span class="log-message">Downloaded video from YouTube</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:25:30</span>
+                                <span class="log-type warning">WARNING</span>
+                                <span class="log-message">Rate limit reached for TikTok API</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:26:15</span>
+                                <span class="log-type error">ERROR</span>
+                                <span class="log-message">Failed to download Instagram content</span>
+                            </div>
+                            <!-- More log entries would go here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
