@@ -161,11 +161,13 @@ async function saveStatusMedia(status, statusType, contactName) {
         );
         
         // Generate filename with proper metadata
+        // Fix: Use the sender ID without the double "status_" prefix
         const sender = status.key.remoteJid.split('@')[0];
         const timestamp = new Date().getTime();
         const extension = statusType === 'image' ? 'jpg' : 'mp4';
         
         // Format: status_contactId_timestamp.extension
+        // Fix: Ensure proper format without doubling the "status_" prefix
         const filename = `status_${sender}_${timestamp}.${extension}`;
         const filepath = path.join(statusDir, filename);
         

@@ -195,9 +195,12 @@ app.get('/api/statuses', requireAuth, (req, res) => {
         if (fs.existsSync(contactsPath)) {
             try {
                 contacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+                console.log('Loaded contacts:', Object.keys(contacts).length);
             } catch (error) {
                 console.error('Error reading contacts file:', error);
             }
+        } else {
+            console.log('No contacts.json file found');
         }
         
         // Get status data with metadata
@@ -210,15 +213,26 @@ app.get('/api/statuses', requireAuth, (req, res) => {
             let timestamp = 0;
             let contactName = null;
             
-            const match = file.match(/status_(\d+)_(\d+)\.(jpg|mp4)/);
+            // Fix: Match the correct pattern (status_contactId_timestamp.ext)
+            const match = file.match(/status_([^_]+)_(\d+)\.(jpg|mp4)/);
             if (match) {
                 contactId = match[1];
                 timestamp = parseInt(match[2]);
                 
                 // Look up contact name from contacts.json
-                const contactKey = `${contactId}@s.whatsapp.net`;
-                if (contacts[contactKey]) {
-                    contactName = contacts[contactKey].name || null;
+                // Try multiple possible JID formats
+                const possibleJids = [
+                    `${contactId}@s.whatsapp.net`,
+                    `${contactId}@c.us`,
+                    `${contactId}@broadcast`
+                ];
+                
+                for (const jid of possibleJids) {
+                    if (contacts[jid]) {
+                        contactName = contacts[jid].name || null;
+                        console.log(`Found contact name: ${contactName} for ${jid}`);
+                        break;
+                    }
                 }
             }
             

@@ -99,3 +99,47 @@ bot({
         return await message.reply(`Error: ${error.message}`, m, sock);
     }
 });
+
+// Command to show contacts info
+bot({
+    pattern: 'contacts',
+    fromMe: true,
+    desc: 'Show saved contacts information'
+}, async (m, sock) => {
+    try {
+        const dataDir = path.join(process.cwd(), 'data');
+        const contactsPath = path.join(dataDir, 'contacts.json');
+        
+        if (!fs.existsSync(contactsPath)) {
+            return await message.reply('No contacts information found.', m, sock);
+        }
+        
+        const contactsData = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+        const contactCount = Object.keys(contactsData).length;
+        
+        if (contactCount === 0) {
+            return await message.reply('No contacts have been saved yet.', m, sock);
+        }
+        
+        let responseText = `*Saved Contacts (${contactCount})*\n\n`;
+        
+        // Show first 20 contacts to avoid message being too long
+        let count = 0;
+        for (const [jid, data] of Object.entries(contactsData)) {
+            if (count < 20) {
+                responseText += `👤 *JID:* ${jid}\n`;
+                responseText += `   *Name:* ${data.name || 'Unknown'}\n`;
+                responseText += `   *Last Updated:* ${new Date(data.updatedAt).toLocaleString()}\n\n`;
+                count++;
+            } else {
+                responseText += `...and ${contactCount - 20} more contacts.`;
+                break;
+            }
+        }
+        
+        return await message.reply(responseText, m, sock);
+    } catch (error) {
+        console.error('Error in contacts command:', error);
+        return await message.reply(`Error: ${error.message}`, m, sock);
+    }
+});
