@@ -37,23 +37,16 @@ bot({
         await message.reply(`Processing YouTube ${isAudio ? 'audio' : 'video'}...`, m, sock);
         
         try {
-            const downloadedPath = await downloadMedia(url, 'YouTube');
+            const downloadedPath = await downloadMedia(url, 'YouTube', { isAudio });
             
             if (isAudio) {
-                // Convert to mp3 if audio requested
-                const audioPath = downloadedPath.replace('.mp4', '.mp3');
-                await execAsync(`ffmpeg -i "${downloadedPath}" -vn -acodec libmp3lame "${audioPath}"`);
-                
-                await message.sendAudio(audioPath, false, m, sock);
-                // Clean up files
-                fs.unlinkSync(downloadedPath);
-                fs.unlinkSync(audioPath);
+                await message.sendAudio(downloadedPath, false, m, sock);
             } else {
                 await message.sendVideo(downloadedPath, 'Downloaded from YouTube', m, sock);
-                // Clean up file
-                fs.unlinkSync(downloadedPath);
             }
             
+            // Clean up file after sending
+            fs.unlinkSync(downloadedPath);
             await message.react('✅', m, sock);
         } catch (error) {
             console.error('Error downloading YouTube content:', error);

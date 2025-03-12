@@ -1,12 +1,8 @@
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import config from '../../../Config.js';
-import youtubedl from 'youtubedl-core';
-
-const execAsync = promisify(exec);
+import { downloadYoutubeVideo, downloadYoutubeAudio } from './ytDownloader.js';
 
 // Ensure download directory exists
 const downloadDir = path.resolve(config.DOWNLOAD_FOLDER);
@@ -17,7 +13,6 @@ if (!fs.existsSync(downloadDir)) {
 // API Endpoints for social media platforms
 const Tiktok_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/tiktok?url=';
 const Instagram_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/instagram?url=';
-// Not used for YouTube - using youtubedl-core instead
 const Facebook_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/facebook?url=';
 
 /**
@@ -30,35 +25,34 @@ function generateFilename(platform, extension) {
 }
 
 /**
- * Download media from YouTube using youtubedl-core
+ * Download media from YouTube using RapidAPI approach
  */
-async function downloadFromYouTube(url) {
+async function downloadFromYouTube(url, isAudio = false) {
     try {
-        const info = await youtubedl.getInfo(url);
-        const format = youtubedl.chooseFormat(info.formats, { quality: '18' }); // 360p MP4
+        console.log(`Attempting to download YouTube ${isAudio ? 'audio' : 'video'}: ${url}`);
         
-        if (!format) {
-            throw new Error('No suitable format found');
+        // Generate filename based on media type
+        const extension = isAudio ? 'mp3' : 'mp4';
+        const filename = generateFilename('YouTube', extension);
+        
+        try {
+            // Use our RapidAPI downloader
+            if (isAudio) {
+                await downloadYoutubeAudio(url, filename);
+                console.log(`YouTube audio downloaded successfully: ${filename}`);
+            } else {
+                await downloadYoutubeVideo(url, filename, '720p'); 
+                console.log(`YouTube video downloaded successfully: ${filename}`);
+            }
+            
+            return filename;
+        } catch (downloadError) {
+            console.error('YouTube download error:', downloadError);
+            throw new Error(`Failed to download: ${downloadError.message}`);
         }
-        
-        const filename = generateFilename('YouTube', 'mp4');
-        const writeStream = fs.createWriteStream(filename);
-        
-        const response = await axios({
-            method: 'get',
-            url: format.url,
-            responseType: 'stream'
-        });
-        
-        response.data.pipe(writeStream);
-        
-        return new Promise((resolve, reject) => {
-            writeStream.on('finish', () => resolve(filename));
-            writeStream.on('error', reject);
-        });
     } catch (error) {
         console.error('YouTube download error:', error);
-        throw new Error(`Failed to download YouTube video: ${error.message}`);
+        throw new Error(`Failed to download YouTube ${isAudio ? 'audio' : 'video'}: ${error.message}`);
     }
 }
 
@@ -240,13 +234,13 @@ async function downloadFromTwitter(url) {
 /**
  * General media download function
  */
-export async function downloadMedia(url, platform) {
+export async function downloadMedia(url, platform, options = {}) {
     try {
         let downloadedFilePath;
         
         switch (platform) {
             case 'YouTube':
-                downloadedFilePath = await downloadFromYouTube(url);
+                downloadedFilePath = await downloadFromYouTube(url, options.isAudio);
                 break;
             case 'TikTok':
                 downloadedFilePath = await downloadFromTikTok(url);
