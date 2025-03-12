@@ -1,6 +1,8 @@
 import config from '../../Config.js';
 import message from './messageHandler.js';
 import { downloadMedia } from '../Functions/Download_Functions/downloader.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Get message type from the message object
