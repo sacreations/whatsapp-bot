@@ -10,6 +10,7 @@ A modular WhatsApp bot built with Node.js and the @whiskeysockets/baileys librar
 - 🤖 Auto-reply system with customizable patterns
 - 👥 Group management tools
 - 🛠️ Utility commands and media conversion
+- 🖥️ Web-based admin panel for easy configuration
 
 ## Installation
 
@@ -43,6 +44,7 @@ A modular WhatsApp bot built with Node.js and the @whiskeysockets/baileys librar
    OWNER_NUMBER=1234567890
    BOT_NAME=MyWhatsAppBot
    ALLOWED_DOWNLOAD_GROUPS=123456789-1234567,987654321-1234567
+   ADMIN_PASSWORD=yourSecurePassword
    ```
 
 5. Start the bot:
@@ -51,6 +53,38 @@ A modular WhatsApp bot built with Node.js and the @whiskeysockets/baileys librar
    ```
 
 6. Scan the QR code with your WhatsApp account.
+
+## Admin Panel
+
+The bot comes with a beautiful web-based admin panel for easy configuration and management:
+
+### Starting the Admin Panel
+
+```bash
+npm run admin
+```
+
+This starts the admin panel server on port 3000 (default) or the port specified in your config.env file.
+
+### Accessing the Admin Panel
+
+1. Open your browser and navigate to: `http://localhost:3000` (or your custom port)
+2. Enter the password you set in `ADMIN_PASSWORD` in config.env
+3. You now have access to the admin dashboard
+
+### Admin Features
+
+- **Dashboard**: View bot statistics, uptime, and quick toggles for features
+- **Settings**: Configure bot parameters like prefix, name, and other settings
+- **Group Management**: Manage which groups can use auto-download features
+- **Logs**: View recent activity and error logs
+
+### Security
+
+The admin panel is password protected. Make sure to:
+- Set a strong password in your config.env file
+- Change the default port if running on a public server
+- Consider using HTTPS if exposing the panel to the internet
 
 ## Configuration
 
@@ -64,6 +98,8 @@ The bot can be configured using the `config.env` file:
 - `ENABLE_SOCIAL_MEDIA_DOWNLOAD` - Enable/disable social media downloaders (true/false)
 - `DOWNLOAD_FOLDER` - Path to save downloaded files
 - `ALLOWED_DOWNLOAD_GROUPS` - Comma-separated list of group IDs where auto-downloading is allowed
+- `ADMIN_PORT` - Port for the web admin panel (default: 3000)
+- `ADMIN_PASSWORD` - Password to access the admin panel
 
 ## Available Commands
 
