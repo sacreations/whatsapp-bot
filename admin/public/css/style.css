@@ -425,6 +425,7 @@ input:checked + .slider:before {
     background-color: var(--light-color);
     display: flex;
     align-items: center;
+    justify-content: space-between;
 }
 
 .card-header h3 {
@@ -581,6 +582,156 @@ input:checked + .slider:before {
 
 .toast.error {
     background-color: var(--error-color);
+}
+
+/* Chat Logs styles */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.refresh-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#logs-limit {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid var(--light-gray);
+}
+
+.logs-filter {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-btn {
+    background-color: var(--light-gray);
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.filter-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.chat-log-container {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid var(--light-gray);
+    border-radius: 4px;
+}
+
+.chat-log-entry {
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--light-gray);
+    transition: background-color 0.2s;
+}
+
+.chat-log-entry:hover {
+    background-color: rgba(220, 248, 198, 0.2);
+}
+
+.chat-log-entry.from-me {
+    background-color: var(--light-color);
+}
+
+.chat-log-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.chat-log-sender {
+    font-weight: bold;
+    color: var(--dark-color);
+}
+
+.chat-log-sender.bot {
+    color: var(--primary-color);
+}
+
+.chat-log-time {
+    color: #777;
+}
+
+.chat-log-content {
+    word-break: break-word;
+}
+
+.media-tag {
+    display: inline-block;
+    background-color: var(--info-color);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-right: 8px;
+    text-transform: uppercase;
+}
+
+.loading-indicator, 
+.error-message, 
+.no-logs-message {
+    padding: 20px;
+    text-align: center;
+    color: #777;
+}
+
+.error-message {
+    color: var(--error-color);
+}
+
+/* Chat media styles */
+.chat-media {
+    margin-bottom: 8px;
+}
+
+.chat-media-img {
+    max-width: 250px;
+    max-height: 250px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.chat-media-img:hover {
+    opacity: 0.9;
+}
+
+.chat-text {
+    word-break: break-word;
+}
+
+/* Section specific styles */
+#system-logs .log-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+#chat-logs .chat-log-container {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Icon styles for the sidebar */
+.sidebar-nav li[data-section="chat-logs"] i {
+    color: var(--primary-color);
+}
+
+.sidebar-nav li[data-section="system-logs"] i {
+    color: var(--info-color);
 }
 
 /* Responsive styles */

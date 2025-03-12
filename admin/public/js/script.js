@@ -21,7 +21,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Tab navigation
+    // Load data based on active section
+    function loadSectionData(sectionId) {
+        switch(sectionId) {
+            case 'dashboard':
+                loadDashboard();
+                break;
+            case 'chat-logs':
+                loadChatLogs();
+                break;
+            // Add other section data loading as needed
+        }
+    }
+    
+    // Tab navigation - updated to load section-specific data
     sectionLinks.forEach(link => {
         link.addEventListener('click', function() {
             // Update active tab
@@ -35,6 +48,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (section.id === sectionId) {
                     section.classList.add('active');
                     sectionTitle.textContent = this.textContent.trim();
+                    // Load section-specific data
+                    loadSectionData(sectionId);
                 }
             });
             
@@ -60,8 +75,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load configuration
     loadConfig();
     
-    // Load dashboard data
-    loadDashboard();
+    // Load dashboard data - only load on initial page load
+    if (document.querySelector('.sidebar-nav li.active').getAttribute('data-section') === 'dashboard') {
+        loadDashboard();
+    }
+    
+    // Load chat logs
+    loadChatLogs();
     
     // Save configuration
     if (configForm) {
@@ -135,11 +155,60 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Chat logs functionality
+    const refreshLogsBtn = document.getElementById('refresh-logs');
+    const logsLimitSelect = document.getElementById('logs-limit');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    
+    if (refreshLogsBtn) {
+        refreshLogsBtn.addEventListener('click', () => {
+            loadChatLogs();
+        });
+    }
+    
+    if (logsLimitSelect) {
+        logsLimitSelect.addEventListener('change', () => {
+            loadChatLogs();
+        });
+    }
+    
+    if (filterBtns) {
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Update active state
+                filterBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Apply filter
+                const filterType = this.getAttribute('data-filter');
+                applyChatLogFilter(filterType);
+            });
+        });
+    }
+    
     // Helper functions
     async function loadConfig() {
         try {
-            const response = await fetch('/api/config');
+            console.log('Fetching configuration...');
+            const response = await fetch('/api/config', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin' // Include cookies
+            });
+            
+            console.log('Response status:', response.status);
+            
+            if (response.status === 401) {
+                console.log('Authentication required, redirecting to login');
+                window.location.href = '/login.html';
+                return;
+            }
+            
             const data = await response.json();
+            console.log('Response data:', data);
             
             if (data.success) {
                 const config = data.config;
@@ -173,10 +242,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             } else {
-                showToast('Failed to load configuration', 'error');
+                console.error('Failed to load configuration:', data.message);
+                showToast('Failed to load configuration: ' + data.message, 'error');
             }
         } catch (error) {
-            showToast('Error loading configuration', 'error');
+            console.error('Error loading configuration:', error);
+            showToast('Error loading configuration: ' + (error.message || 'Unknown error'), 'error');
+            
+            // Redirect to login if appropriate
+            if (error.message && error.message.includes('Authentication required')) {
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+            }
         }
     }
     
@@ -210,6 +288,149 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             showToast(`Error updating ${key}`, 'error');
         }
+    }
+    
+    async function loadChatLogs() {
+        const chatLogsContainer = document.getElementById('chat-logs-container');
+        if (!chatLogsContainer) return;
+        
+        try {
+            chatLogsContainer.innerHTML = '<div class="loading-indicator">Loading logs...</div>';
+            
+            const limit = logsLimitSelect ? logsLimitSelect.value : 100;
+            const response = await fetch(`/api/chat-logs?limit=${limit}`);
+            
+            if (response.status === 401) {
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.logs) {
+                renderChatLogs(data.logs);
+                
+                // Apply current filter
+                const activeFilter = document.querySelector('.filter-btn.active');
+                if (activeFilter) {
+                    applyChatLogFilter(activeFilter.getAttribute('data-filter'));
+                }
+            } else {
+                chatLogsContainer.innerHTML = '<div class="error-message">Failed to load chat logs</div>';
+            }
+        } catch (error) {
+            console.error('Error loading chat logs:', error);
+            chatLogsContainer.innerHTML = '<div class="error-message">Error loading chat logs</div>';
+        }
+    }
+    
+    function renderChatLogs(logs) {
+        const chatLogsContainer = document.getElementById('chat-logs-container');
+        if (!chatLogsContainer) return;
+        
+        if (!logs || logs.length === 0) {
+            chatLogsContainer.innerHTML = '<div class="no-logs-message">No chat logs available</div>';
+            return;
+        }
+        
+        let html = '';
+        
+        logs.forEach(log => {
+            const timestamp = new Date(log.timestamp);
+            const timeStr = timestamp.toLocaleTimeString();
+            const dateStr = timestamp.toLocaleDateString();
+            
+            // Determine sender display name
+            let senderDisplay = log.fromMe ? 'Bot' : formatPhoneNumber(log.sender);
+            if (log.senderName && !log.fromMe) {
+                senderDisplay = `${log.senderName} (${formatPhoneNumber(log.sender)})`;
+            }
+            
+            // Create CSS classes for filtering
+            let classes = ['chat-log-entry'];
+            classes.push(log.isGroup ? 'group' : 'private');
+            classes.push(log.fromMe ? 'from-me' : 'from-user');
+            
+            if (log.messageType === 'text') {
+                classes.push('type-text');
+            } else {
+                classes.push('type-media');
+            }
+            
+            // Prepare content - render media if available
+            let contentHtml = '';
+            
+            // Show media if available
+            if (log.media && log.media.data) {
+                if (log.media.type === 'image' || log.media.type === 'sticker') {
+                    contentHtml += `<div class="chat-media">
+                        <img src="data:${log.media.mimeType};base64,${log.media.data}" 
+                             alt="${log.media.type}" class="chat-media-img" />
+                    </div>`;
+                }
+            }
+            
+            // Add text content
+            contentHtml += `<div class="chat-text">
+                ${log.messageType !== 'text' ? `<span class="media-tag">${log.messageType}</span>` : ''}
+                ${escapeHtml(log.content)}
+            </div>`;
+            
+            html += `
+                <div class="${classes.join(' ')}">
+                    <div class="chat-log-header">
+                        <span class="chat-log-sender ${log.fromMe ? 'bot' : ''}">${senderDisplay}</span>
+                        <span class="chat-log-time">${timeStr} - ${dateStr}</span>
+                    </div>
+                    <div class="chat-log-content">
+                        ${contentHtml}
+                    </div>
+                </div>
+            `;
+        });
+        
+        chatLogsContainer.innerHTML = html;
+    }
+    
+    function applyChatLogFilter(filterType) {
+        const allLogs = document.querySelectorAll('.chat-log-entry');
+        
+        allLogs.forEach(log => {
+            switch (filterType) {
+                case 'all':
+                    log.style.display = 'block';
+                    break;
+                case 'text':
+                    log.style.display = log.classList.contains('type-text') ? 'block' : 'none';
+                    break;
+                case 'media':
+                    log.style.display = log.classList.contains('type-media') ? 'block' : 'none';
+                    break;
+                case 'group':
+                    log.style.display = log.classList.contains('group') ? 'block' : 'none';
+                    break;
+                case 'private':
+                    log.style.display = log.classList.contains('private') ? 'block' : 'none';
+                    break;
+            }
+        });
+    }
+    
+    function formatPhoneNumber(number) {
+        if (!number) return 'Unknown';
+        
+        // Remove the WhatsApp suffix if present
+        return number.split('@')[0];
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
     
     function addGroupTag(groupId) {

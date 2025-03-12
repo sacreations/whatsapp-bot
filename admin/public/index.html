@@ -6,6 +6,7 @@
     <title>WhatsApp Bot - Admin Panel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/login-check.js"></script>
 </head>
 <body>
     <div class="admin-container">
@@ -20,7 +21,8 @@
                     <li class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
                     <li data-section="settings"><i class="fas fa-cog"></i> Settings</li>
                     <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
-                    <li data-section="logs"><i class="fas fa-list"></i> Logs</li>
+                    <li data-section="system-logs"><i class="fas fa-list"></i> System Logs</li>
+                    <li data-section="chat-logs"><i class="fas fa-comment-dots"></i> Chat Logs</li>
                 </ul>
             </nav>
             <div class="sidebar-footer">
@@ -166,10 +168,11 @@
                 </div>
             </section>
 
-            <section class="content-section" id="logs">
+            <!-- System Logs Section -->
+            <section class="content-section" id="system-logs">
                 <div class="card">
                     <div class="card-header">
-                        <h3><i class="fas fa-list"></i> Recent Activity</h3>
+                        <h3><i class="fas fa-list"></i> System Logs</h3>
                     </div>
                     <div class="card-body">
                         <div class="log-container">
@@ -194,6 +197,38 @@
                                 <span class="log-message">Failed to download Instagram content</span>
                             </div>
                             <!-- More log entries would go here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat Logs Section -->
+            <section class="content-section" id="chat-logs">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-comment-dots"></i> Chat Logs</h3>
+                        <div class="refresh-controls">
+                            <button id="refresh-logs" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            <select id="logs-limit">
+                                <option value="25">25 entries</option>
+                                <option value="50">50 entries</option>
+                                <option value="100" selected>100 entries</option>
+                                <option value="200">200 entries</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="logs-filter">
+                            <label>Filter: </label>
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="text">Text</button>
+                            <button class="filter-btn" data-filter="media">Media</button>
+                            <button class="filter-btn" data-filter="group">Groups</button>
+                            <button class="filter-btn" data-filter="private">Private</button>
+                        </div>
+                        <div class="chat-log-container" id="chat-logs-container">
+                            <div class="loading-indicator">Loading logs...</div>
+                            <!-- Chat logs will be inserted here -->
                         </div>
                     </div>
                 </div>

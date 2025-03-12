@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
+import { getChatLogs } from '../Lib/utils/logger.js';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -28,18 +29,32 @@ app.use(session({
   cookie: { secure: false, maxAge: 3600000 } // 1 hour
 }));
 
+// Debug middleware to log requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - Auth: ${req.session.authenticated ? 'Yes' : 'No'}`);
+  next();
+});
+
 // Authentication middleware
 const requireAuth = (req, res, next) => {
   if (req.session.authenticated) {
     next();
   } else {
-    res.redirect('/login.html');
+    if (req.xhr || req.path.startsWith('/api/') && req.path !== '/api/login') {
+      res.status(401).json({ success: false, message: 'Authentication required' });
+    } else {
+      res.redirect('/login.html');
+    }
   }
 };
 
-// Route to serve the admin panel (protected)
-app.get('/', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Root route - redirect to dashboard if authenticated, otherwise to login
+app.get('/', (req, res) => {
+  if (req.session.authenticated) {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.redirect('/login.html');
+  }
 });
 
 // Login route
@@ -54,38 +69,58 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+// Check login status
+app.get('/api/auth-status', (req, res) => {
+  res.json({ 
+    success: true, 
+    authenticated: !!req.session.authenticated 
+  });
+});
+
 // Logout route
 app.post('/api/logout', (req, res) => {
   req.session.authenticated = false;
   res.json({ success: true });
 });
 
-// Get config route
+// Get config route - protected
 app.get('/api/config', requireAuth, (req, res) => {
   try {
     const configPath = path.join(__dirname, '..', 'config.env');
+    if (!fs.existsSync(configPath)) {
+      console.error('Config file not found:', configPath);
+      return res.status(404).json({ success: false, message: 'Configuration file not found' });
+    }
+    
     const configContent = fs.readFileSync(configPath, 'utf8');
     
     // Parse config.env into a JS object
     const config = {};
     configContent.split('\n').forEach(line => {
+      // Skip comments, empty lines, or lines without equals sign
       if (line && !line.startsWith('#') && !line.startsWith('//') && line.includes('=')) {
-        const [key, value] = line.split('=').map(part => part.trim());
-        config[key] = value;
+        // Split at the first equals sign
+        const firstEqualsIndex = line.indexOf('=');
+        if (firstEqualsIndex > 0) {
+          const key = line.substring(0, firstEqualsIndex).trim();
+          const value = line.substring(firstEqualsIndex + 1).trim();
+          config[key] = value;
+        }
       }
     });
     
     // Don't expose password
     delete config.ADMIN_PASSWORD;
     
+    console.log('Config loaded successfully:', Object.keys(config));
     res.json({ success: true, config });
   } catch (error) {
     console.error('Error reading config:', error);
-    res.status(500).json({ success: false, message: 'Failed to read configuration' });
+    res.status(500).json({ success: false, message: 'Failed to read configuration: ' + error.message });
   }
 });
 
-// Update config route
+// Update config route - protected
 app.post('/api/config', requireAuth, (req, res) => {
   try {
     const configPath = path.join(__dirname, '..', 'config.env');
@@ -119,6 +154,32 @@ app.post('/api/config', requireAuth, (req, res) => {
     console.error('Error updating config:', error);
     res.status(500).json({ success: false, message: 'Failed to update configuration' });
   }
+});
+
+// Get chat logs - protected
+app.get('/api/chat-logs', requireAuth, (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit || '100');
+        const logs = getChatLogs(limit);
+        
+        // Make sure logs is always an array
+        const safeData = Array.isArray(logs) ? logs : [];
+        
+        res.json({ success: true, logs: safeData });
+    } catch (error) {
+        console.error('Error fetching chat logs:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch chat logs: ' + error.message,
+            logs: []  // Always provide an empty array in case of error
+        });
+    }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ success: false, message: 'Server error: ' + err.message });
 });
 
 // Start server only if this file is run directly (not imported)

@@ -9,6 +9,7 @@ import { handleMessage } from './Lib/chat/commandHandler.js';
 import { handleAutoReply } from './Lib/chat/autoReply.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
+import { logChatMessage } from './Lib/utils/logger.js';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -112,6 +113,9 @@ async function connectToWhatsApp() {
             if (m.key.remoteJid === 'status@broadcast') continue;
             
             try {
+                // Log the message
+                await logChatMessage(m, sock);
+                
                 // Process commands first
                 const isCommand = await handleMessage(m, sock);
                 
