@@ -1,0 +1,33 @@
+{
+  "name": "whatsapp-bot",
+  "version": "1.0.0",
+  "description": "A WhatsApp bot with plugin-based command system and social media downloaders",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "baileys"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.5.0",
+    "axios": "^1.5.0",
+    "dotenv": "^16.3.1",
+    "pino": "^8.15.1",
+    "pino-pretty": "^10.2.0",
+    "qrcode-terminal": "^0.12.0",
+    "youtubedl-core": "^4.11.5",
+    "node-fetch": "^3.3.2",
+    "file-type": "^18.5.0",
+    "fs-extra": "^11.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
