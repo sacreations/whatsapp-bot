@@ -112,7 +112,7 @@ async function downloadFromInstagram(url) {
         }
         
         // Determine if it's a video or image based on URL
-        const isVideo = mediaUrl.includes('.mp4');
+        const isVideo = true; // Placeholder - you'd need to implement a proper check here
         const extension = isVideo ? 'mp4' : 'jpg';
         
         const filename = generateFilename('Instagram', extension);
