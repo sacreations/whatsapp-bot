@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "admin": "node admin/server.js"
+    "admin": "node admin/server.js",
+    "start:pm2": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop ecosystem.config.js"
   },
   "keywords": [
     "whatsapp",

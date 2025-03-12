@@ -1,6 +1,9 @@
 import { connectToWhatsApp } from './Bot.js';
 import config from './Config.js';
 
+// Import admin server
+import './admin/server.js';
+
 // Create necessary directories
 config.createDirectories();
 

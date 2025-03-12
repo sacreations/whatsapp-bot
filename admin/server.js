@@ -121,7 +121,21 @@ app.post('/api/config', requireAuth, (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Admin panel server running on http://localhost:${PORT}`);
-});
+// Start server only if this file is run directly (not imported)
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`Admin panel server running on http://localhost:${PORT}`);
+  });
+};
+
+// Check if this module is being run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startServer();
+} else {
+  // If imported, start the server but don't block
+  startServer();
+  console.log(`Admin panel initialized on port ${PORT}`);
+}
+
+// Export the app for potential future use
+export default app;
