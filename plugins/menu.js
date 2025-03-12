@@ -50,10 +50,23 @@ bot({
         }
     });
     
+    // Get current Sri Lanka time
+    const now = new Date();
+    // Sri Lanka is UTC+5:30
+    const sriLankaTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Colombo',
+        dateStyle: 'full',
+        timeStyle: 'medium'
+    }).format(now);
+    
     // Build the menu text with better styling
     let menuText = `┌─────────────────────┐\n`;
     menuText += `│    *${config.BOT_NAME}*    │\n`;
     menuText += `└─────────────────────┘\n\n`;
+    
+    // Add date and time
+    menuText += `📆 *Date & Time (Sri Lanka)*\n`;
+    menuText += `${sriLankaTime}\n\n`;
     
     // Add each category
     Object.values(categories).forEach(category => {
