@@ -72,18 +72,11 @@ async function handleMediaDownload(m, sock, url, platform) {
         if (platform === 'YouTube' || platform === 'Facebook' || platform === 'Twitter') {
             await message.sendVideo(mediaUrl, `Downloaded from ${platform}`, m, sock);
         } else if (platform === 'TikTok') {
-            if (mediaUrl.includes('.mp4')) {
-                await message.sendVideo(mediaUrl, `Downloaded from TikTok`, m, sock);
-            } else {
-                await message.sendImage(mediaUrl, `Downloaded from TikTok`, m, sock);
-            }
+            await message.sendVideo(mediaUrl, ``, m, sock);
+
         } else if (platform === 'Instagram') {
             // Instagram could be image or video
-            if (mediaUrl.includes('.mp4')) {
-                await message.sendVideo(mediaUrl, `Downloaded from Instagram`, m, sock);
-            } else {
-                await message.sendImage(mediaUrl, `Downloaded from Instagram`, m, sock);
-            }
+            await message.sendVideo(mediaUrl, ``, m, sock);
         }
         
         await message.react('✅', m, sock);
