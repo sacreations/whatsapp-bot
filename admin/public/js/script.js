@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const configForm = document.getElementById('config-form');
     const autoReplyToggle = document.getElementById('auto-reply-toggle');
     const socialMediaToggle = document.getElementById('social-media-toggle');
+    const statusViewToggle = document.getElementById('status-view-toggle');
     const groupInput = document.getElementById('group-input');
     const addGroupBtn = document.getElementById('add-group');
     const groupsContainer = document.getElementById('groups-container');
@@ -117,13 +118,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Toggle features
-    if (autoReplyToggle && socialMediaToggle) {
+    if (autoReplyToggle && socialMediaToggle && statusViewToggle) {
         autoReplyToggle.addEventListener('change', async function() {
             await updateConfig('ENABLE_AUTO_REPLY', this.checked.toString());
         });
         
         socialMediaToggle.addEventListener('change', async function() {
             await updateConfig('ENABLE_SOCIAL_MEDIA_DOWNLOAD', this.checked.toString());
+        });
+        
+        statusViewToggle.addEventListener('change', async function() {
+            await updateConfig('ENABLE_AUTO_STATUS_VIEW', this.checked.toString());
         });
     }
     
@@ -228,6 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (socialMediaToggle) {
                     socialMediaToggle.checked = config.ENABLE_SOCIAL_MEDIA_DOWNLOAD === 'true';
+                }
+                
+                if (statusViewToggle) {
+                    statusViewToggle.checked = config.ENABLE_AUTO_STATUS_VIEW === 'true';
                 }
                 
                 // Load group IDs

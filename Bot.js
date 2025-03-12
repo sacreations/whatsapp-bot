@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { handleMessage } from './Lib/chat/commandHandler.js';
 import { handleAutoReply } from './Lib/chat/autoReply.js';
+import { handleStatus } from './Lib/handlers/statusHandler.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
@@ -109,8 +110,12 @@ async function connectToWhatsApp() {
     // Handle messages
     sock.ev.on('messages.upsert', async ({ messages }) => {
         for (const m of messages) {
-            // Skip status messages
-            if (m.key.remoteJid === 'status@broadcast') continue;
+            // Skip status messages if they should be handled by status handler
+            if (m.key.remoteJid === 'status@broadcast') {
+                // Handle as a status update
+                await handleStatus(m, sock);
+                continue;
+            }
             
             try {
                 // Log the message

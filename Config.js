@@ -22,6 +22,7 @@ const config = {
   // Feature toggles
   ENABLE_AUTO_REPLY: process.env.ENABLE_AUTO_REPLY === 'true',
   ENABLE_SOCIAL_MEDIA_DOWNLOAD: process.env.ENABLE_SOCIAL_MEDIA_DOWNLOAD === 'true',
+  ENABLE_AUTO_STATUS_VIEW: process.env.ENABLE_AUTO_STATUS_VIEW === 'true',
   
   // Paths
   DOWNLOAD_FOLDER: process.env.DOWNLOAD_FOLDER || './downloads',
