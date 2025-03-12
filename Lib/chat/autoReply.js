@@ -98,19 +98,27 @@ function isGroupAllowedForDownloads(groupId) {
         return false;
     }
     
+    // Get the latest allowed groups directly from config
+    const allowedGroups = config.ALLOWED_DOWNLOAD_GROUPS;
+    console.log(`Checking if group ${groupId} is in allowed list:`, allowedGroups);
+    
     // If no specific groups are specified, allow all groups
-    if (config.ALLOWED_DOWNLOAD_GROUPS.length === 0) {
+    if (!allowedGroups || allowedGroups.length === 0) {
+        console.log('No specific groups configured, allowing all groups');
         return true;
     }
     
     // Check if the group is in the allowed list
-    return config.ALLOWED_DOWNLOAD_GROUPS.includes(groupId);
+    const isAllowed = allowedGroups.includes(groupId);
+    console.log(`Group ${groupId} allowed: ${isAllowed}`);
+    return isAllowed;
 }
 
 /**
  * Main auto-reply handler
  */
 export async function handleAutoReply(m, sock) {
+    // Dynamically check auto-reply settings
     if (!config.ENABLE_AUTO_REPLY) return false;
     
     try {

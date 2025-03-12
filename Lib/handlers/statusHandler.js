@@ -19,7 +19,7 @@ if (!fs.existsSync(statusDir)) {
  */
 export async function handleStatus(status, sock) {
     try {
-        // Skip if auto status view is disabled
+        // Skip if auto status view is disabled - dynamically check config
         if (!config.ENABLE_AUTO_STATUS_VIEW) return;
 
         // Extract status details

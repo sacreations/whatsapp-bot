@@ -163,8 +163,11 @@
                     <div class="card-body">
                         <div class="form-group">
                             <label for="allowed-groups">Allowed Download Groups</label>
+                            <div class="info-text">
+                                <p><i class="fas fa-info-circle"></i> Groups listed here will be allowed to use auto-download for social media links.</p>
+                            </div>
                             <div class="tag-input-container">
-                                <input type="text" id="group-input" placeholder="Add a group ID">
+                                <input type="text" id="group-input" placeholder="Add a group ID (e.g., 123456789@g.us)">
                                 <button id="add-group" class="btn btn-sm"><i class="fas fa-plus"></i></button>
                             </div>
                             <div id="groups-container" class="tags-container">
@@ -173,6 +176,19 @@
                         </div>
                         <div class="form-row">
                             <button id="save-groups" class="btn btn-primary"><i class="fas fa-save"></i> Save Groups</button>
+                            <div class="info-text ml-3">
+                                <p><i class="fas fa-check-circle"></i> Groups are auto-saved when added or removed</p>
+                            </div>
+                        </div>
+                        <div class="group-commands-help mt-4">
+                            <h4>Group Management Commands</h4>
+                            <ul>
+                                <li><code>.getid</code> - Get the current group ID</li>
+                                <li><code>.allowedgroups</code> - List all allowed groups</li>
+                                <li><code>.addallowedgroup current</code> - Add current group to allowed list</li>
+                                <li><code>.removeallowedgroup current</code> - Remove current group from allowed list</li>
+                                <li><code>.checkgroup</code> - Check if current group is allowed</li>
+                            </ul>
                         </div>
                     </div>
                 </div>

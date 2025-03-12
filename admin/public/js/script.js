@@ -137,8 +137,17 @@ document.addEventListener('DOMContentLoaded', function() {
         addGroupBtn.addEventListener('click', function() {
             const groupId = groupInput.value.trim();
             if (groupId) {
-                addGroupTag(groupId);
+                // Ensure group ID has the right format
+                let formattedGroupId = groupId;
+                if (!formattedGroupId.endsWith('@g.us')) {
+                    formattedGroupId += '@g.us';
+                }
+                
+                addGroupTag(formattedGroupId);
                 groupInput.value = '';
+                
+                // Auto-save after adding
+                saveGroupsToConfig();
             }
         });
         
@@ -153,10 +162,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save group IDs
     if (saveGroupsBtn) {
         saveGroupsBtn.addEventListener('click', async function() {
-            const groupTags = document.querySelectorAll('.tag');
-            const groupIds = Array.from(groupTags).map(tag => tag.getAttribute('data-id')).join(',');
-            
-            await updateConfig('ALLOWED_DOWNLOAD_GROUPS', groupIds);
+            saveGroupsToConfig();
+        });
+    }
+    
+    // Function to save groups to config
+    function saveGroupsToConfig() {
+        const groupTags = document.querySelectorAll('.tag');
+        const groupIds = Array.from(groupTags).map(tag => tag.getAttribute('data-id')).join(',');
+        
+        updateConfig('ALLOWED_DOWNLOAD_GROUPS', groupIds).then(() => {
+            showToast('Group settings saved successfully', 'success');
+        }).catch(error => {
+            showToast('Failed to save group settings', 'error');
         });
     }
     
@@ -465,6 +483,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const removeBtn = tag.querySelector('.remove-tag');
         removeBtn.addEventListener('click', () => {
             tag.remove();
+            // Auto-save after removing
+            saveGroupsToConfig();
         });
         
         groupsContainer.appendChild(tag);

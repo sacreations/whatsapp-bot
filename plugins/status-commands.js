@@ -14,7 +14,7 @@ bot({
     desc: 'Toggle auto status view feature'
 }, async (m, sock, args) => {
     try {
-        // Get current state
+        // Get current state - dynamically
         const currentState = config.ENABLE_AUTO_STATUS_VIEW;
         
         // Toggle state based on args or just toggle if no args
@@ -36,24 +36,8 @@ bot({
             newState = !currentState;
         }
         
-        // Update config in memory
-        config.ENABLE_AUTO_STATUS_VIEW = newState;
-        
-        // Also update the config.env file
-        const configPath = path.join(process.cwd(), 'config.env');
-        const configContent = fs.readFileSync(configPath, 'utf8');
-        
-        let updatedContent;
-        if (configContent.includes('ENABLE_AUTO_STATUS_VIEW=')) {
-            updatedContent = configContent.replace(
-                /ENABLE_AUTO_STATUS_VIEW=(true|false)/,
-                `ENABLE_AUTO_STATUS_VIEW=${newState}`
-            );
-        } else {
-            updatedContent = configContent + `\nENABLE_AUTO_STATUS_VIEW=${newState}`;
-        }
-        
-        fs.writeFileSync(configPath, updatedContent);
+        // Update config - using the new set method which updates the file directly
+        config.set('ENABLE_AUTO_STATUS_VIEW', newState.toString());
         
         return await message.reply(
             `Auto status view has been turned ${newState ? 'ON' : 'OFF'}.`,

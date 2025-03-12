@@ -502,6 +502,53 @@ input:checked + .slider:before {
     font-size: 12px;
 }
 
+/* Group management styles */
+.info-text {
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #777;
+}
+
+.info-text i {
+    color: var(--info-color);
+    margin-right: 5px;
+}
+
+.ml-3 {
+    margin-left: 15px;
+}
+
+.mt-4 {
+    margin-top: 20px;
+}
+
+.group-commands-help {
+    background-color: var(--light-color);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.group-commands-help h4 {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.group-commands-help ul {
+    margin-left: 20px;
+}
+
+.group-commands-help li {
+    margin-bottom: 5px;
+}
+
+.group-commands-help code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 13px;
+}
+
 /* Log styles */
 .log-container {
     max-height: 400px;
