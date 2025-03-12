@@ -60,26 +60,66 @@ function extractUrls(text) {
 async function handleMediaDownload(m, sock, url, platform) {
     try {
         await message.react('⏳', m, sock);
-        // await message.reply(`Detected ${platform} link. Downloading...`, m, sock);
         
-        const mediaUrl = await downloadMedia(url, platform);
+        // Download media, which will now include re-muxing
+        let mediaPath;
+        try {
+            // For YouTube, check if it's an audio request (if URL contains &audio or ?audio)
+            const isAudioRequest = url.includes('audio');
+            mediaPath = await downloadMedia(url, platform, { 
+                isAudio: platform === 'YouTube' && isAudioRequest
+            });
+        } catch (error) {
+            await message.react('❌', m, sock);
+            return await message.reply(`Failed to download media from ${platform}: ${error.message}`, m, sock);
+        }
         
-        if (!mediaUrl) {
+        if (!mediaPath) {
             await message.react('❌', m, sock);
             return await message.reply(`Failed to download media from ${platform}`, m, sock);
         }
         
-        if (platform === 'YouTube' || platform === 'Facebook' || platform === 'Twitter') {
-            await message.sendVideo(mediaUrl, `Downloaded from ${platform}`, m, sock);
-        } else if (platform === 'TikTok') {
-            await message.sendVideo(mediaUrl, ``, m, sock);
-
-        } else if (platform === 'Instagram') {
-            // Instagram could be image or video
-            await message.sendVideo(mediaUrl, ``, m, sock);
+        // Send the appropriate media type based on file extension and platform
+        try {
+            console.log(`Sending media from ${platform}, path: ${mediaPath}`);
+            
+            if (mediaPath.endsWith('.mp3')) {
+                // Send as audio
+                await message.sendAudio(mediaPath, false, m, sock);
+            } else if (mediaPath.endsWith('.mp4')) {
+                // Send as video with proper attribution
+                await message.sendVideo(mediaPath, `Downloaded from ${platform}`, m, sock);
+            } else if (mediaPath.endsWith('.jpg') || mediaPath.endsWith('.jpeg') || mediaPath.endsWith('.png')) {
+                // Send as image
+                await message.sendImage(mediaPath, `Downloaded from ${platform}`, m, sock);
+            } else {
+                // Send as document for other formats
+                await message.sendDocument(
+                    mediaPath, 
+                    `${platform}_media${path.extname(mediaPath)}`,
+                    null,
+                    m, 
+                    sock
+                );
+            }
+            
+            // Delete the file after sending to save space
+            if (fs.existsSync(mediaPath)) {
+                fs.unlinkSync(mediaPath);
+                console.log(`Deleted temporary file: ${mediaPath}`);
+            }
+            
+            await message.react('✅', m, sock);
+        } catch (sendError) {
+            console.error(`Error sending ${platform} media:`, sendError);
+            await message.react('❌', m, sock);
+            await message.reply(`Error sending media: ${sendError.message}`, m, sock);
+            
+            // Clean up file if sending fails
+            if (fs.existsSync(mediaPath)) {
+                fs.unlinkSync(mediaPath);
+            }
         }
-        
-        await message.react('✅', m, sock);
     } catch (error) {
         console.error(`Error downloading from ${platform}:`, error);
         await message.react('❌', m, sock);

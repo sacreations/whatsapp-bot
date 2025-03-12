@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import config from '../../../Config.js';
 import { downloadYoutubeVideo, downloadYoutubeAudio } from './ytDownloader.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
 // Ensure download directory exists
 const downloadDir = path.resolve(config.DOWNLOAD_FOLDER);
@@ -15,6 +17,9 @@ const Tiktok_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/tiktok?u
 const Instagram_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/instagram?url=';
 const Facebook_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/facebook?url=';
 
+// Execute shell commands asynchronously
+const execAsync = promisify(exec);
+
 /**
  * Generate a random filename
  */
@@ -22,6 +27,42 @@ function generateFilename(platform, extension) {
     const timestamp = new Date().getTime();
     const random = Math.floor(Math.random() * 1000);
     return path.join(downloadDir, `${platform.toLowerCase()}_${timestamp}_${random}.${extension}`);
+}
+
+/**
+ * Re-mux media file to ensure compatibility
+ * @param {string} inputPath - Path to input file
+ * @param {string} outputFormat - Output format (mp4, mp3, etc.)
+ * @returns {string} - Path to re-muxed file
+ */
+async function remuxMedia(inputPath, outputFormat = 'mp4') {
+    try {
+        // Create output path with proper extension
+        const outputPath = inputPath.replace(/\.[^/.]+$/, '') + `_remuxed.${outputFormat}`;
+        
+        console.log(`Re-muxing ${inputPath} to ${outputPath}`);
+        
+        // Execute FFmpeg command to re-mux without re-encoding
+        if (outputFormat === 'mp4') {
+            // For video files: preserve both audio and video streams
+            await execAsync(`ffmpeg -i "${inputPath}" -c copy -movflags faststart "${outputPath}"`);
+        } else if (outputFormat === 'mp3') {
+            // For audio files: extract audio stream only
+            await execAsync(`ffmpeg -i "${inputPath}" -vn -c:a libmp3lame -q:a 4 "${outputPath}"`);
+        } else {
+            // For other formats: general copy
+            await execAsync(`ffmpeg -i "${inputPath}" -c copy "${outputPath}"`);
+        }
+        
+        console.log(`Re-muxing completed successfully: ${outputPath}`);
+        
+        // Return the path to the remuxed file
+        return outputPath;
+    } catch (error) {
+        console.error('Error during re-muxing:', error);
+        // If re-muxing fails, return the original file path
+        return inputPath;
+    }
 }
 
 /**
@@ -232,33 +273,66 @@ async function downloadFromTwitter(url) {
 }
 
 /**
- * General media download function
+ * Download media from social media platforms
+ * @param {string} url - Media URL
+ * @param {string} platform - Platform name
+ * @param {object} options - Download options
+ * @returns {string} - Path to downloaded and re-muxed file
  */
 export async function downloadMedia(url, platform, options = {}) {
     try {
-        let downloadedFilePath;
+        console.log(`Downloading media from ${platform}: ${url}`);
         
-        switch (platform) {
+        let downloadedPath = '';
+        let shouldRemux = true;
+        
+        switch(platform) {
             case 'YouTube':
-                downloadedFilePath = await downloadFromYouTube(url, options.isAudio);
+                // Use YouTube downloader with isAudio option
+                downloadedPath = await (options.isAudio 
+                    ? downloadYoutubeAudio(url, generateFilename('youtube', 'mp3'))
+                    : downloadYoutubeVideo(url, generateFilename('youtube', 'mp4')));
                 break;
+                
             case 'TikTok':
-                downloadedFilePath = await downloadFromTikTok(url);
+                downloadedPath = await downloadFromTikTok(url);
                 break;
+                
             case 'Instagram':
-                downloadedFilePath = await downloadFromInstagram(url);
+                downloadedPath = await downloadFromInstagram(url);
                 break;
+                
             case 'Facebook':
-                downloadedFilePath = await downloadFromFacebook(url);
+                downloadedPath = await downloadFromFacebook(url);
                 break;
+                
             case 'Twitter':
-                downloadedFilePath = await downloadFromTwitter(url);
+                downloadedPath = await downloadFromTwitter(url);
                 break;
+                
             default:
-                throw new Error('Unsupported platform');
+                throw new Error(`Unsupported platform: ${platform}`);
         }
         
-        return downloadedFilePath;
+        // Check if downloaded path is an object (some downloaders return object with filepath)
+        if (typeof downloadedPath === 'object' && downloadedPath.filePath) {
+            downloadedPath = downloadedPath.filePath;
+        }
+        
+        // Re-mux the downloaded file for better compatibility
+        if (shouldRemux) {
+            const outputFormat = options.isAudio ? 'mp3' : 'mp4';
+            const remuxedPath = await remuxMedia(downloadedPath, outputFormat);
+            
+            // Delete the original file if re-muxing was successful and created a new file
+            if (remuxedPath !== downloadedPath && fs.existsSync(remuxedPath)) {
+                fs.unlinkSync(downloadedPath);
+            }
+            
+            return remuxedPath;
+        }
+        
+        return downloadedPath;
     } catch (error) {
         console.error(`Error downloading from ${platform}:`, error);
         throw error;
