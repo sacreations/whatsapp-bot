@@ -98,18 +98,38 @@ async function saveStatusMedia(status, statusType) {
             {},
         );
         
-        // Generate filename
+        // Generate filename with proper metadata
         const sender = status.key.remoteJid.split('@')[0];
         const timestamp = new Date().getTime();
         const extension = statusType === 'image' ? 'jpg' : 'mp4';
+        
+        // Format: status_contactId_timestamp.extension
         const filename = `status_${sender}_${timestamp}.${extension}`;
         const filepath = path.join(statusDir, filename);
         
         // Save file
         fs.writeFileSync(filepath, buffer);
         
-        console.log(`Saved status media: ${filepath}`);
-        return filepath;
+        // Try to get contact info (can be enhanced later)
+        let contactName = sender;
+        try {
+            // This will need to be adapted based on how you store contacts
+            // This is just a placeholder
+            if (global.store && global.store.contacts && global.store.contacts[status.key.remoteJid]) {
+                contactName = global.store.contacts[status.key.remoteJid].name || sender;
+            }
+        } catch (error) {
+            console.log('Could not get contact name:', error.message);
+        }
+        
+        console.log(`Saved status media: ${filepath} from ${contactName}`);
+        return {
+            filepath,
+            sender,
+            contactName,
+            timestamp,
+            type: statusType
+        };
     } catch (error) {
         console.error('Error saving status media:', error);
         return null;

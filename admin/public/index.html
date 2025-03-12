@@ -21,6 +21,7 @@
                     <li class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
                     <li data-section="settings"><i class="fas fa-cog"></i> Settings</li>
                     <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
+                    <li data-section="statuses"><i class="fas fa-image"></i> Status Viewer</li>
                     <li data-section="system-logs"><i class="fas fa-list"></i> System Logs</li>
                     <li data-section="chat-logs"><i class="fas fa-comment-dots"></i> Chat Logs</li>
                 </ul>
@@ -189,6 +190,46 @@
                                 <li><code>.removeallowedgroup current</code> - Remove current group from allowed list</li>
                                 <li><code>.checkgroup</code> - Check if current group is allowed</li>
                             </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Status Viewer Section -->
+            <section class="content-section" id="statuses">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-image"></i> Status Viewer</h3>
+                        <div class="refresh-controls">
+                            <button id="refresh-statuses" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            <select id="status-filter">
+                                <option value="all" selected>All Types</option>
+                                <option value="image">Images Only</option>
+                                <option value="video">Videos Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-filters">
+                            <div class="status-search">
+                                <input type="text" id="contact-search" placeholder="Search by contact...">
+                            </div>
+                            <div class="status-sort">
+                                <label>Sort by: </label>
+                                <select id="status-sort">
+                                    <option value="newest">Newest First</option>
+                                    <option value="oldest">Oldest First</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="status-container" id="status-grid">
+                            <div class="loading-indicator">Loading statuses...</div>
+                            <!-- Statuses will be inserted here -->
+                        </div>
+                        
+                        <div id="no-statuses" class="no-data-message" style="display:none;">
+                            No status updates have been saved yet.
                         </div>
                     </div>
                 </div>

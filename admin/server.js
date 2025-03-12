@@ -176,6 +176,103 @@ app.get('/api/chat-logs', requireAuth, (req, res) => {
     }
 });
 
+// Get statuses route - protected
+app.get('/api/statuses', requireAuth, (req, res) => {
+    try {
+        const statusDir = path.join(__dirname, '..', 'downloads', 'statuses');
+        
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(statusDir)) {
+            fs.mkdirSync(statusDir, { recursive: true });
+        }
+        
+        // Read status directory
+        const files = fs.readdirSync(statusDir);
+        
+        // Get status data with metadata
+        const statuses = files.map(file => {
+            const filePath = path.join(statusDir, file);
+            const stats = fs.statSync(filePath);
+            
+            // Extract contact from filename (status_contactId_timestamp.ext)
+            let contactId = 'Unknown';
+            let timestamp = 0;
+            
+            const match = file.match(/status_(\d+)_(\d+)\.(jpg|mp4)/);
+            if (match) {
+                contactId = match[1];
+                timestamp = parseInt(match[2]);
+            }
+            
+            const isVideo = file.endsWith('.mp4');
+            
+            return {
+                id: file,
+                path: filePath,
+                contactId: contactId,
+                timestamp: timestamp || stats.mtimeMs,
+                date: new Date(timestamp || stats.mtimeMs).toLocaleString(),
+                type: isVideo ? 'video' : 'image',
+                size: stats.size,
+                url: `/api/statuses/${encodeURIComponent(file)}`
+            };
+        });
+        
+        // Sort statuses by date (newest first)
+        statuses.sort((a, b) => b.timestamp - a.timestamp);
+        
+        res.json({ success: true, statuses });
+    } catch (error) {
+        console.error('Error fetching statuses:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch statuses' });
+    }
+});
+
+// Get single status file - protected
+app.get('/api/statuses/:file', requireAuth, (req, res) => {
+    try {
+        const file = req.params.file;
+        const filePath = path.join(__dirname, '..', 'downloads', 'statuses', file);
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, message: 'Status not found' });
+        }
+        
+        // Determine content type
+        const isVideo = file.endsWith('.mp4');
+        const contentType = isVideo ? 'video/mp4' : 'image/jpeg';
+        
+        // Set headers for direct viewing
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `inline; filename="${file}"`);
+        
+        // Stream the file
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+    } catch (error) {
+        console.error('Error serving status file:', error);
+        res.status(500).json({ success: false, message: 'Failed to serve status file' });
+    }
+});
+
+// Delete status - protected
+app.delete('/api/statuses/:file', requireAuth, (req, res) => {
+    try {
+        const file = req.params.file;
+        const filePath = path.join(__dirname, '..', 'downloads', 'statuses', file);
+        
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ success: false, message: 'Status not found' });
+        }
+        
+        fs.unlinkSync(filePath);
+        res.json({ success: true, message: 'Status deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting status:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete status' });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
