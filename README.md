@@ -1,4 +1,4 @@
-# WhatsApp Bot
+# WhatsApp Bot + Admin Panel
 
 A modular WhatsApp bot built with Node.js and the @whiskeysockets/baileys library, featuring plugin-based command system, media handling, auto-replies, and social media downloaders.
 
