@@ -60,6 +60,36 @@ bot({
     }
 });
 
+// Get current group ID command
+bot({
+    pattern: 'getid',
+    fromMe: false,
+    desc: 'Get the ID of the current group'
+}, async (m, sock) => {
+    try {
+        // Check if the message is from a group
+        if (!m.key.remoteJid.endsWith('@g.us')) {
+            return await message.reply('This command can only be used in a group chat.', m, sock);
+        }
+        
+        const groupId = m.key.remoteJid;
+        
+        // Get group metadata to include the name
+        const groupMetadata = await sock.groupMetadata(groupId);
+        const groupName = groupMetadata.subject;
+        
+        let responseText = `*Group ID Information*\n\n`;
+        responseText += `• Group: ${groupName}\n`;
+        responseText += `• ID: ${groupId}\n\n`;
+        responseText += `You can use this ID in the config.env file for ALLOWED_DOWNLOAD_GROUPS setting.`;
+        
+        return await message.reply(responseText, m, sock);
+    } catch (error) {
+        console.error('Error in getid command:', error);
+        return await message.reply('Error getting group ID: ' + error.message, m, sock);
+    }
+});
+
 // Sticker command to convert image to sticker
 bot({
     pattern: 'sticker',
@@ -128,6 +158,94 @@ bot({
     statusText += `• Node.js: ${status.node}\n`;
     
     return await message.reply(statusText, m, sock);
+});
+
+// Time and date command
+bot({
+    pattern: 'datetime',
+    fromMe: false,
+    desc: 'Display current date and time'
+}, async (m, sock) => {
+    const now = new Date();
+    
+    // Format date and time
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+    };
+    
+    const formattedDateTime = now.toLocaleString('en-US', options);
+    
+    // Create a nicely formatted response
+    let response = `🕒 *Current Date & Time* 🕒\n\n`;
+    response += `${formattedDateTime}\n\n`;
+    
+    // Add ISO format
+    response += `📅 *Date (ISO)*: ${now.toISOString().split('T')[0]}\n`;
+    response += `⏰ *Time (24h)*: ${now.toTimeString().split(' ')[0]}\n`;
+    response += `🌐 *Timezone*: ${Intl.DateTimeFormat().resolvedOptions().timeZone}\n`;
+    
+    return await message.reply(response, m, sock);
+});
+
+// Date command (alias)
+bot({
+    pattern: 'date',
+    fromMe: false,
+    desc: 'Display current date'
+}, async (m, sock) => {
+    const now = new Date();
+    
+    // Format date
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    
+    const formattedDate = now.toLocaleDateString('en-US', options);
+    
+    // Create a nicely formatted response
+    let response = `📅 *Current Date* 📅\n\n`;
+    response += `${formattedDate}\n\n`;
+    response += `ISO Format: ${now.toISOString().split('T')[0]}`;
+    
+    return await message.reply(response, m, sock);
+});
+
+// Time command (alias)
+bot({
+    pattern: 'time',
+    fromMe: false,
+    desc: 'Display current time'
+}, async (m, sock) => {
+    const now = new Date();
+    
+    // Format time
+    const options = { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    };
+    
+    const formattedTime12h = now.toLocaleTimeString('en-US', options);
+    const formattedTime24h = now.toTimeString().split(' ')[0];
+    
+    // Create a nicely formatted response
+    let response = `⏰ *Current Time* ⏰\n\n`;
+    response += `12-Hour Format: ${formattedTime12h}\n`;
+    response += `24-Hour Format: ${formattedTime24h}\n`;
+    response += `Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+    
+    return await message.reply(response, m, sock);
 });
 
 // Helper function to format uptime

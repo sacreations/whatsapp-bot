@@ -11,34 +11,80 @@ bot({
 }, async (m, sock) => {
     const allCommands = listCommands();
     
-    // Group commands by fromMe permission
-    const userCommands = allCommands.filter(cmd => !cmd.fromMe);
-    const ownerCommands = allCommands.filter(cmd => cmd.fromMe);
+    // Group commands by category
+    const categories = {
+        'basic': { emoji: '📋', title: 'Basic Commands', commands: [] },
+        'media': { emoji: '🖼️', title: 'Media Commands', commands: [] },
+        'downloader': { emoji: '📥', title: 'Downloader Commands', commands: [] },
+        'group': { emoji: '👥', title: 'Group Commands', commands: [] },
+        'tools': { emoji: '🛠️', title: 'Tools & Utilities', commands: [] },
+        'owner': { emoji: '👑', title: 'Owner Commands', commands: [] }
+    };
     
-    let menuText = `🤖 *${config.BOT_NAME} MENU* 🤖\n\n`;
-    
-    // Add user commands section
-    menuText += `📋 *User Commands*\n\n`;
-    userCommands.forEach(cmd => {
-        const pattern = typeof cmd.pattern === 'string' 
-            ? `${config.PREFIX}${cmd.pattern}` 
-            : `${config.PREFIX}${cmd.pattern.toString()}`;
-        menuText += `➡️ ${pattern} - ${cmd.desc || 'No description'}\n`;
+    // Categorize commands
+    allCommands.forEach(cmd => {
+        if (cmd.fromMe) {
+            categories.owner.commands.push(cmd);
+        } else if (cmd.pattern.toString().includes('convert') || 
+                  cmd.pattern.toString().includes('sticker') || 
+                  cmd.pattern.toString().includes('media')) {
+            categories.media.commands.push(cmd);
+        } else if (cmd.pattern.toString().includes('yt') || 
+                  cmd.pattern.toString().includes('tiktok') || 
+                  cmd.pattern.toString().includes('ig') || 
+                  cmd.pattern.toString().includes('fb') || 
+                  cmd.pattern.toString().includes('twitter')) {
+            categories.downloader.commands.push(cmd);
+        } else if (cmd.pattern.toString().includes('group')) {
+            categories.group.commands.push(cmd);
+        } else if (cmd.pattern.toString().includes('test') || 
+                  cmd.pattern.toString().includes('stat') || 
+                  cmd.pattern.toString().includes('ping') || 
+                  cmd.pattern.toString().includes('info') || 
+                  cmd.pattern.toString().includes('sysinfo') ||
+                  cmd.pattern.toString().includes('time') ||
+                  cmd.pattern.toString().includes('date')) {
+            categories.tools.commands.push(cmd);
+        } else {
+            categories.basic.commands.push(cmd);
+        }
     });
     
-    // Add owner commands section if user is owner
-    const isOwner = m.key.fromMe;
-    if (isOwner && ownerCommands.length > 0) {
-        menuText += `\n👑 *Owner Commands*\n\n`;
-        ownerCommands.forEach(cmd => {
-            const pattern = typeof cmd.pattern === 'string' 
-                ? `${config.PREFIX}${cmd.pattern}` 
-                : `${config.PREFIX}${cmd.pattern.toString()}`;
-            menuText += `➡️ ${pattern} - ${cmd.desc || 'No description'}\n`;
-        });
-    }
+    // Build the menu text with better styling
+    let menuText = `┌─────────────────────┐\n`;
+    menuText += `│    *${config.BOT_NAME}*    │\n`;
+    menuText += `└─────────────────────┘\n\n`;
     
-    menuText += `\n📱 Use ${config.PREFIX}help <command> for more details about a specific command.`;
+    // Add each category
+    Object.values(categories).forEach(category => {
+        if (category.commands.length > 0) {
+            if (category.title === 'Owner Commands' && !m.key.fromMe) {
+                return; // Skip owner commands for non-owners
+            }
+            
+            menuText += `╭─❯ ${category.emoji} *${category.title}* ❮─\n`;
+            
+            category.commands.forEach(cmd => {
+                const pattern = typeof cmd.pattern === 'string' 
+                    ? `${config.PREFIX}${cmd.pattern}` 
+                    : `${config.PREFIX}${cmd.pattern.toString().replace(/\//g, '').substring(0, 15)}`;
+                
+                const description = cmd.desc || 'No description';
+                menuText += `│ • ${pattern}\n│   ${description}\n`;
+            });
+            
+            menuText += `╰────────────────\n\n`;
+        }
+    });
+    
+    // Add footer
+    menuText += `┌─────────────────────┐\n`;
+    menuText += `│ 📱 *HOW TO USE* 📱 │\n`;
+    menuText += `└─────────────────────┘\n`;
+    menuText += `Type ${config.PREFIX}help <command> for detailed info on specific commands.\n\n`;
+    menuText += `🤖 *Bot Status:* Online\n`;
+    menuText += `⚡ *Prefix:* ${config.PREFIX}\n`;
+    menuText += `🧩 *Commands:* ${allCommands.length}\n`;
     
     // Send the menu
     return await message.reply(menuText, m, sock);
