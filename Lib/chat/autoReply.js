@@ -60,7 +60,7 @@ function extractUrls(text) {
 async function handleMediaDownload(m, sock, url, platform) {
     try {
         await message.react('⏳', m, sock);
-        await message.reply(`Detected ${platform} link. Downloading...`, m, sock);
+        // await message.reply(`Detected ${platform} link. Downloading...`, m, sock);
         
         const mediaUrl = await downloadMedia(url, platform);
         
