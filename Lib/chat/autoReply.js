@@ -63,13 +63,20 @@ async function handleMediaDownload(m, sock, url, platform) {
     try {
         await message.react('⏳', m, sock);
         
-        // Download media, which will now include re-muxing
+        // Download media, which will now include optimization
         let mediaPath;
         try {
             // For YouTube, check if it's an audio request (if URL contains &audio or ?audio)
             const isAudioRequest = url.includes('audio');
+            
+            // Get compression settings from config
+            const compressionLevel = config.MEDIA_COMPRESSION_LEVEL;
+            const maxResolution = config.MAX_VIDEO_RESOLUTION;
+            
             mediaPath = await downloadMedia(url, platform, { 
-                isAudio: platform === 'YouTube' && isAudioRequest
+                isAudio: platform === 'YouTube' && isAudioRequest,
+                compressionLevel: compressionLevel,
+                maxResolution: maxResolution
             });
         } catch (error) {
             await message.react('❌', m, sock);

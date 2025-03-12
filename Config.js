@@ -94,6 +94,14 @@ const config = {
   get ALLOWED_DOWNLOAD_GROUPS() { 
     return this.get('ALLOWED_DOWNLOAD_GROUPS', '').split(',').filter(id => id.trim() !== ''); 
   },
+
+  get MEDIA_COMPRESSION_LEVEL() { 
+    return this.get('MEDIA_COMPRESSION_LEVEL', 'medium'); 
+  },
+  
+  get MAX_VIDEO_RESOLUTION() { 
+    return parseInt(this.get('MAX_VIDEO_RESOLUTION', '720')); 
+  },
   
   // Create required directories
   createDirectories: () => {

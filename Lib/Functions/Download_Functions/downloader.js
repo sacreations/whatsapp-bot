@@ -30,39 +30,120 @@ function generateFilename(platform, extension) {
 }
 
 /**
- * Re-mux media file to ensure compatibility
+ * Re-mux media file to ensure compatibility and optimize file size
  * @param {string} inputPath - Path to input file
  * @param {string} outputFormat - Output format (mp4, mp3, etc.)
+ * @param {object} options - Options for compression
  * @returns {string} - Path to re-muxed file
  */
-async function remuxMedia(inputPath, outputFormat = 'mp4') {
+async function remuxMedia(inputPath, outputFormat = 'mp4', options = {}) {
     try {
         // Create output path with proper extension
-        const outputPath = inputPath.replace(/\.[^/.]+$/, '') + `_remuxed.${outputFormat}`;
+        const outputPath = inputPath.replace(/\.[^/.]+$/, '') + `_optimized.${outputFormat}`;
         
-        console.log(`Re-muxing ${inputPath} to ${outputPath}`);
+        console.log(`Optimizing ${inputPath} to ${outputPath}`);
         
-        // Execute FFmpeg command to re-mux without re-encoding
+        // Default compression options
+        const compressionLevel = options.compressionLevel || 'medium'; // low, medium, high
+        const maxResolution = options.maxResolution || 720; // Maximum vertical resolution (720p)
+        const targetSize = options.targetSize || 0; // Target size in MB (0 = auto)
+        
+        // Select FFmpeg parameters based on format and compression level
+        let ffmpegParams = '';
+        
         if (outputFormat === 'mp4') {
-            // For video files: preserve both audio and video streams
-            await execAsync(`ffmpeg -i "${inputPath}" -c copy -movflags faststart "${outputPath}"`);
+            // For video files, apply different compression based on level
+            switch(compressionLevel) {
+                case 'low': // Very minor compression, preserve most quality
+                    ffmpegParams = `-c:v libx264 -crf 23 -preset faster -c:a aac -b:a 128k`;
+                    break;
+                    
+                case 'medium': // Default - good balance of quality and size
+                    ffmpegParams = `-c:v libx264 -crf 28 -preset medium -c:a aac -b:a 96k`;
+                    break;
+                    
+                case 'high': // Maximum compression, may reduce quality
+                    ffmpegParams = `-c:v libx264 -crf 32 -preset medium -c:a aac -b:a 64k`;
+                    break;
+                    
+                default: // Same as medium
+                    ffmpegParams = `-c:v libx264 -crf 28 -preset medium -c:a aac -b:a 96k`;
+            }
+            
+            // Add resolution control if requested
+            if (maxResolution > 0) {
+                // First get video info to check original resolution
+                const { stdout } = await execAsync(`ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "${inputPath}"`);
+                const [width, height] = stdout.trim().split(',').map(Number);
+                
+                if (height > maxResolution) {
+                    // Calculate new width to maintain aspect ratio
+                    const newWidth = Math.round((width / height) * maxResolution);
+                    ffmpegParams += ` -vf "scale=${newWidth}:${maxResolution}"`;
+                    console.log(`Resizing video from ${width}x${height} to ${newWidth}x${maxResolution}`);
+                }
+            }
+            
+            // Execute FFmpeg command with the parameters
+            await execAsync(`ffmpeg -i "${inputPath}" ${ffmpegParams} -movflags faststart "${outputPath}"`);
+            
         } else if (outputFormat === 'mp3') {
-            // For audio files: extract audio stream only
-            await execAsync(`ffmpeg -i "${inputPath}" -vn -c:a libmp3lame -q:a 4 "${outputPath}"`);
+            // For audio files, use different bitrates based on compression level
+            let audioBitrate;
+            switch(compressionLevel) {
+                case 'low': audioBitrate = '192k'; break;
+                case 'medium': audioBitrate = '128k'; break;
+                case 'high': audioBitrate = '96k'; break;
+                default: audioBitrate = '128k';
+            }
+            
+            await execAsync(`ffmpeg -i "${inputPath}" -vn -c:a libmp3lame -b:a ${audioBitrate} "${outputPath}"`);
+            
+        } else if (outputFormat === 'jpg' || outputFormat === 'jpeg') {
+            // For images, use different quality levels
+            let quality;
+            switch(compressionLevel) {
+                case 'low': quality = 95; break;
+                case 'medium': quality = 85; break;
+                case 'high': quality = 75; break;
+                default: quality = 85;
+            }
+            
+            await execAsync(`ffmpeg -i "${inputPath}" -q:v ${quality} "${outputPath}"`);
+            
         } else {
-            // For other formats: general copy
+            // For other formats, just copy
             await execAsync(`ffmpeg -i "${inputPath}" -c copy "${outputPath}"`);
         }
         
-        console.log(`Re-muxing completed successfully: ${outputPath}`);
+        // Log size difference
+        const originalSize = fs.statSync(inputPath).size;
+        const newSize = fs.statSync(outputPath).size;
+        const percentReduction = ((originalSize - newSize) / originalSize * 100).toFixed(2);
         
-        // Return the path to the remuxed file
+        console.log(`Optimization complete: ${formatSize(originalSize)} → ${formatSize(newSize)} (${percentReduction}% reduction)`);
+        
+        // Return the path to the optimized file
         return outputPath;
     } catch (error) {
-        console.error('Error during re-muxing:', error);
-        // If re-muxing fails, return the original file path
+        console.error('Error during media optimization:', error);
+        // If optimization fails, return the original file path
         return inputPath;
     }
+}
+
+/**
+ * Format file size to human-readable string
+ * @param {number} bytes - Size in bytes
+ * @returns {string} - Formatted size
+ */
+function formatSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    
+    return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 /**
@@ -273,18 +354,26 @@ async function downloadFromTwitter(url) {
 }
 
 /**
- * Download media from social media platforms
+ * Download media from social media platforms with optimization
  * @param {string} url - Media URL
  * @param {string} platform - Platform name
  * @param {object} options - Download options
- * @returns {string} - Path to downloaded and re-muxed file
+ * @returns {string} - Path to downloaded and optimized file
  */
 export async function downloadMedia(url, platform, options = {}) {
     try {
         console.log(`Downloading media from ${platform}: ${url}`);
         
         let downloadedPath = '';
-        let shouldRemux = true;
+        
+        // Set compression options based on platform or user preferences
+        const compressionOptions = {
+            compressionLevel: options.compressionLevel || getPlatformCompressionLevel(platform),
+            maxResolution: options.maxResolution || 720,
+            targetSize: options.targetSize || 0
+        };
+        
+        console.log(`Using compression level: ${compressionOptions.compressionLevel}`);
         
         switch(platform) {
             case 'YouTube':
@@ -319,23 +408,35 @@ export async function downloadMedia(url, platform, options = {}) {
             downloadedPath = downloadedPath.filePath;
         }
         
-        // Re-mux the downloaded file for better compatibility
-        if (shouldRemux) {
-            const outputFormat = options.isAudio ? 'mp3' : 'mp4';
-            const remuxedPath = await remuxMedia(downloadedPath, outputFormat);
-            
-            // Delete the original file if re-muxing was successful and created a new file
-            if (remuxedPath !== downloadedPath && fs.existsSync(remuxedPath)) {
-                fs.unlinkSync(downloadedPath);
-            }
-            
-            return remuxedPath;
+        // Optimize the file based on format
+        const outputFormat = options.isAudio ? 'mp3' : 'mp4';
+        const optimizedPath = await remuxMedia(downloadedPath, outputFormat, compressionOptions);
+        
+        // Delete the original file if optimization was successful and created a new file
+        if (optimizedPath !== downloadedPath && fs.existsSync(optimizedPath)) {
+            fs.unlinkSync(downloadedPath);
         }
         
-        return downloadedPath;
+        return optimizedPath;
     } catch (error) {
         console.error(`Error downloading from ${platform}:`, error);
         throw error;
+    }
+}
+
+/**
+ * Get appropriate compression level for different platforms
+ * @param {string} platform - Social media platform
+ * @returns {string} - Compression level
+ */
+function getPlatformCompressionLevel(platform) {
+    switch(platform) {
+        case 'YouTube': return 'medium'; // YouTube already has good compression
+        case 'TikTok': return 'medium';  // TikTok videos are usually small already
+        case 'Instagram': return 'medium'; // Instagram needs decent quality
+        case 'Facebook': return 'medium'; // Facebook videos can be large
+        case 'Twitter': return 'medium';  // Twitter media is usually compressed already
+        default: return 'medium';
     }
 }
 

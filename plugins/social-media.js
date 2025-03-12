@@ -14,12 +14,13 @@ bot({
     pattern: 'yt',
     fromMe: false,
     desc: 'Download YouTube videos',
-    usage: '<YouTube URL> [audio]'
+    usage: '<YouTube URL> [audio/hq/lq]'
 }, async (m, sock, args) => {
     try {
         if (!args) {
             return await message.reply('Please provide a YouTube URL.\n\nExample: ' + 
-                `${config.PREFIX}yt https://www.youtube.com/watch?v=dQw4w9WgXcQ`, m, sock);
+                `${config.PREFIX}yt https://www.youtube.com/watch?v=dQw4w9WgXcQ\n` +
+                `Options: audio = audio only, hq = high quality, lq = low quality/smaller file`, m, sock);
         }
         
         await message.react('⏳', m, sock);
@@ -27,17 +28,29 @@ bot({
         // Parse arguments
         const parts = args.split(' ');
         const url = parts[0];
-        const isAudio = parts.length > 1 && parts[1].toLowerCase() === 'audio';
+        const option = parts.length > 1 ? parts[1].toLowerCase() : '';
+        
+        // Determine download options
+        const isAudio = option === 'audio';
+        let compressionLevel = config.MEDIA_COMPRESSION_LEVEL; // default from config
+        
+        // Override compression based on option
+        if (option === 'hq') compressionLevel = 'low'; // low compression = high quality
+        if (option === 'lq') compressionLevel = 'high'; // high compression = low quality
         
         if (!url.match(/youtu\.?be/)) {
             await message.react('❌', m, sock);
             return await message.reply('Invalid YouTube URL. Please provide a valid YouTube link.', m, sock);
         }
         
-        await message.reply(`Processing YouTube ${isAudio ? 'audio' : 'video'}...`, m, sock);
+        await message.reply(`Processing YouTube ${isAudio ? 'audio' : 'video'}... Quality: ${compressionLevel}`, m, sock);
         
         try {
-            const downloadedPath = await downloadMedia(url, 'YouTube', { isAudio });
+            const downloadedPath = await downloadMedia(url, 'YouTube', { 
+                isAudio, 
+                compressionLevel,
+                maxResolution: compressionLevel === 'low' ? 1080 : 720 // Higher resolution for HQ
+            });
             
             if (isAudio) {
                 await message.sendAudio(downloadedPath, false, m, sock);
@@ -223,5 +236,72 @@ bot({
     const twitterCmd = commands.find(cmd => typeof cmd.pattern === 'string' && cmd.pattern === 'twitter');
     if (twitterCmd) {
         await twitterCmd.handler(m, sock, args);
+    }
+});
+
+// Add a compression command to control global compression settings
+bot({
+    pattern: 'compression',
+    fromMe: true,
+    desc: 'Set media compression level for downloads',
+    usage: '<low/medium/high>'
+}, async (m, sock, args) => {
+    try {
+        const validLevels = ['low', 'medium', 'high'];
+        
+        if (!args || !validLevels.includes(args.toLowerCase())) {
+            const currentLevel = config.MEDIA_COMPRESSION_LEVEL;
+            return await message.reply(
+                `Current compression level: ${currentLevel}\n\n` +
+                `To change, use: ${config.PREFIX}compression <level>\n` +
+                `Available levels:\n` +
+                `- low: High quality, larger files\n` +
+                `- medium: Balanced quality and size\n` +
+                `- high: Smaller files, reduced quality`, m, sock);
+        }
+        
+        const level = args.toLowerCase();
+        
+        // Update config
+        await config.set('MEDIA_COMPRESSION_LEVEL', level);
+        
+        return await message.reply(`Media compression level set to: ${level}`, m, sock);
+    } catch (error) {
+        console.error('Error in compression command:', error);
+        return await message.reply(`Error: ${error.message}`, m, sock);
+    }
+});
+
+// Add command to set maximum video resolution
+bot({
+    pattern: 'maxresolution',
+    fromMe: true,
+    desc: 'Set maximum video resolution for downloads',
+    usage: '<360/480/720/1080/0>'
+}, async (m, sock, args) => {
+    try {
+        const validResolutions = ['360', '480', '720', '1080', '0'];
+        
+        if (!args || !validResolutions.includes(args)) {
+            const currentRes = config.MAX_VIDEO_RESOLUTION;
+            return await message.reply(
+                `Current maximum resolution: ${currentRes}p\n\n` +
+                `To change, use: ${config.PREFIX}maxresolution <360/480/720/1080/0>\n` +
+                `Use 0 to disable resolution limit.`, m, sock);
+        }
+        
+        const resolution = args;
+        
+        // Update config
+        await config.set('MAX_VIDEO_RESOLUTION', resolution);
+        
+        if (resolution === '0') {
+            return await message.reply('Video resolution limit disabled.', m, sock);
+        } else {
+            return await message.reply(`Maximum video resolution set to: ${resolution}p`, m, sock);
+        }
+    } catch (error) {
+        console.error('Error in maxresolution command:', error);
+        return await message.reply(`Error: ${error.message}`, m, sock);
     }
 });
