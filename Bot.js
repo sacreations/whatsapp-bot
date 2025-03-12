@@ -80,6 +80,9 @@ async function connectToWhatsApp() {
         syncFullHistory: false
     });
     
+    // Make socket available globally
+    global.sock = sock;
+    
     // Save session credentials on updates
     sock.ev.on('creds.update', saveCreds);
     

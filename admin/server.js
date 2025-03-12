@@ -306,6 +306,95 @@ app.delete('/api/statuses/:file', requireAuth, (req, res) => {
     }
 });
 
+// Get dashboard stats - protected
+app.get('/api/dashboard-stats', requireAuth, (req, res) => {
+    try {
+        // Get groups count
+        const groupsCount = (() => {
+            try {
+                if (global.sock && global.sock.groupMetadata) {
+                    return Object.keys(global.sock.groupMetadata).length;
+                }
+                return 0;
+            } catch (error) {
+                console.error('Error getting groups count:', error);
+                return 0;
+            }
+        })();
+        
+        // Get plugins count
+        const pluginsCount = (() => {
+            try {
+                const pluginsDir = path.join(__dirname, '..', 'plugins');
+                if (fs.existsSync(pluginsDir)) {
+                    return fs.readdirSync(pluginsDir).filter(file => file.endsWith('.js')).length;
+                }
+                return 0;
+            } catch (error) {
+                console.error('Error getting plugins count:', error);
+                return 0;
+            }
+        })();
+        
+        // Get downloads count
+        const downloadsCount = (() => {
+            try {
+                const downloadDir = path.join(__dirname, '..', 'downloads');
+                if (!fs.existsSync(downloadDir)) return 0;
+                
+                // Count downloaded files
+                let count = 0;
+                const countFilesRecursively = (dir) => {
+                    const files = fs.readdirSync(dir);
+                    files.forEach(file => {
+                        const filePath = path.join(dir, file);
+                        if (fs.statSync(filePath).isDirectory()) {
+                            // Skip the 'statuses' directory in the count
+                            if (path.basename(filePath) !== 'statuses') {
+                                countFilesRecursively(filePath);
+                            }
+                        } else {
+                            count++;
+                        }
+                    });
+                };
+                
+                countFilesRecursively(downloadDir);
+                return count;
+            } catch (error) {
+                console.error('Error getting downloads count:', error);
+                return 0;
+            }
+        })();
+        
+        // Get uptime
+        const uptime = (() => {
+            const uptimeSeconds = process.uptime();
+            const days = Math.floor(uptimeSeconds / 86400);
+            const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+            const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+            
+            return `${days}d ${hours}h ${minutes}m`;
+        })();
+        
+        res.json({
+            success: true,
+            stats: {
+                groupsCount,
+                pluginsCount, 
+                downloadsCount,
+                uptime
+            }
+        });
+    } catch (error) {
+        console.error('Error getting dashboard stats:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to get dashboard statistics'
+        });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

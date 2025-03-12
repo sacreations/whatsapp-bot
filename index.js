@@ -1,6 +1,9 @@
 import { connectToWhatsApp } from './Bot.js';
 import config from './Config.js';
 
+// Initialize global variables
+global.sock = null;
+
 // Import admin server
 import './admin/server.js';
 
