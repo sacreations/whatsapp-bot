@@ -90,10 +90,10 @@ async function handleMediaDownload(m, sock, url, platform) {
                 await message.sendAudio(mediaPath, false, m, sock);
             } else if (mediaPath.endsWith('.mp4')) {
                 // Send as video with proper attribution
-                await message.sendVideo(mediaPath, `Downloaded from ${platform}`, m, sock);
+                await message.sendVideo(mediaPath, "", m, sock);
             } else if (mediaPath.endsWith('.jpg') || mediaPath.endsWith('.jpeg') || mediaPath.endsWith('.png')) {
                 // Send as image
-                await message.sendImage(mediaPath, `Downloaded from ${platform}`, m, sock);
+                await message.sendImage(mediaPath, "", m, sock);
             } else {
                 // Send as document for other formats
                 await message.sendDocument(
