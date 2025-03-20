@@ -221,13 +221,7 @@ app.get('/api/statuses', requireAuth, (req, res) => {
                 timestamp = parseInt(match[2]);
                 
                 // Look up contact name from contacts.json
-                // Try multiple possible JID formats
-                // Updated to handle more JID formats and partial matches
                 contactName = findContactName(contacts, contactId);
-                
-                if (contactName) {
-                    console.log(`Found contact name: ${contactName} for ${contactId}`);
-                }
             }
             
             const isVideo = file.endsWith('.mp4');
@@ -236,7 +230,7 @@ app.get('/api/statuses', requireAuth, (req, res) => {
                 id: file,
                 path: filePath,
                 contactId: contactId,
-                contactName: contactName,
+                contactName: contactName || 'Unknown', // Always provide a name, default to 'Unknown'
                 timestamp: timestamp || stats.mtimeMs,
                 date: new Date(timestamp || stats.mtimeMs).toLocaleString(),
                 type: isVideo ? 'video' : 'image',
@@ -257,8 +251,13 @@ app.get('/api/statuses', requireAuth, (req, res) => {
 
 // Helper function to find contact name by ID
 function findContactName(contacts, contactId) {
+    // Early exit for empty contacts
+    if (!contacts || Object.keys(contacts).length === 0) {
+        return null;
+    }
+    
     // Try direct match first
-    if (contacts[contactId]) {
+    if (contacts[contactId] && contacts[contactId].name) {
         return contacts[contactId].name;
     }
     
@@ -270,18 +269,19 @@ function findContactName(contacts, contactId) {
     ];
     
     for (const jid of possibleJids) {
-        if (contacts[jid]) {
+        if (contacts[jid] && contacts[jid].name) {
             return contacts[jid].name;
         }
     }
     
     // Try to find partial matches (for cases where the ID is part of a JID)
     for (const [jid, contact] of Object.entries(contacts)) {
-        if (jid.includes(contactId)) {
+        if (jid.includes(contactId) && contact.name) {
             return contact.name;
         }
     }
     
+    // No match found
     return null;
 }
 
@@ -501,6 +501,138 @@ app.delete('/api/saved-links/group/:groupId', requireAuth, (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Failed to clear group links: ' + error.message
+        });
+    }
+});
+
+// Download and send a saved link - protected
+app.post('/api/saved-links/download/:url', requireAuth, async (req, res) => {
+    try {
+        const url = decodeURIComponent(req.params.url);
+        
+        // Load all saved links
+        const links = loadSavedLinks();
+        
+        // Find the link
+        const link = links.find(l => l.url === url);
+        
+        if (!link) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Link not found in saved links'
+            });
+        }
+        
+        // Check if WhatsApp client is available
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp client is not available'
+            });
+        }
+        
+        // Import necessary modules for downloading and sending
+        const { downloadMedia } = await import('../Lib/Functions/Download_Functions/downloader.js');
+        const messageHandler = (await import('../Lib/chat/messageHandler.js')).default;
+        
+        // Download the media
+        try {
+            // Get configuration settings
+            const configModule = await import('../Config.js');
+            const config = configModule.default;
+            
+            // Process download options
+            const compressionLevel = config.MEDIA_COMPRESSION_LEVEL;
+            const maxResolution = config.MAX_VIDEO_RESOLUTION;
+            const isAudio = link.platform === 'YouTube' && link.url.includes('audio');
+            
+            // Start the download
+            res.json({ 
+                success: true, 
+                message: 'Download started. The media will be sent to the chat when ready.'
+            });
+            
+            // Asynchronously continue with the download and sending
+            (async () => {
+                try {
+                    console.log(`Admin panel: Downloading media from ${link.platform}: ${link.url}`);
+                    
+                    // Download the media
+                    const mediaPath = await downloadMedia(link.url, link.platform, {
+                        isAudio: isAudio,
+                        compressionLevel: compressionLevel,
+                        maxResolution: maxResolution
+                    });
+                    
+                    console.log(`Admin panel: Media downloaded to ${mediaPath}, sending to chat ${link.groupId}`);
+                    
+                    // Send the media based on file type
+                    const fs = await import('fs');
+                    
+                    // Create a dummy message object to use with messageHandler
+                    const dummyMsg = {
+                        key: {
+                            remoteJid: link.groupId
+                        }
+                    };
+                    
+                    // Send appropriate media type
+                    if (mediaPath.endsWith('.mp3')) {
+                        await messageHandler.sendAudio(mediaPath, false, dummyMsg, global.sock);
+                    } else if (mediaPath.endsWith('.mp4')) {
+                        await messageHandler.sendVideo(
+                            mediaPath, 
+                            `Downloaded from ${link.platform} via Admin Panel`, 
+                            dummyMsg, 
+                            global.sock
+                        );
+                    } else if (mediaPath.endsWith('.jpg') || mediaPath.endsWith('.jpeg') || mediaPath.endsWith('.png')) {
+                        await messageHandler.sendImage(
+                            mediaPath, 
+                            `Downloaded from ${link.platform} via Admin Panel`, 
+                            dummyMsg, 
+                            global.sock
+                        );
+                    } else {
+                        const path = await import('path');
+                        await messageHandler.sendDocument(
+                            mediaPath,
+                            `${link.platform}_media${path.extname(mediaPath)}`,
+                            null,
+                            dummyMsg,
+                            global.sock
+                        );
+                    }
+                    
+                    // Clean up the file
+                    if (fs.existsSync(mediaPath)) {
+                        fs.unlinkSync(mediaPath);
+                        console.log(`Admin panel: Deleted temporary file: ${mediaPath}`);
+                    }
+                    
+                    // Delete the link from saved links
+                    const { deleteLink } = await import('../Lib/utils/linkStorage.js');
+                    deleteLink(link.url);
+                    
+                    console.log(`Admin panel: Successfully sent media and deleted link: ${link.url}`);
+                } catch (error) {
+                    console.error('Admin panel: Error processing download:', error);
+                    // If could send error message to the chat, but that might be confusing
+                }
+            })();
+            
+        } catch (error) {
+            console.error('Error starting download process:', error);
+            return res.status(500).json({ 
+                success: false, 
+                message: `Error starting download: ${error.message}`
+            });
+        }
+    } catch (error) {
+        console.error('Error processing download request:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: `Error processing request: ${error.message}`
         });
     }
 });

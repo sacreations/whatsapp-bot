@@ -885,6 +885,112 @@ input:checked + .slider:before {
     color: white;
 }
 
+/* Saved Links Section */
+.links-container {
+    padding: 0;
+}
+
+.links-group {
+    background: var(--surface-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.links-group-header {
+    background: rgba(99, 102, 241, 0.1);
+    padding: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.links-group-body {
+    padding: 0;
+}
+
+.link-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.link-item:last-child {
+    border-bottom: none;
+}
+
+.link-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.link-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.link-title {
+    font-weight: 600;
+    color: var(--primary-color);
+    word-break: break-word;
+}
+
+.link-platform {
+    display: inline-block;
+    background: var(--primary-dark);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.link-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.link-details span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.link-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.clear-group-btn {
+    white-space: nowrap;
+}
+
+.link-message-context {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    word-break: break-word;
+}
+
+.download-link-btn.processing {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {

@@ -22,6 +22,7 @@
                     <li class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
                     <li data-section="settings"><i class="fas fa-cog"></i> Settings</li>
                     <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
+                    <li data-section="saved-links"><i class="fas fa-link"></i> Saved Links</li>
                     <li data-section="statuses"><i class="fas fa-image"></i> Status Viewer</li>
                     <li data-section="system-logs"><i class="fas fa-list"></i> System Logs</li>
                     <li data-section="chat-logs"><i class="fas fa-comment-dots"></i> Chat Logs</li>
@@ -201,6 +202,44 @@
                                 <li><code>.removeallowedgroup current</code> - Remove current group from allowed list</li>
                                 <li><code>.checkgroup</code> - Check if current group is allowed</li>
                             </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="content-section" id="saved-links">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-link"></i> Saved Links</h3>
+                        <div class="refresh-controls">
+                            <button id="refresh-links" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="status-filters">
+                            <div class="status-search">
+                                <input type="text" id="links-search" placeholder="Search by URL, group, or user...">
+                            </div>
+                            <div class="status-sort">
+                                <label>Filter: </label>
+                                <select id="links-platform-filter">
+                                    <option value="all" selected>All Platforms</option>
+                                    <option value="YouTube">YouTube</option>
+                                    <option value="TikTok">TikTok</option>
+                                    <option value="Instagram">Instagram</option>
+                                    <option value="Facebook">Facebook</option>
+                                    <option value="Twitter">Twitter</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="saved-links-container">
+                            <div class="loading-indicator">Loading saved links...</div>
+                            <!-- Saved links will be inserted here -->
+                        </div>
+                        
+                        <div id="no-links" class="no-data-message" style="display:none;">
+                            No saved links found.
                         </div>
                     </div>
                 </div>

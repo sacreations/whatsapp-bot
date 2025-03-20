@@ -40,9 +40,15 @@ function saveContactInfo(jid, name) {
     if (!jid || !name) return;
     
     try {
+        // Clean up the name (remove extra whitespace and newlines)
+        const cleanName = name.replace(/\s+/g, ' ').trim();
+        if (!cleanName) return; // Skip if name is empty after cleaning
+        
+        console.log(`Saving contact: ${cleanName} (${jid})`);
+        
         // Update the contacts object with the full JID
         contacts[jid] = {
-            name,
+            name: cleanName,
             updatedAt: new Date().toISOString()
         };
         
@@ -51,14 +57,14 @@ function saveContactInfo(jid, name) {
         const simplifiedJid = jid.split('@')[0];
         if (simplifiedJid && simplifiedJid !== jid) {
             contacts[simplifiedJid] = {
-                name,
+                name: cleanName,
                 updatedAt: new Date().toISOString()
             };
         }
         
         // Write to file
         fs.writeFileSync(contactsPath, JSON.stringify(contacts, null, 2));
-        console.log(`Saved contact info for ${name} (${jid})`);
+        console.log(`Contact saved: ${cleanName} (${jid})`);
     } catch (error) {
         console.error('Error saving contact info:', error);
     }
@@ -185,12 +191,13 @@ async function saveStatusMedia(status, statusType, contactName) {
         fs.writeFileSync(filepath, buffer);
         
         // Log with more details for debugging
-        console.log(`Saved status media: ${filepath} from ${contactName || sender} (JID: ${rawJid})`);
+        const displayName = contactName || 'Unknown';
+        console.log(`Saved status media: ${filepath} from ${displayName} (JID: ${rawJid})`);
         
         return {
             filepath,
             sender,
-            contactName,
+            contactName: displayName,
             timestamp,
             type: statusType
         };
