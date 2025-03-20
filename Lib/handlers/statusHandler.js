@@ -40,14 +40,25 @@ function saveContactInfo(jid, name) {
     if (!jid || !name) return;
     
     try {
-        // Update the contacts object
+        // Update the contacts object with the full JID
         contacts[jid] = {
             name,
             updatedAt: new Date().toISOString()
         };
         
+        // Also save a simplified version with just the number part
+        // This helps with matching when only the number is available
+        const simplifiedJid = jid.split('@')[0];
+        if (simplifiedJid && simplifiedJid !== jid) {
+            contacts[simplifiedJid] = {
+                name,
+                updatedAt: new Date().toISOString()
+            };
+        }
+        
         // Write to file
         fs.writeFileSync(contactsPath, JSON.stringify(contacts, null, 2));
+        console.log(`Saved contact info for ${name} (${jid})`);
     } catch (error) {
         console.error('Error saving contact info:', error);
     }
@@ -160,22 +171,21 @@ async function saveStatusMedia(status, statusType, contactName) {
             {},
         );
         
-        // Generate filename with proper metadata
-        // Fix: Use the sender ID without the double "status_" prefix
-        const sender = status.key.remoteJid.split('@')[0];
+        // Get the raw JID and extract the sender ID correctly
+        const rawJid = status.key.remoteJid;
+        const sender = rawJid.split('@')[0];
         const timestamp = new Date().getTime();
         const extension = statusType === 'image' ? 'jpg' : 'mp4';
         
         // Format: status_contactId_timestamp.extension
-        // Fix: Ensure proper format without doubling the "status_" prefix
         const filename = `status_${sender}_${timestamp}.${extension}`;
         const filepath = path.join(statusDir, filename);
         
         // Save file
         fs.writeFileSync(filepath, buffer);
         
-        // Use the contact name we retrieved earlier
-        console.log(`Saved status media: ${filepath} from ${contactName || sender}`);
+        // Log with more details for debugging
+        console.log(`Saved status media: ${filepath} from ${contactName || sender} (JID: ${rawJid})`);
         
         return {
             filepath,

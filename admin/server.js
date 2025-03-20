@@ -222,18 +222,11 @@ app.get('/api/statuses', requireAuth, (req, res) => {
                 
                 // Look up contact name from contacts.json
                 // Try multiple possible JID formats
-                const possibleJids = [
-                    `${contactId}@s.whatsapp.net`,
-                    `${contactId}@c.us`,
-                    `${contactId}@broadcast`
-                ];
+                // Updated to handle more JID formats and partial matches
+                contactName = findContactName(contacts, contactId);
                 
-                for (const jid of possibleJids) {
-                    if (contacts[jid]) {
-                        contactName = contacts[jid].name || null;
-                        console.log(`Found contact name: ${contactName} for ${jid}`);
-                        break;
-                    }
+                if (contactName) {
+                    console.log(`Found contact name: ${contactName} for ${contactId}`);
                 }
             }
             
@@ -261,6 +254,36 @@ app.get('/api/statuses', requireAuth, (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch statuses' });
     }
 });
+
+// Helper function to find contact name by ID
+function findContactName(contacts, contactId) {
+    // Try direct match first
+    if (contacts[contactId]) {
+        return contacts[contactId].name;
+    }
+    
+    // Try with various suffixes
+    const possibleJids = [
+        `${contactId}@s.whatsapp.net`,
+        `${contactId}@c.us`,
+        `${contactId}@broadcast`
+    ];
+    
+    for (const jid of possibleJids) {
+        if (contacts[jid]) {
+            return contacts[jid].name;
+        }
+    }
+    
+    // Try to find partial matches (for cases where the ID is part of a JID)
+    for (const [jid, contact] of Object.entries(contacts)) {
+        if (jid.includes(contactId)) {
+            return contact.name;
+        }
+    }
+    
+    return null;
+}
 
 // Get single status file - protected
 app.get('/api/statuses/:file', requireAuth, (req, res) => {
