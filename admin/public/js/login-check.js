@@ -1,23 +1,22 @@
-// Script to check if user is logged in and redirect appropriately
-document.addEventListener('DOMContentLoaded', async function() {
-    // Don't check on login page
-    if (window.location.pathname === '/login.html') {
+// Check authentication status when loading admin pages
+(function() {
+    // Skip check for login page itself
+    if (window.location.pathname.includes('login.html')) {
         return;
     }
-
-    try {
-        const response = await fetch('/api/auth-status');
-        const data = await response.json();
-
-        if (!data.authenticated) {
-            console.log('User not authenticated, redirecting to login...');
+    
+    // Check auth status
+    fetch('/api/auth-status')
+        .then(response => response.json())
+        .then(data => {
+            if (!data.authenticated) {
+                console.log('Not authenticated, redirecting to login page');
+                window.location.href = '/login.html';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking authentication status:', error);
+            // Redirect to login page on error as well
             window.location.href = '/login.html';
-        } else {
-            console.log('User is authenticated');
-        }
-    } catch (error) {
-        console.error('Error checking authentication status:', error);
-        // Redirect to login on error to be safe
-        window.location.href = '/login.html';
-    }
-});
+        });
+})();
