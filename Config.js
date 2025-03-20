@@ -103,6 +103,10 @@ const config = {
     return parseInt(this.get('MAX_VIDEO_RESOLUTION', '720')); 
   },
   
+  get ENABLE_LINK_SAVING() { 
+    return this.get('ENABLE_LINK_SAVING', 'true') === 'true'; 
+  },
+  
   // Create required directories
   createDirectories: () => {
     const dirs = [config.DOWNLOAD_FOLDER];

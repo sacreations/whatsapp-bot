@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 import { getChatLogs } from '../Lib/utils/logger.js';
+import { loadSavedLinks, deleteLink, clearGroupLinks } from '../Lib/utils/linkStorage.js';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -391,6 +392,92 @@ app.get('/api/dashboard-stats', requireAuth, (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Failed to get dashboard statistics'
+        });
+    }
+});
+
+// Get saved links - protected
+app.get('/api/saved-links', requireAuth, (req, res) => {
+    try {
+        const links = loadSavedLinks();
+        
+        // Group links by group
+        const groupedLinks = {};
+        
+        links.forEach(link => {
+            if (!groupedLinks[link.groupId]) {
+                groupedLinks[link.groupId] = {
+                    groupId: link.groupId,
+                    groupName: link.groupName || 'Unknown Group',
+                    links: []
+                };
+            }
+            
+            groupedLinks[link.groupId].links.push(link);
+        });
+        
+        // Convert to array
+        const groups = Object.values(groupedLinks);
+        
+        // Sort groups by name
+        groups.sort((a, b) => a.groupName.localeCompare(b.groupName));
+        
+        // Sort links within each group by timestamp (newest first)
+        groups.forEach(group => {
+            group.links.sort((a, b) => b.timestamp - a.timestamp);
+        });
+        
+        res.json({
+            success: true,
+            totalLinks: links.length,
+            groups: groups
+        });
+    } catch (error) {
+        console.error('Error fetching saved links:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch saved links: ' + error.message
+        });
+    }
+});
+
+// Delete saved link - protected
+app.delete('/api/saved-links/:url', requireAuth, (req, res) => {
+    try {
+        const url = decodeURIComponent(req.params.url);
+        
+        const success = deleteLink(url);
+        
+        if (success) {
+            res.json({ success: true, message: 'Link deleted successfully' });
+        } else {
+            res.status(404).json({ success: false, message: 'Link not found' });
+        }
+    } catch (error) {
+        console.error('Error deleting saved link:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to delete saved link: ' + error.message
+        });
+    }
+});
+
+// Clear all saved links for a group - protected
+app.delete('/api/saved-links/group/:groupId', requireAuth, (req, res) => {
+    try {
+        const groupId = req.params.groupId;
+        
+        const count = clearGroupLinks(groupId);
+        
+        res.json({ 
+            success: true, 
+            message: `Cleared ${count} links for group ${groupId}` 
+        });
+    } catch (error) {
+        console.error('Error clearing group links:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to clear group links: ' + error.message
         });
     }
 });

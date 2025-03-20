@@ -133,6 +133,14 @@ document.addEventListener('DOMContentLoaded', function() {
         statusViewToggle.addEventListener('change', async function() {
             await updateConfig('ENABLE_AUTO_STATUS_VIEW', this.checked.toString());
         });
+        
+        // New toggle for link saving
+        const linkSavingToggle = document.getElementById('link-saving-toggle');
+        if (linkSavingToggle) {
+            linkSavingToggle.addEventListener('change', async function() {
+                await updateConfig('ENABLE_LINK_SAVING', this.checked.toString());
+            });
+        }
     }
     
     // Add group ID
@@ -444,6 +452,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (statusViewToggle) {
                     statusViewToggle.checked = config.ENABLE_AUTO_STATUS_VIEW === 'true';
+                }
+                
+                // Set new link saving toggle
+                const linkSavingToggle = document.getElementById('link-saving-toggle');
+                if (linkSavingToggle && config.ENABLE_LINK_SAVING !== undefined) {
+                    linkSavingToggle.checked = config.ENABLE_LINK_SAVING === 'true';
                 }
                 
                 // Load group IDs

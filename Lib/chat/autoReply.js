@@ -3,6 +3,7 @@ import message from './messageHandler.js';
 import { downloadMedia } from '../Functions/Download_Functions/downloader.js';
 import fs from 'fs';
 import path from 'path';
+import { saveLink } from '../utils/linkStorage.js';
 
 /**
  * Get message type from the message object
@@ -176,25 +177,56 @@ export async function handleAutoReply(m, sock) {
         const isGroup = m.key.remoteJid.endsWith('@g.us');
         
         // Social media link processing - only in groups
-        if (messageType === 'text' && config.ENABLE_SOCIAL_MEDIA_DOWNLOAD) {
-            // Only process in allowed groups
-            if (!isGroupAllowedForDownloads(m.key.remoteJid)) {
-                // Skip auto-download in non-group chats or unauthorized groups
-                if (isGroup) {
-                    console.log(`Skipping auto-download in unauthorized group: ${m.key.remoteJid}`);
-                } else {
-                    console.log(`Skipping auto-download in private chat: ${m.key.remoteJid}`);
-                }
-                return false;
-            }
-            
+        if (messageType === 'text' && isGroup) {
             const urls = extractUrls(messageText);
             
             for (const url of urls) {
                 const platform = detectPlatform(url);
                 if (platform) {
-                    await handleMediaDownload(m, sock, url, platform);
-                    return true;
+                    // If social media downloads are enabled and group is allowed, download directly
+                    if (config.ENABLE_SOCIAL_MEDIA_DOWNLOAD && isGroupAllowedForDownloads(m.key.remoteJid)) {
+                        await handleMediaDownload(m, sock, url, platform);
+                        return true;
+                    } 
+                    // If link saving is enabled but downloads are disabled, save the link
+                    else if (config.ENABLE_LINK_SAVING) {
+                        // Get sender info
+                        const sender = m.key.participant || m.key.remoteJid;
+                        const senderName = m.pushName || 'Unknown';
+                        
+                        // Prepare link data
+                        const linkData = {
+                            url: url,
+                            platform: platform,
+                            timestamp: Date.now(),
+                            sender: sender,
+                            senderName: senderName,
+                            groupId: m.key.remoteJid,
+                            messageText: messageText
+                        };
+                        
+                        // Try to get group name
+                        try {
+                            const groupMetadata = await sock.groupMetadata(m.key.remoteJid);
+                            linkData.groupName = groupMetadata.subject;
+                        } catch (error) {
+                            console.log('Could not fetch group metadata:', error.message);
+                            linkData.groupName = 'Unknown Group';
+                        }
+                        
+                        // Save the link
+                        const saved = saveLink(linkData);
+                        
+                        // Reply with a message
+                        if (saved) {
+                            await message.reply(`📥 Link from ${platform} saved. It will be processed when downloads are enabled.\n\nUse .savedlinks to view all saved links.`, m, sock);
+                            await message.react('📋', m, sock);
+                        } else {
+                            await message.reply(`This link has already been saved for future download.`, m, sock);
+                        }
+                        
+                        return true;
+                    }
                 }
             }
         }
