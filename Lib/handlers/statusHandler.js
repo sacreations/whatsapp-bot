@@ -3,6 +3,7 @@ import { logChatMessage } from '../utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { findContactNameByNumber } from '../utils/contactsManager.js';
 
 // Status directory for saving statuses if needed
 const statusDir = path.join(process.cwd(), 'downloads', 'statuses');
@@ -36,13 +37,23 @@ if (fs.existsSync(contactsPath)) {
  * @param {string} jid - WhatsApp JID
  * @param {string} name - Contact name
  */
-function saveContactInfo(jid, name) {
+async function saveContactInfo(jid, name) {
     if (!jid || !name) return;
     
     try {
         // Clean up the name (remove extra whitespace and newlines)
         const cleanName = name.replace(/\s+/g, ' ').trim();
         if (!cleanName) return; // Skip if name is empty after cleaning
+        
+        // First check if we already have a custom contact for this number
+        const number = jid.split('@')[0];
+        const customName = await findContactNameByNumber(number);
+        
+        // If we have a custom name, don't override it with the WhatsApp one
+        if (customName) {
+            console.log(`Using custom contact name for ${jid}: ${customName}`);
+            return;
+        }
         
         console.log(`Saving contact: ${cleanName} (${jid})`);
         

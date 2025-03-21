@@ -696,6 +696,90 @@ app.post('/api/saved-links/download/:url', requireAuth, async (req, res) => {
     }
 });
 
+// Import the utilities to handle custom contacts
+import { 
+    loadCustomContacts, 
+    saveCustomContact, 
+    deleteCustomContact,
+    formatContactsForApi
+} from '../Lib/utils/contactsManager.js';
+
+// Custom contacts management
+app.get('/api/custom-contacts', requireAuth, async (req, res) => {
+    try {
+        const contacts = await loadCustomContacts();
+        
+        // Format contacts for API response
+        const formattedContacts = formatContactsForApi(contacts);
+        
+        res.json({
+            success: true,
+            contacts: formattedContacts
+        });
+    } catch (error) {
+        console.error('Error fetching custom contacts:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch custom contacts: ' + error.message
+        });
+    }
+});
+
+app.post('/api/custom-contacts', requireAuth, async (req, res) => {
+    try {
+        const { number, name, id } = req.body;
+        
+        if (!number || !name) {
+            return res.status(400).json({
+                success: false,
+                message: 'Phone number and name are required'
+            });
+        }
+        
+        // Save the contact
+        const result = await saveCustomContact(number, name, id);
+        
+        res.json({
+            success: true,
+            message: 'Contact saved successfully',
+            contact: result
+        });
+    } catch (error) {
+        console.error('Error saving custom contact:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to save custom contact: ' + error.message
+        });
+    }
+});
+
+app.delete('/api/custom-contacts/:id', requireAuth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Delete the contact
+        const result = await deleteCustomContact(id);
+        
+        if (result) {
+            res.json({
+                success: true,
+                message: 'Contact deleted successfully'
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: 'Contact not found'
+            });
+        }
+    } catch (error) {
+        console.error('Error deleting custom contact:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to delete custom contact: ' + error.message
+        });
+    }
+});
+
 // Get contacts and groups - protected
 app.get('/api/contacts', requireAuth, async (req, res) => {
     try {
@@ -708,6 +792,28 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
         }];
         
         let groups = [];
+        
+        // First load custom contacts
+        try {
+            const customContacts = await loadCustomContacts();
+            
+            // Convert custom contacts to the format expected by the frontend
+            const formattedCustomContacts = Object.entries(customContacts).map(([number, data]) => {
+                const jid = number.includes('@') ? number : `${number}@s.whatsapp.net`;
+                return {
+                    id: jid,
+                    name: data.name,
+                    isCustom: true
+                };
+            });
+            
+            // Add custom contacts to the contacts array
+            if (formattedCustomContacts.length > 0) {
+                contacts = formattedCustomContacts;
+            }
+        } catch (error) {
+            console.error('Error loading custom contacts:', error);
+        }
         
         // Check if global.sock exists
         if (!global.sock) {

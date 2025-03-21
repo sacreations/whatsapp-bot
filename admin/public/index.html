@@ -22,6 +22,7 @@
                     <li class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
                     <li data-section="settings"><i class="fas fa-cog"></i> Settings</li>
                     <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
+                    <li data-section="contacts"><i class="fas fa-address-book"></i> Contact Management</li>
                     <li data-section="messages"><i class="fas fa-paper-plane"></i> Send Messages</li>
                     <li data-section="saved-links"><i class="fas fa-link"></i> Saved Links</li>
                     <li data-section="statuses"><i class="fas fa-image"></i> Status Viewer</li>
@@ -449,6 +450,66 @@
                     </div>
                 </div>
             </section>
+
+            <!-- New Contact Management Section -->
+            <section class="content-section" id="contacts">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-address-book"></i> Contact Management</h3>
+                        <div class="refresh-controls">
+                            <button id="refresh-contacts-list" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <div class="info-text">
+                                <p><i class="fas fa-info-circle"></i> Manage custom contacts that will be used for name resolution across the application.</p>
+                            </div>
+                            
+                            <!-- Add Contact Form -->
+                            <div class="contact-form-container">
+                                <h4 class="mt-2 mb-3">Add/Edit Contact</h4>
+                                <form id="contact-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="contact-number">Phone Number</label>
+                                            <div class="input-container">
+                                                <input type="text" id="contact-number" class="form-control" placeholder="Enter phone number (e.g., 94774144215)" required>
+                                                <small class="text-muted">Enter the full phone number without any + or special characters.</small>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="contact-name">Contact Name</label>
+                                            <input type="text" id="contact-name" class="form-control" placeholder="Enter contact name" required>
+                                            <input type="hidden" id="contact-id" value="">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <button type="submit" id="save-contact-btn" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Save Contact
+                                        </button>
+                                        <button type="button" id="clear-contact-form" class="btn btn-sm">
+                                            <i class="fas fa-times"></i> Clear Form
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Contacts List -->
+                            <div class="contacts-list-container mt-4">
+                                <h4 class="mb-3">Contacts List</h4>
+                                <div class="contacts-search-container">
+                                    <input type="text" id="contacts-search" class="form-control" placeholder="Search contacts...">
+                                </div>
+                                <div id="contacts-list" class="mt-3">
+                                    <div class="loading-indicator">Loading contacts...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -464,6 +525,7 @@
     <script src="js/modules/saved-links-manager.js"></script>
     <script src="js/modules/groups-manager.js"></script>
     <script src="js/modules/messaging-manager.js"></script>
+    <script src="js/modules/contacts-manager.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>
