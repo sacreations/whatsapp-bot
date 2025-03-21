@@ -2,14 +2,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize all modules
     configManager.init();
     navigationManager.init();
-    dashboardManager.init();
+    dashboardManager.init();  // Make sure this is called
     chatLogsManager.init();
     statusesManager.init();
     savedLinksManager.init();
     groupsManager.init();
     messagingManager.init();
     contactsManager.init();
-    privacyManager.init(); // Initialize the new privacy manager
+    privacyManager.init();
     
     // Set up toast notifications
     window.showToast = uiUtils.showToast;

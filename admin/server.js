@@ -145,6 +145,19 @@ app.get('/api/config', requireAuth, (req, res) => {
       }
     });
     
+    // Make sure the new config properties are available
+    if (config.BOT_PAUSED === undefined) {
+      config.BOT_PAUSED = 'false';
+    }
+    
+    if (config.MAINTENANCE_MODE === undefined) {
+      config.MAINTENANCE_MODE = 'false';
+    }
+    
+    if (config.ENABLE_AUTO_MEDIA_DOWNLOAD === undefined) {
+      config.ENABLE_AUTO_MEDIA_DOWNLOAD = 'true';
+    }
+    
     // Don't expose password
     delete config.ADMIN_PASSWORD;
     
