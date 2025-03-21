@@ -216,6 +216,7 @@ app.get('/api/chat-logs', requireAuth, (req, res) => {
 app.get('/api/statuses', requireAuth, (req, res) => {
     try {
         const statusDir = path.join(__dirname, '..', 'downloads', 'statuses');
+        const timeframe = req.query.timeframe || '24h'; // Default to 24 hours
         
         // Create directory if it doesn't exist
         if (!fs.existsSync(statusDir)) {
@@ -239,45 +240,68 @@ app.get('/api/statuses', requireAuth, (req, res) => {
             console.log('No contacts.json file found');
         }
         
-        // Get status data with metadata
-        const statuses = files.map(file => {
-            const filePath = path.join(statusDir, file);
-            const stats = fs.statSync(filePath);
-            
-            // Extract contact from filename (status_contactId_timestamp.ext)
-            let contactId = 'Unknown';
-            let timestamp = 0;
-            let contactName = null;
-            
-            // Fix: Match the correct pattern (status_contactId_timestamp.ext)
-            const match = file.match(/status_([^_]+)_(\d+)\.(jpg|mp4)/);
-            if (match) {
-                contactId = match[1];
-                timestamp = parseInt(match[2]);
-                
-                // Look up contact name from contacts.json
-                contactName = findContactName(contacts, contactId);
+        // Calculate cutoff time based on timeframe
+        let cutoffTime = 0;
+        const now = Date.now();
+        
+        if (timeframe !== 'all') {
+            if (timeframe === '24h') {
+                cutoffTime = now - (24 * 60 * 60 * 1000); // 24 hours ago
+            } else if (timeframe === '48h') {
+                cutoffTime = now - (48 * 60 * 60 * 1000); // 48 hours ago
+            } else if (timeframe === '7d') {
+                cutoffTime = now - (7 * 24 * 60 * 60 * 1000); // 7 days ago
+            } else if (timeframe === '30d') {
+                cutoffTime = now - (30 * 24 * 60 * 60 * 1000); // 30 days ago
             }
-            
-            const isVideo = file.endsWith('.mp4');
-            
-            return {
-                id: file,
-                path: filePath,
-                contactId: contactId,
-                contactName: contactName || 'Unknown', // Always provide a name, default to 'Unknown'
-                timestamp: timestamp || stats.mtimeMs,
-                date: new Date(timestamp || stats.mtimeMs).toLocaleString(),
-                type: isVideo ? 'video' : 'image',
-                size: stats.size,
-                url: `/api/statuses/${encodeURIComponent(file)}`
-            };
-        });
+        }
         
-        // Sort statuses by date (newest first)
-        statuses.sort((a, b) => b.timestamp - a.timestamp);
+        // Get status data with metadata and filtering
+        const statuses = files
+            .map(file => {
+                const filePath = path.join(statusDir, file);
+                const stats = fs.statSync(filePath);
+                
+                // Extract contact from filename (status_contactId_timestamp.ext)
+                let contactId = 'Unknown';
+                let timestamp = 0;
+                let contactName = null;
+                
+                // Fix: Match the correct pattern (status_contactId_timestamp.ext)
+                const match = file.match(/status_([^_]+)_(\d+)\.(jpg|mp4)/);
+                if (match) {
+                    contactId = match[1];
+                    timestamp = parseInt(match[2]);
+                    
+                    // Look up contact name from contacts.json
+                    contactName = findContactName(contacts, contactId);
+                }
+                
+                // If no timestamp in filename, use file stats
+                if (!timestamp) {
+                    timestamp = stats.mtimeMs;
+                }
+                
+                const isVideo = file.endsWith('.mp4');
+                
+                return {
+                    id: file,
+                    path: filePath,
+                    contactId: contactId,
+                    contactName: contactName || 'Unknown',
+                    timestamp: timestamp,
+                    date: new Date(timestamp).toLocaleString(),
+                    type: isVideo ? 'video' : 'image',
+                    size: stats.size,
+                    url: `/api/statuses/${encodeURIComponent(file)}`
+                };
+            })
+            // Filter based on timeframe
+            .filter(status => timeframe === 'all' || status.timestamp >= cutoffTime)
+            // Sort by timestamp (newest first)
+            .sort((a, b) => b.timestamp - a.timestamp);
         
-        res.json({ success: true, statuses });
+        res.json({ success: true, statuses, timeframe });
     } catch (error) {
         console.error('Error fetching statuses:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch statuses' });

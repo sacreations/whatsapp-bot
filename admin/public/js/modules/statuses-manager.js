@@ -3,6 +3,7 @@ const statusesManager = {
     statusFilter: null,
     contactSearch: null,
     statusSort: null,
+    timeframeFilter: null,  // Add timeframe filter reference
     statusGrid: null,
     allStatuses: [],
     
@@ -11,6 +12,7 @@ const statusesManager = {
         this.statusFilter = document.getElementById('status-filter');
         this.contactSearch = document.getElementById('contact-search');
         this.statusSort = document.getElementById('status-sort');
+        this.timeframeFilter = document.getElementById('timeframe-filter');  // Initialize timeframe filter
         this.statusGrid = document.getElementById('status-grid');
         
         this.setupEventListeners();
@@ -40,6 +42,13 @@ const statusesManager = {
                 this.filterAndSortStatuses();
             });
         }
+        
+        // Add event listener for timeframe filter
+        if (this.timeframeFilter) {
+            this.timeframeFilter.addEventListener('change', () => {
+                this.loadStatuses(); // Reload statuses when timeframe changes
+            });
+        }
     },
     
     loadStatuses: async function() {
@@ -48,7 +57,11 @@ const statusesManager = {
         try {
             this.statusGrid.innerHTML = '<div class="loading-indicator">Loading statuses...</div>';
             
-            const response = await fetch('/api/statuses');
+            // Get the selected timeframe
+            const timeframe = this.timeframeFilter ? this.timeframeFilter.value : '24h';
+            
+            // Include timeframe in request
+            const response = await fetch(`/api/statuses?timeframe=${timeframe}`);
             
             if (response.status === 401) {
                 window.location.href = '/login.html';
