@@ -9,6 +9,8 @@ import { getChatLogs } from '../Lib/utils/logger.js';
 import { loadSavedLinks, deleteLink, clearGroupLinks } from '../Lib/utils/linkStorage.js';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+// Import the config module
+import config from '../Config.js';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -1046,7 +1048,7 @@ app.get('/api/whatsapp/privacy', requireAuth, async (req, res) => {
         }
         
         // Read settings from config since some settings are stored there
-        // Real implementation would fetch settings directly from WhatsApp client
+        // Now config is properly defined
         const settings = {
             profilePicture: 'all', // Default values
             lastSeen: 'all',
