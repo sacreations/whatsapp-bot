@@ -17,6 +17,39 @@ const __dirname = dirname(__filename);
 // Load .env file
 dotenv.config({ path: path.join(__dirname, '..', 'config.env') });
 
+// Configure multer for media uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '..', 'temp-uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const fileExt = path.extname(file.originalname);
+        const fileName = `${uuidv4()}${fileExt}`;
+        cb(null, fileName);
+    }
+});
+
+const upload = multer({
+    storage,
+    limits: {
+        fileSize: 30 * 1024 * 1024, // 30MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        // Accept images, videos, and audio
+        if (file.mimetype.startsWith('image/') || 
+            file.mimetype.startsWith('video/') || 
+            file.mimetype.startsWith('audio/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Unsupported file type'), false);
+        }
+    }
+});
+
 const app = express();
 const PORT = process.env.ADMIN_PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
