@@ -675,94 +675,99 @@ app.post('/api/saved-links/download/:url', requireAuth, async (req, res) => {
 // Get contacts and groups - protected
 app.get('/api/contacts', requireAuth, async (req, res) => {
     try {
+        // Add logging to diagnose
+        console.log('Contacts API called');
+        
+        // Check if global.sock exists
         if (!global.sock) {
-            return res.status(503).json({ 
-                success: false, 
-                message: 'WhatsApp connection not available' 
+            console.log('Socket not available yet');
+            return res.json({
+                success: true,
+                groups: [],
+                contacts: [{ id: 'placeholder@s.whatsapp.net', name: 'WhatsApp Bot Not Connected' }]
             });
         }
         
         // Get groups
-        const groups = [];
+        let groups = [];
         try {
-            // Fetch groups the bot is part of
-            const getGroups = await global.sock.groupFetchAllParticipating();
+            const fetchedGroups = await global.sock.groupFetchAllParticipating();
+            console.log('Fetched groups count:', Object.keys(fetchedGroups).length);
             
-            if (getGroups) {
-                for (const [id, group] of Object.entries(getGroups)) {
-                    groups.push({
-                        id: id,
-                        name: group.subject,
-                        participants: group.participants.length
-                    });
-                }
-            }
+            groups = Object.entries(fetchedGroups).map(([id, group]) => ({
+                id: id,
+                name: group.subject,
+                participants: group.participants.length
+            }));
         } catch (groupError) {
             console.error('Error fetching groups:', groupError);
         }
         
-        // Get contacts (this is more challenging as Baileys doesn't provide a direct method)
-        const contacts = [];
+        // Get contacts
+        let contacts = [];
         try {
-            // Try to get contacts from store if available
+            // Ensure store is available
             if (global.sock.store && global.sock.store.contacts) {
-                const rawContacts = global.sock.store.contacts;
+                const contactsObj = global.sock.store.contacts;
+                console.log('Contacts in store:', Object.keys(contactsObj).length);
                 
-                for (const [id, contact] of Object.entries(rawContacts)) {
-                    // Skip groups and status broadcast
-                    if (id.endsWith('@g.us') || id === 'status@broadcast') continue;
-                    
-                    // Only include contacts with names
-                    if (contact.name || contact.notify) {
-                        contacts.push({
-                            id: id,
-                            name: contact.name || contact.notify || id.split('@')[0]
-                        });
-                    }
-                }
-            }
-            
-            // If contacts are empty, try to get from saved contacts file
-            if (contacts.length === 0) {
+                contacts = Object.entries(contactsObj)
+                    .filter(([id, contact]) => {
+                        // Filter out groups, status broadcasts and undefined contacts
+                        return id.endsWith('@s.whatsapp.net') && 
+                               contact.name && 
+                               !id.startsWith('status') && 
+                               !id.includes('broadcast');
+                    })
+                    .map(([id, contact]) => ({
+                        id: id,
+                        name: contact.name || contact.notify || id.split('@')[0],
+                        notify: contact.notify
+                    }));
+                
+                console.log('Filtered contacts count:', contacts.length);
+                
+                // Load from contacts.json as a fallback or additional source
                 const contactsPath = path.join(__dirname, '..', 'data', 'contacts.json');
                 if (fs.existsSync(contactsPath)) {
-                    try {
-                        const savedContacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
-                        
-                        for (const [id, contact] of Object.entries(savedContacts)) {
-                            // Skip groups and status broadcast
-                            if (id.endsWith('@g.us') || id === 'status@broadcast') continue;
-                            
-                            // Only include contacts with names
-                            if (contact.name) {
+                    const savedContacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+                    console.log('Contacts from file:', Object.keys(savedContacts).length);
+                    
+                    // Add contacts from file that aren't already in the list
+                    Object.entries(savedContacts)
+                        .filter(([id, contact]) => id.endsWith('@s.whatsapp.net') && contact.name)
+                        .forEach(([id, contact]) => {
+                            // Check if contact already exists
+                            if (!contacts.some(c => c.id === id)) {
                                 contacts.push({
                                     id: id,
-                                    name: contact.name
+                                    name: contact.name,
+                                    notify: contact.name
                                 });
                             }
-                        }
-                    } catch (error) {
-                        console.error('Error reading contacts file:', error);
-                    }
+                        });
+                    
+                    console.log('Combined contacts count:', contacts.length);
                 }
+            } else {
+                console.log('Store or contacts not available in sock');
             }
-            
-            // Sort contacts by name
-            contacts.sort((a, b) => a.name.localeCompare(b.name));
-        } catch (contactsError) {
-            console.error('Error getting contacts:', contactsError);
+        } catch (contactError) {
+            console.error('Error processing contacts:', contactError);
         }
         
+        // Return the data
         res.json({
             success: true,
             groups: groups,
             contacts: contacts
         });
     } catch (error) {
-        console.error('Error fetching contacts and groups:', error);
+        console.error('Error getting contacts and groups:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'Error fetching contacts and groups: ' + error.message 
+            message: 'Failed to get contacts and groups',
+            error: error.message
         });
     }
 });

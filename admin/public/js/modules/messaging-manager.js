@@ -120,23 +120,33 @@ const messagingManager = {
     },
     
     renderContactOptions: function() {
+        console.log('Rendering contact options, found contacts:', this.contacts.length);
+        
+        // Always start with empty and manual entry options
+        let options = '<option value="">Select a contact...</option>';
+        options += '<option value="manual-entry">-- Manual Number Entry --</option>';
+        
         if (this.contacts.length === 0) {
-            this.individualRecipientSelect.innerHTML = '<option value="">No contacts available</option>';
+            this.individualRecipientSelect.innerHTML = options;
+            console.log('No contacts available, only showing manual entry option');
             return;
         }
         
-        let options = '<option value="">Select a contact...</option>';
-        
-        // Add manual entry option at the top
-        options += '<option value="manual-entry">-- Manual Number Entry --</option>';
-        
+        // Add all contacts
         this.contacts.forEach(contact => {
+            console.log('Adding contact to dropdown:', contact.id, contact.name);
             options += `<option value="${contact.id}">${contact.name}</option>`;
         });
         
         this.individualRecipientSelect.innerHTML = options;
         
-        // Add event listener to respond to the manual entry selection
+        // Make manual number field always visible
+        const manualNumberContainer = document.querySelector('.manual-number-container');
+        if (manualNumberContainer) {
+            manualNumberContainer.style.display = 'block';
+        }
+        
+        // Add event listener for manual entry option
         this.individualRecipientSelect.addEventListener('change', () => {
             const manualNumberContainer = document.querySelector('.manual-number-container');
             if (this.individualRecipientSelect.value === 'manual-entry') {
@@ -203,8 +213,6 @@ const messagingManager = {
             const recipientType = this.recipientTypeSelect.value;
             let recipientId = '';
             let recipientName = 'Unknown';
-            let selectedContact = null;
-            let manualNumber = null;
             
             if (recipientType === 'group') {
                 recipientId = this.groupRecipientSelect.value;
@@ -216,11 +224,14 @@ const messagingManager = {
                 const group = this.groups.find(g => g.id === recipientId);
                 if (group) recipientName = group.name;
             } else {
-                // Check if manual entry is selected or a contact is selected
-                selectedContact = this.individualRecipientSelect.value;
-                manualNumber = this.manualPhoneNumber.value.trim();
+                // Check both dropdown and manual entry
+                const selectedContact = this.individualRecipientSelect.value;
+                const manualNumber = this.manualPhoneNumber.value.trim();
                 
-                if (selectedContact === 'manual-entry') {
+                console.log('Selected contact:', selectedContact);
+                console.log('Manual number:', manualNumber);
+                
+                if (selectedContact === 'manual-entry' || (!selectedContact && manualNumber)) {
                     // Using manual entry
                     if (!manualNumber) {
                         return showToast('Please enter a phone number', 'error');
@@ -229,6 +240,7 @@ const messagingManager = {
                     // Ensure it doesn't already have the @s.whatsapp.net suffix
                     recipientId = manualNumber.includes('@') ? manualNumber : `${manualNumber}@s.whatsapp.net`;
                     recipientName = manualNumber; // Use number as name
+                    console.log('Using manual number:', recipientId);
                 } else if (selectedContact) {
                     // Using selected contact from dropdown
                     recipientId = selectedContact;
@@ -236,8 +248,9 @@ const messagingManager = {
                     // Get contact name for display
                     const contact = this.contacts.find(c => c.id === recipientId);
                     if (contact) recipientName = contact.name;
+                    console.log('Using selected contact:', recipientId, recipientName);
                 } else {
-                    return showToast('Please select a contact or manual entry option', 'error');
+                    return showToast('Please select a contact or enter a phone number', 'error');
                 }
             }
             
