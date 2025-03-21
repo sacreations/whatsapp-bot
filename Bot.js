@@ -76,8 +76,8 @@ async function connectToWhatsApp() {
         auth: state,
         logger,
         browser: ['WhatsAppBot', 'Chrome', '103.0.5060.114'],
-        downloadHistory: false,
-        syncFullHistory: false,
+        downloadHistory: true,
+        syncFullHistory: true,
         markOnlineOnConnect: !config.HIDE_ONLINE_STATUS, // Hide online status using correct parameter
         readReceipts: !config.DISABLE_READ_RECEIPTS // Disable read receipts if configured
     });

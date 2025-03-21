@@ -1205,7 +1205,7 @@ textarea.form-control {
 
 .preview-file i {
     font-size: 2rem;
-    color: var(--primary-color);
+    color: var (--primary-color);
 }
 
 .preview-name {
@@ -1275,7 +1275,7 @@ textarea.form-control {
     position: relative;
 }
 
-.manual-number-container::before {
+.manual-number-container.with-divider::before {
     content: "OR";
     position: absolute;
     top: -10px;

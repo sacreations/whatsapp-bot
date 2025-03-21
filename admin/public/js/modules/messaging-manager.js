@@ -73,6 +73,7 @@ const messagingManager = {
     
     loadContacts: async function() {
         try {
+            console.log('Loading contacts and groups...');
             this.groupRecipientSelect.innerHTML = '<option value="">Loading groups...</option>';
             this.individualRecipientSelect.innerHTML = '<option value="">Loading contacts...</option>';
             
@@ -84,10 +85,13 @@ const messagingManager = {
             }
             
             const data = await response.json();
+            console.log('Contacts API response:', data);
             
             if (data.success) {
                 this.groups = data.groups || [];
                 this.contacts = data.contacts || [];
+                
+                console.log(`Loaded ${this.groups.length} groups and ${this.contacts.length} contacts`);
                 
                 this.renderGroupOptions();
                 this.renderContactOptions();
@@ -105,6 +109,8 @@ const messagingManager = {
     },
     
     renderGroupOptions: function() {
+        console.log(`Rendering ${this.groups.length} groups`);
+        
         if (this.groups.length === 0) {
             this.groupRecipientSelect.innerHTML = '<option value="">No groups available</option>';
             return;
@@ -113,6 +119,7 @@ const messagingManager = {
         let options = '<option value="">Select a group...</option>';
         
         this.groups.forEach(group => {
+            console.log(`Adding group: ${group.name} (${group.id})`);
             options += `<option value="${group.id}">${group.name}</option>`;
         });
         
@@ -120,33 +127,40 @@ const messagingManager = {
     },
     
     renderContactOptions: function() {
-        console.log('Rendering contact options, found contacts:', this.contacts.length);
+        console.log(`Rendering ${this.contacts.length} contacts`);
         
         // Always start with empty and manual entry options
         let options = '<option value="">Select a contact...</option>';
         options += '<option value="manual-entry">-- Manual Number Entry --</option>';
         
-        if (this.contacts.length === 0) {
-            this.individualRecipientSelect.innerHTML = options;
-            console.log('No contacts available, only showing manual entry option');
-            return;
-        }
-        
         // Add all contacts
         this.contacts.forEach(contact => {
-            console.log('Adding contact to dropdown:', contact.id, contact.name);
+            console.log(`Adding contact: ${contact.name} (${contact.id})`);
             options += `<option value="${contact.id}">${contact.name}</option>`;
         });
         
         this.individualRecipientSelect.innerHTML = options;
         
-        // Make manual number field always visible
+        // Make sure the manual number container exists and is styled properly
         const manualNumberContainer = document.querySelector('.manual-number-container');
         if (manualNumberContainer) {
+            // Make sure it's visible
             manualNumberContainer.style.display = 'block';
+            
+            // Add the OR divider for clarity
+            if (!manualNumberContainer.classList.contains('with-divider')) {
+                manualNumberContainer.classList.add('with-divider');
+            }
         }
         
-        // Add event listener for manual entry option
+        // Set up the event listener for the manual entry option
+        // Remove any existing event listener first to avoid duplicates
+        const oldSelect = this.individualRecipientSelect;
+        const newSelect = oldSelect.cloneNode(true);
+        oldSelect.parentNode.replaceChild(newSelect, oldSelect);
+        this.individualRecipientSelect = newSelect;
+        
+        // Add the event listener
         this.individualRecipientSelect.addEventListener('change', () => {
             const manualNumberContainer = document.querySelector('.manual-number-container');
             if (this.individualRecipientSelect.value === 'manual-entry') {
@@ -214,24 +228,31 @@ const messagingManager = {
             let recipientId = '';
             let recipientName = 'Unknown';
             
+            console.log(`Preparing to send ${recipientType} message`);
+            
             if (recipientType === 'group') {
                 recipientId = this.groupRecipientSelect.value;
+                console.log(`Selected group ID: ${recipientId}`);
+                
                 if (!recipientId) {
                     return showToast('Please select a group', 'error');
                 }
                 
                 // Get group name for display
                 const group = this.groups.find(g => g.id === recipientId);
-                if (group) recipientName = group.name;
+                if (group) {
+                    recipientName = group.name;
+                    console.log(`Found group name: ${recipientName}`);
+                }
             } else {
                 // Check both dropdown and manual entry
                 const selectedContact = this.individualRecipientSelect.value;
                 const manualNumber = this.manualPhoneNumber.value.trim();
                 
-                console.log('Selected contact:', selectedContact);
-                console.log('Manual number:', manualNumber);
+                console.log(`Selected contact: ${selectedContact}`);
+                console.log(`Manual number: ${manualNumber}`);
                 
-                if (selectedContact === 'manual-entry' || (!selectedContact && manualNumber)) {
+                if (selectedContact === 'manual-entry') {
                     // Using manual entry
                     if (!manualNumber) {
                         return showToast('Please enter a phone number', 'error');
@@ -240,15 +261,17 @@ const messagingManager = {
                     // Ensure it doesn't already have the @s.whatsapp.net suffix
                     recipientId = manualNumber.includes('@') ? manualNumber : `${manualNumber}@s.whatsapp.net`;
                     recipientName = manualNumber; // Use number as name
-                    console.log('Using manual number:', recipientId);
+                    console.log(`Using manual number: ${recipientId}`);
                 } else if (selectedContact) {
                     // Using selected contact from dropdown
                     recipientId = selectedContact;
                     
                     // Get contact name for display
                     const contact = this.contacts.find(c => c.id === recipientId);
-                    if (contact) recipientName = contact.name;
-                    console.log('Using selected contact:', recipientId, recipientName);
+                    if (contact) {
+                        recipientName = contact.name;
+                        console.log(`Found contact name: ${recipientName}`);
+                    }
                 } else {
                     return showToast('Please select a contact or enter a phone number', 'error');
                 }
@@ -260,6 +283,8 @@ const messagingManager = {
             if (!messageText && !mediaFile) {
                 return showToast('Please enter a message or attach media', 'error');
             }
+            
+            console.log(`Sending message to ${recipientId} (${recipientName})`);
             
             // Show loading state
             const sendBtn = document.getElementById('send-message-btn');
@@ -275,15 +300,18 @@ const messagingManager = {
             
             if (mediaFile) {
                 formData.append('media', mediaFile);
+                console.log(`Attaching media: ${mediaFile.name} (${mediaFile.type})`);
             }
             
             // Send the message
+            console.log('Submitting message to server...');
             const response = await fetch('/api/send-message', {
                 method: 'POST',
                 body: formData
             });
             
             const data = await response.json();
+            console.log('Server response:', data);
             
             // Restore button state
             sendBtn.innerHTML = originalBtnText;

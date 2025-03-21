@@ -675,8 +675,15 @@ app.post('/api/saved-links/download/:url', requireAuth, async (req, res) => {
 // Get contacts and groups - protected
 app.get('/api/contacts', requireAuth, async (req, res) => {
     try {
-        // Add logging to diagnose
         console.log('Contacts API called');
+        
+        // Add default contact to ensure at least one contact is available
+        let contacts = [{ 
+            id: 'default@s.whatsapp.net', 
+            name: 'WhatsApp Bot'
+        }];
+        
+        let groups = [];
         
         // Check if global.sock exists
         if (!global.sock) {
@@ -684,13 +691,12 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
             return res.json({
                 success: true,
                 groups: [],
-                contacts: [{ id: 'placeholder@s.whatsapp.net', name: 'WhatsApp Bot Not Connected' }]
+                contacts: contacts
             });
         }
         
-        // Get groups
-        let groups = [];
         try {
+            // Get groups
             const fetchedGroups = await global.sock.groupFetchAllParticipating();
             console.log('Fetched groups count:', Object.keys(fetchedGroups).length);
             
@@ -699,62 +705,65 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
                 name: group.subject,
                 participants: group.participants.length
             }));
-        } catch (groupError) {
-            console.error('Error fetching groups:', groupError);
-        }
-        
-        // Get contacts
-        let contacts = [];
-        try {
-            // Ensure store is available
+            
+            // Get contacts if store is available
             if (global.sock.store && global.sock.store.contacts) {
                 const contactsObj = global.sock.store.contacts;
-                console.log('Contacts in store:', Object.keys(contactsObj).length);
+                console.log('Raw contacts in store:', Object.keys(contactsObj).length);
                 
-                contacts = Object.entries(contactsObj)
+                // Filter valid contacts
+                const validContacts = Object.entries(contactsObj)
                     .filter(([id, contact]) => {
-                        // Filter out groups, status broadcasts and undefined contacts
                         return id.endsWith('@s.whatsapp.net') && 
-                               contact.name && 
                                !id.startsWith('status') && 
                                !id.includes('broadcast');
                     })
                     .map(([id, contact]) => ({
                         id: id,
-                        name: contact.name || contact.notify || id.split('@')[0],
-                        notify: contact.notify
+                        name: contact.name || contact.notify || id.split('@')[0]
                     }));
                 
-                console.log('Filtered contacts count:', contacts.length);
+                console.log('Valid contacts after filtering:', validContacts.length);
                 
-                // Load from contacts.json as a fallback or additional source
+                // Only replace the default contacts if we actually have some
+                if (validContacts.length > 0) {
+                    contacts = validContacts;
+                }
+            }
+            
+            // If we still have no contacts, try loading from contacts.json
+            if (contacts.length <= 1) {
                 const contactsPath = path.join(__dirname, '..', 'data', 'contacts.json');
                 if (fs.existsSync(contactsPath)) {
-                    const savedContacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
-                    console.log('Contacts from file:', Object.keys(savedContacts).length);
-                    
-                    // Add contacts from file that aren't already in the list
-                    Object.entries(savedContacts)
-                        .filter(([id, contact]) => id.endsWith('@s.whatsapp.net') && contact.name)
-                        .forEach(([id, contact]) => {
-                            // Check if contact already exists
-                            if (!contacts.some(c => c.id === id)) {
-                                contacts.push({
-                                    id: id,
-                                    name: contact.name,
-                                    notify: contact.name
-                                });
-                            }
-                        });
-                    
-                    console.log('Combined contacts count:', contacts.length);
+                    try {
+                        const savedContacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+                        console.log('Contacts loaded from file:', Object.keys(savedContacts).length);
+                        
+                        // Convert the contacts format
+                        const fileContacts = Object.entries(savedContacts)
+                            .filter(([id, data]) => id.includes('@'))
+                            .map(([id, data]) => ({
+                                id: id,
+                                name: data.name || id.split('@')[0]
+                            }));
+                        
+                        if (fileContacts.length > 0) {
+                            // Merge with existing contacts
+                            const existingIds = contacts.map(c => c.id);
+                            const newContacts = fileContacts.filter(c => !existingIds.includes(c.id));
+                            contacts = [...contacts, ...newContacts];
+                            console.log('Combined contacts after loading from file:', contacts.length);
+                        }
+                    } catch (error) {
+                        console.error('Error parsing contacts file:', error);
+                    }
                 }
-            } else {
-                console.log('Store or contacts not available in sock');
             }
-        } catch (contactError) {
-            console.error('Error processing contacts:', contactError);
+        } catch (error) {
+            console.error('Error fetching contacts/groups:', error);
         }
+        
+        console.log(`Returning ${groups.length} groups and ${contacts.length} contacts`);
         
         // Return the data
         res.json({
@@ -763,7 +772,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
             contacts: contacts
         });
     } catch (error) {
-        console.error('Error getting contacts and groups:', error);
+        console.error('Error in contacts API:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Failed to get contacts and groups',
@@ -775,93 +784,80 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
 // Send message - protected
 app.post('/api/send-message', requireAuth, upload.single('media'), async (req, res) => {
     try {
-        if (!global.sock) {
-            return res.status(503).json({ 
-                success: false, 
-                message: 'WhatsApp connection not available' 
-            });
-        }
-        
         const { recipientType, recipientId, message } = req.body;
-        const mediaFile = req.file;
+        console.log(`Sending ${recipientType} message to ${recipientId}`);
         
-        // Validate inputs
         if (!recipientId) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Recipient ID is required' 
-            });
+            return res.status(400).json({ success: false, message: 'Recipient ID is required' });
         }
         
-        if (!message && !mediaFile) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Message or media is required' 
-            });
+        if (!message && !req.file) {
+            return res.status(400).json({ success: false, message: 'Message text or media is required' });
         }
         
-        // Prepare jid (ensure it has the right format)
-        let jid = recipientId;
-        
-        // If individual and doesn't have @s.whatsapp.net, add it
-        if (recipientType === 'individual' && !jid.includes('@')) {
-            jid = `${jid}@s.whatsapp.net`;
+        // Check if socket is available
+        if (!global.sock) {
+            return res.status(503).json({ success: false, message: 'WhatsApp connection not available' });
         }
         
-        // Send the message based on content
-        let result;
+        // Prepare content to send
+        let content = {};
         
-        // Import messageHandler for sending
-        const messageHandler = (await import('../Lib/chat/messageHandler.js')).default;
+        // Add text message if provided
+        if (message) {
+            content.text = message;
+        }
         
-        if (mediaFile) {
-            // Determine media type and use appropriate method
-            const mimeType = mediaFile.mimetype;
-            const filePath = mediaFile.path;
+        // Handle media if uploaded
+        if (req.file) {
+            const mediaPath = req.file.path;
+            const mimeType = req.file.mimetype;
+            const mediaType = mimeType.split('/')[0]; // image, video, audio
             
-            if (mimeType.startsWith('image/')) {
-                result = await messageHandler.sendImage(filePath, message || '', { key: { remoteJid: jid } }, global.sock);
-            } else if (mimeType.startsWith('video/')) {
-                result = await messageHandler.sendVideo(filePath, message || '', { key: { remoteJid: jid } }, global.sock);
-            } else if (mimeType.startsWith('audio/')) {
-                result = await messageHandler.sendAudio(filePath, false, { key: { remoteJid: jid } }, global.sock);
+            // Read file into buffer
+            const mediaData = fs.readFileSync(mediaPath);
+            
+            // Determine content type based on mime type
+            if (mediaType === 'image') {
+                content = { image: mediaData, caption: message || '' };
+            } else if (mediaType === 'video') {
+                content = { video: mediaData, caption: message || '' };
+            } else if (mediaType === 'audio') {
+                content = { audio: mediaData, mimetype: mimeType };
+                // If there's text, send it separately
+                if (message) {
+                    await global.sock.sendMessage(recipientId, { text: message });
+                }
             } else {
-                // Should not reach here due to multer filter
-                result = await messageHandler.sendDocument(
-                    filePath,
-                    mediaFile.originalname,
-                    mimeType,
-                    { key: { remoteJid: jid } },
-                    global.sock
-                );
+                // Default to document
+                content = { 
+                    document: mediaData,
+                    mimetype: mimeType,
+                    fileName: req.file.originalname
+                };
+                // If there's text, send it separately
+                if (message) {
+                    await global.sock.sendMessage(recipientId, { text: message });
+                }
             }
             
             // Clean up the temporary file
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            try {
+                fs.unlinkSync(mediaPath);
+            } catch (cleanupError) {
+                console.error('Error cleaning up temporary file:', cleanupError);
             }
-        } else {
-            // Text-only message
-            result = await global.sock.sendMessage(jid, { text: message });
         }
         
-        res.json({
-            success: true,
-            message: 'Message sent successfully',
-            messageId: result?.key?.id
-        });
+        console.log(`Sending content to ${recipientId}:`, Object.keys(content));
+        
+        // Send the message
+        await global.sock.sendMessage(recipientId, content);
+        
+        res.json({ success: true, message: 'Message sent successfully' });
     } catch (error) {
         console.error('Error sending message:', error);
-        
-        // Clean up the temporary file if exists
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error sending message: ' + error.message 
-        });
+        res.status(500).json({ success: false, message: 'Failed to send message: ' + error.message });
     }
 });
 
