@@ -1383,3 +1383,49 @@ textarea.form-control {
 #contact-form .btn-sm {
     margin-left: 0.5rem;
 }
+
+/* Privacy Settings Styles */
+.privacy-settings-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.privacy-setting-group {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: var(--transition);
+}
+
+.privacy-setting-group:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.setting-header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.setting-header i {
+    color: var(--primary-color);
+}
+
+#privacy-settings-status {
+    font-weight: 500;
+}
+
+#privacy-settings-status.success {
+    color: var(--success-color);
+}
+
+#privacy-settings-status.error {
+    color: var(--error-color);
+}

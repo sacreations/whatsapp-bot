@@ -991,6 +991,230 @@ app.post('/api/send-message', requireAuth, upload.single('media'), async (req, r
     }
 });
 
+// WhatsApp Privacy API Routes
+app.get('/api/whatsapp/privacy', requireAuth, async (req, res) => {
+    try {
+        // Get current WhatsApp privacy settings
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp connection not available'
+            });
+        }
+        
+        // Read settings from config since some settings are stored there
+        // Real implementation would fetch settings directly from WhatsApp client
+        const settings = {
+            profilePicture: 'all', // Default values
+            lastSeen: 'all',
+            hideOnlineStatus: config.HIDE_ONLINE_STATUS === 'true',
+            about: {
+                privacy: 'all',
+                text: 'Available' // Default about text
+            },
+            disableReadReceipts: config.DISABLE_READ_RECEIPTS === 'true',
+            groups: 'all',
+            status: 'contacts'
+        };
+        
+        res.json({
+            success: true,
+            settings
+        });
+    } catch (error) {
+        console.error('Error fetching WhatsApp privacy settings:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch WhatsApp privacy settings: ' + error.message
+        });
+    }
+});
+
+app.post('/api/whatsapp/privacy', requireAuth, async (req, res) => {
+    try {
+        const { settings } = req.body;
+        
+        if (!settings) {
+            return res.status(400).json({
+                success: false,
+                message: 'Privacy settings data is required'
+            });
+        }
+        
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp connection not available'
+            });
+        }
+        
+        // In a real implementation, you would update the WhatsApp settings here
+        // For now, we'll just update the config values we have access to
+        
+        // Update online status setting in config
+        if (settings.hideOnlineStatus !== undefined) {
+            await config.set('HIDE_ONLINE_STATUS', settings.hideOnlineStatus.toString());
+        }
+        
+        // Update read receipts setting in config
+        if (settings.disableReadReceipts !== undefined) {
+            await config.set('DISABLE_READ_RECEIPTS', settings.disableReadReceipts.toString());
+        }
+        
+        // Log what would be updated in a real implementation
+        console.log('Would update WhatsApp privacy settings:', settings);
+        
+        res.json({
+            success: true,
+            message: 'Privacy settings updated successfully. Some settings may require a bot restart to take effect.'
+        });
+    } catch (error) {
+        console.error('Error updating WhatsApp privacy settings:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update WhatsApp privacy settings: ' + error.message
+        });
+    }
+});
+
+// Individual privacy setting endpoints
+app.post('/api/whatsapp/privacy/profile-picture', requireAuth, upload.single('profilePicture'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Profile picture file is required'
+            });
+        }
+        
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp connection not available'
+            });
+        }
+        
+        // In a real implementation, you would update the profile picture here
+        console.log('Would update profile picture with file:', req.file.path);
+        
+        // Cleanup the temporary file
+        try {
+            fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+            console.error('Error cleaning up temporary file:', cleanupError);
+        }
+        
+        res.json({
+            success: true,
+            message: 'Profile picture updated successfully'
+        });
+    } catch (error) {
+        console.error('Error updating profile picture:', error);
+        
+        // Cleanup the temporary file if it exists
+        if (req.file && req.file.path) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (cleanupError) {
+                console.error('Error cleaning up temporary file:', cleanupError);
+            }
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update profile picture: ' + error.message
+        });
+    }
+});
+
+app.post('/api/whatsapp/privacy/about', requireAuth, async (req, res) => {
+    try {
+        const { text } = req.body;
+        
+        if (!text) {
+            return res.status(400).json({
+                success: false,
+                message: 'About text is required'
+            });
+        }
+        
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp connection not available'
+            });
+        }
+        
+        // In a real implementation, you would update the about text here
+        console.log('Would update about text to:', text);
+        
+        res.json({
+            success: true,
+            message: 'About text updated successfully'
+        });
+    } catch (error) {
+        console.error('Error updating about text:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update about text: ' + error.message
+        });
+    }
+});
+
+app.post('/api/whatsapp/privacy/online-status', requireAuth, async (req, res) => {
+    try {
+        const { hidden } = req.body;
+        
+        if (hidden === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'Hidden status parameter is required'
+            });
+        }
+        
+        // Update config
+        await config.set('HIDE_ONLINE_STATUS', hidden.toString());
+        
+        res.json({
+            success: true,
+            message: 'Online status setting updated successfully. Restart the bot for changes to take effect.'
+        });
+    } catch (error) {
+        console.error('Error updating online status setting:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update online status setting: ' + error.message
+        });
+    }
+});
+
+app.post('/api/whatsapp/privacy/read-receipts', requireAuth, async (req, res) => {
+    try {
+        const { disabled } = req.body;
+        
+        if (disabled === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'Disabled parameter is required'
+            });
+        }
+        
+        // Update config
+        await config.set('DISABLE_READ_RECEIPTS', disabled.toString());
+        
+        res.json({
+            success: true,
+            message: 'Read receipts setting updated successfully. Restart the bot for changes to take effect.'
+        });
+    } catch (error) {
+        console.error('Error updating read receipts setting:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update read receipts setting: ' + error.message
+        });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

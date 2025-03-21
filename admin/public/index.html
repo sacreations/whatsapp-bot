@@ -188,6 +188,140 @@
                         </form>
                     </div>
                 </div>
+                
+                <!-- New WhatsApp Privacy Configuration Card -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3><i class="fas fa-user-shield"></i> WhatsApp Privacy Configuration</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-text mb-3">
+                            <p><i class="fas fa-info-circle"></i> Configure your WhatsApp privacy settings. Note that some changes may require a restart to take effect.</p>
+                        </div>
+                        
+                        <div class="privacy-settings-container">
+                            <!-- Profile Picture Settings -->
+                            <div class="privacy-setting-group">
+                                <h4 class="setting-header"><i class="fas fa-image"></i> Profile Picture</h4>
+                                <div class="form-group">
+                                    <label>Who can see my profile picture:</label>
+                                    <select id="profile-picture-privacy" class="form-control">
+                                        <option value="all">Everyone</option>
+                                        <option value="contacts">My Contacts</option>
+                                        <option value="none">Nobody</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Update Profile Picture:</label>
+                                    <div class="input-container">
+                                        <input type="file" id="profile-picture-upload" class="form-control" accept="image/*">
+                                        <small class="text-muted">Select an image to update your profile picture.</small>
+                                    </div>
+                                    <button type="button" id="upload-profile-picture" class="btn btn-primary mt-2">
+                                        <i class="fas fa-upload"></i> Upload Picture
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Last Seen Settings -->
+                            <div class="privacy-setting-group">
+                                <h4 class="setting-header"><i class="fas fa-clock"></i> Last Seen & Online</h4>
+                                <div class="form-group">
+                                    <label>Who can see my last seen:</label>
+                                    <select id="last-seen-privacy" class="form-control">
+                                        <option value="all">Everyone</option>
+                                        <option value="contacts">My Contacts</option>
+                                        <option value="none">Nobody</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="toggle-card">
+                                    <div class="toggle-info">
+                                        <h4>Hide Online Status</h4>
+                                        <p>Don't show when you're online</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="hide-online-status">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- About Settings -->
+                            <div class="privacy-setting-group">
+                                <h4 class="setting-header"><i class="fas fa-info-circle"></i> About</h4>
+                                <div class="form-group">
+                                    <label>Who can see my about:</label>
+                                    <select id="about-privacy" class="form-control">
+                                        <option value="all">Everyone</option>
+                                        <option value="contacts">My Contacts</option>
+                                        <option value="none">Nobody</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Update About Text:</label>
+                                    <input type="text" id="about-text" class="form-control" placeholder="Enter your about text">
+                                    <button type="button" id="update-about" class="btn btn-primary mt-2">
+                                        <i class="fas fa-save"></i> Update About
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Read Receipts -->
+                            <div class="privacy-setting-group">
+                                <h4 class="setting-header"><i class="fas fa-check-double"></i> Read Receipts</h4>
+                                <div class="toggle-card">
+                                    <div class="toggle-info">
+                                        <h4>Disable Read Receipts</h4>
+                                        <p>Don't send blue ticks when you read messages</p>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="disable-read-receipts">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Groups Settings -->
+                            <div class="privacy-setting-group">
+                                <h4 class="setting-header"><i class="fas fa-users"></i> Groups</h4>
+                                <div class="form-group">
+                                    <label>Who can add me to groups:</label>
+                                    <select id="groups-privacy" class="form-control">
+                                        <option value="all">Everyone</option>
+                                        <option value="contacts">My Contacts</option>
+                                        <option value="none">Nobody</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Status Settings -->
+                            <div class="privacy-setting-group">
+                                <h4 class="setting-header"><i class="fas fa-image"></i> Status</h4>
+                                <div class="form-group">
+                                    <label>Who can see my status updates:</label>
+                                    <select id="status-privacy" class="form-control">
+                                        <option value="all">Everyone</option>
+                                        <option value="contacts">My Contacts</option>
+                                        <option value="selected">Selected Contacts</option>
+                                        <option value="except">Contacts Except...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row mt-4">
+                            <button type="button" id="save-privacy-settings" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Privacy Settings
+                            </button>
+                            <div class="info-text ml-3">
+                                <p id="privacy-settings-status"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section class="content-section" id="groups">
@@ -526,6 +660,7 @@
     <script src="js/modules/groups-manager.js"></script>
     <script src="js/modules/messaging-manager.js"></script>
     <script src="js/modules/contacts-manager.js"></script>
+    <script src="js/modules/privacy-manager.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

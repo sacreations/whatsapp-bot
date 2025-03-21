@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     groupsManager.init();
     messagingManager.init();
     contactsManager.init();
+    privacyManager.init(); // Initialize the new privacy manager
     
     // Set up toast notifications
     window.showToast = uiUtils.showToast;
