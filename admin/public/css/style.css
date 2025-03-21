@@ -1264,3 +1264,19 @@ textarea.form-control {
 .mt-4 {
     margin-top: 1.5rem;
 }
+
+/* Manual number input in messaging section */
+.manual-number-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.input-container {
+    margin-top: 0.5rem;
+}
+
+.input-container small {
+    display: block;
+    margin-top: 0.25rem;
+}
