@@ -145,7 +145,7 @@ app.get('/api/config', requireAuth, (req, res) => {
       }
     });
     
-    // Make sure the new config properties are available
+    // Make sure the new config properties are available with default values if not set
     if (config.BOT_PAUSED === undefined) {
       config.BOT_PAUSED = 'false';
     }
@@ -175,33 +175,63 @@ app.post('/api/config', requireAuth, (req, res) => {
     const configPath = path.join(__dirname, '..', 'config.env');
     const { config } = req.body;
     
+    // Debug log to check what's being received
+    console.log('Updating config with:', config);
+    
     // Prevent password update through this API
     if (config.ADMIN_PASSWORD) {
       delete config.ADMIN_PASSWORD;
     }
     
-    // Convert config object to string format
-    let configContent = '';
-    Object.entries(config).forEach(([key, value]) => {
-      configContent += `${key}=${value}\n`;
-    });
+    // Read the current config file
+    let configContent = fs.readFileSync(configPath, 'utf8');
+    let configLines = configContent.split('\n');
+    let updatedKeys = [];
+    
+    // Update existing keys and track which ones were updated
+    for (const [key, value] of Object.entries(config)) {
+      const keyRegex = new RegExp(`^${key}=.*`, 'gm');
+      if (configContent.match(keyRegex)) {
+        configContent = configContent.replace(keyRegex, `${key}=${value}`);
+        updatedKeys.push(key);
+      }
+    }
+    
+    // Add new keys that weren't in the file
+    for (const [key, value] of Object.entries(config)) {
+      if (!updatedKeys.includes(key)) {
+        // Check if the key exists in a commented form
+        const commentedKeyLine = configLines.findIndex(line => 
+          line.trim().startsWith(`# ${key}=`) || line.trim().startsWith(`// ${key}=`));
+          
+        if (commentedKeyLine >= 0) {
+          // Replace the commented line with an active setting
+          configLines[commentedKeyLine] = `${key}=${value}`;
+          configContent = configLines.join('\n');
+        } else {
+          // Simply append to the end
+          configContent += `\n${key}=${value}`;
+        }
+      }
+    }
     
     // Check if ADMIN_PASSWORD already exists in the file, if so preserve it
-    const existingContent = fs.readFileSync(configPath, 'utf8');
-    const passwordLine = existingContent.split('\n').find(line => 
+    const passwordLine = configLines.find(line => 
       line.trim().startsWith('ADMIN_PASSWORD=')
     );
     
-    if (passwordLine) {
-      configContent += `${passwordLine}\n`;
+    if (passwordLine && !configContent.includes('ADMIN_PASSWORD=')) {
+      configContent += `\n${passwordLine}`;
     }
     
+    // Write back to config file
     fs.writeFileSync(configPath, configContent);
     
+    console.log('Config updated successfully');
     res.json({ success: true, message: 'Configuration updated successfully' });
   } catch (error) {
     console.error('Error updating config:', error);
-    res.status(500).json({ success: false, message: 'Failed to update configuration' });
+    res.status(500).json({ success: false, message: 'Failed to update configuration: ' + error.message });
   }
 });
 
