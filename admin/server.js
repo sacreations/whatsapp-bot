@@ -7,6 +7,8 @@ import { dirname } from 'path';
 import dotenv from 'dotenv';
 import { getChatLogs } from '../Lib/utils/logger.js';
 import { loadSavedLinks, deleteLink, clearGroupLinks } from '../Lib/utils/linkStorage.js';
+import multer from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -633,6 +635,194 @@ app.post('/api/saved-links/download/:url', requireAuth, async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: `Error processing request: ${error.message}`
+        });
+    }
+});
+
+// Get contacts and groups - protected
+app.get('/api/contacts', requireAuth, async (req, res) => {
+    try {
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp connection not available' 
+            });
+        }
+        
+        // Get groups
+        const groups = [];
+        try {
+            // Fetch groups the bot is part of
+            const getGroups = await global.sock.groupFetchAllParticipating();
+            
+            if (getGroups) {
+                for (const [id, group] of Object.entries(getGroups)) {
+                    groups.push({
+                        id: id,
+                        name: group.subject,
+                        participants: group.participants.length
+                    });
+                }
+            }
+        } catch (groupError) {
+            console.error('Error fetching groups:', groupError);
+        }
+        
+        // Get contacts (this is more challenging as Baileys doesn't provide a direct method)
+        const contacts = [];
+        try {
+            // Try to get contacts from store if available
+            if (global.sock.store && global.sock.store.contacts) {
+                const rawContacts = global.sock.store.contacts;
+                
+                for (const [id, contact] of Object.entries(rawContacts)) {
+                    // Skip groups and status broadcast
+                    if (id.endsWith('@g.us') || id === 'status@broadcast') continue;
+                    
+                    // Only include contacts with names
+                    if (contact.name || contact.notify) {
+                        contacts.push({
+                            id: id,
+                            name: contact.name || contact.notify || id.split('@')[0]
+                        });
+                    }
+                }
+            }
+            
+            // If contacts are empty, try to get from saved contacts file
+            if (contacts.length === 0) {
+                const contactsPath = path.join(__dirname, '..', 'data', 'contacts.json');
+                if (fs.existsSync(contactsPath)) {
+                    try {
+                        const savedContacts = JSON.parse(fs.readFileSync(contactsPath, 'utf8'));
+                        
+                        for (const [id, contact] of Object.entries(savedContacts)) {
+                            // Skip groups and status broadcast
+                            if (id.endsWith('@g.us') || id === 'status@broadcast') continue;
+                            
+                            // Only include contacts with names
+                            if (contact.name) {
+                                contacts.push({
+                                    id: id,
+                                    name: contact.name
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error reading contacts file:', error);
+                    }
+                }
+            }
+            
+            // Sort contacts by name
+            contacts.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (contactsError) {
+            console.error('Error getting contacts:', contactsError);
+        }
+        
+        res.json({
+            success: true,
+            groups: groups,
+            contacts: contacts
+        });
+    } catch (error) {
+        console.error('Error fetching contacts and groups:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error fetching contacts and groups: ' + error.message 
+        });
+    }
+});
+
+// Send message - protected
+app.post('/api/send-message', requireAuth, upload.single('media'), async (req, res) => {
+    try {
+        if (!global.sock) {
+            return res.status(503).json({ 
+                success: false, 
+                message: 'WhatsApp connection not available' 
+            });
+        }
+        
+        const { recipientType, recipientId, message } = req.body;
+        const mediaFile = req.file;
+        
+        // Validate inputs
+        if (!recipientId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Recipient ID is required' 
+            });
+        }
+        
+        if (!message && !mediaFile) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Message or media is required' 
+            });
+        }
+        
+        // Prepare jid (ensure it has the right format)
+        let jid = recipientId;
+        
+        // If individual and doesn't have @s.whatsapp.net, add it
+        if (recipientType === 'individual' && !jid.includes('@')) {
+            jid = `${jid}@s.whatsapp.net`;
+        }
+        
+        // Send the message based on content
+        let result;
+        
+        // Import messageHandler for sending
+        const messageHandler = (await import('../Lib/chat/messageHandler.js')).default;
+        
+        if (mediaFile) {
+            // Determine media type and use appropriate method
+            const mimeType = mediaFile.mimetype;
+            const filePath = mediaFile.path;
+            
+            if (mimeType.startsWith('image/')) {
+                result = await messageHandler.sendImage(filePath, message || '', { key: { remoteJid: jid } }, global.sock);
+            } else if (mimeType.startsWith('video/')) {
+                result = await messageHandler.sendVideo(filePath, message || '', { key: { remoteJid: jid } }, global.sock);
+            } else if (mimeType.startsWith('audio/')) {
+                result = await messageHandler.sendAudio(filePath, false, { key: { remoteJid: jid } }, global.sock);
+            } else {
+                // Should not reach here due to multer filter
+                result = await messageHandler.sendDocument(
+                    filePath,
+                    mediaFile.originalname,
+                    mimeType,
+                    { key: { remoteJid: jid } },
+                    global.sock
+                );
+            }
+            
+            // Clean up the temporary file
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        } else {
+            // Text-only message
+            result = await global.sock.sendMessage(jid, { text: message });
+        }
+        
+        res.json({
+            success: true,
+            message: 'Message sent successfully',
+            messageId: result?.key?.id
+        });
+    } catch (error) {
+        console.error('Error sending message:', error);
+        
+        // Clean up the temporary file if exists
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error sending message: ' + error.message 
         });
     }
 });

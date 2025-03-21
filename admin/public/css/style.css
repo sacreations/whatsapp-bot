@@ -1027,3 +1027,107 @@ input:checked + .slider:before {
         flex-direction: column;
     }
 }
+
+/* Message Form Styles */
+.media-upload-container {
+    margin-bottom: 0.5rem;
+}
+
+.media-preview {
+    margin-top: 0.5rem;
+}
+
+.preview-item {
+    background: var(--background-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    display: inline-block;
+    max-width: 250px;
+}
+
+.preview-image, .preview-video {
+    max-width: 100%;
+    max-height: 150px;
+    border-radius: 4px;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.preview-file {
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(99, 102, 241, 0.1);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.preview-file i {
+    font-size: 2rem;
+    color: var(--primary-color);
+}
+
+.preview-name {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.form-control {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    width: 100%;
+}
+
+textarea.form-control {
+    resize: vertical;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    outline: none;
+}
+
+/* Recent Messages */
+.recent-message {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.message-recipient {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.message-time {
+    color: var(--text-secondary);
+}
+
+.message-content {
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+}
+
+.message-media-info {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}

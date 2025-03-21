@@ -22,310 +22,375 @@
                     <li class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</li>
                     <li data-section="settings"><i class="fas fa-cog"></i> Settings</li>
                     <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
-                    <li data-section="saved-links"><i class="fas fa-link"></i> Saved Links</li>
+                    <li data-section="saved-links"><i class="fas fa-link"></i> Saved Links</li>s</li>
                     <li data-section="statuses"><i class="fas fa-image"></i> Status Viewer</li>
                     <li data-section="system-logs"><i class="fas fa-list"></i> System Logs</li>
                     <li data-section="chat-logs"><i class="fas fa-comment-dots"></i> Chat Logs</li>
-                </ul>
-            </nav>
+                </ul>li data-section="chat-logs"><i class="fas fa-comment-dots"></i> Chat Logs</li>
+            </nav>ul>
             <div class="sidebar-footer">
                 <button id="logout-btn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </div>
+            </div>utton id="logout-btn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </aside>v>
         </aside>
-
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Top Bar -->
+            <!-- Top Bar -->ntent">
             <header class="top-bar">
                 <div class="hamburger" id="sidebar-toggle">
-                    <i class="fas fa-bars"></i>
-                </div>
+                    <i class="fas fa-bars"></i>bar-toggle">
+                </div> class="fas fa-bars"></i>
                 <h2 id="section-title">Dashboard</h2>
-                <div class="user-info">
+                <div class="user-info">Dashboard</h2>
                     <span id="status-indicator" class="status online"></span>
-                    <span>Admin</span>
-                </div>
+                    <span>Admin</span>ndicator" class="status online"></span>
+                </div>pan>Admin</span>
+            </header>>
             </header>
-
             <!-- Content Sections -->
             <section class="content-section active" id="dashboard">
-                <div class="stats-row">
+                <div class="stats-row">tion active" id="dashboard">
                     <div class="stat-card">
                         <div class="stat-icon"><i class="fas fa-users"></i></div>
-                        <div class="stat-info">
-                            <h3>Groups</h3>
+                        <div class="stat-info"><i class="fas fa-users"></i></div>
+                            <h3>Groups</h3>fo">
                             <p id="groups-count">Loading...</p>
-                        </div>
-                    </div>
+                        </div> id="groups-count">Loading...</p>
+                    </div>div>
                     <div class="stat-card">
                         <div class="stat-icon"><i class="fas fa-plug"></i></div>
-                        <div class="stat-info">
-                            <h3>Plugins</h3>
+                        <div class="stat-info"><i class="fas fa-plug"></i></div>
+                            <h3>Plugins</h3>o">
                             <p id="plugins-count">Loading...</p>
-                        </div>
-                    </div>
+                        </div> id="plugins-count">Loading...</p>
+                    </div>div>
                     <div class="stat-card">
                         <div class="stat-icon"><i class="fas fa-download"></i></div>
-                        <div class="stat-info">
-                            <h3>Downloads</h3>
+                        <div class="stat-info"><i class="fas fa-download"></i></div>
+                            <h3>Downloads</h3>>
                             <p id="downloads-count">Loading...</p>
-                        </div>
-                    </div>
+                        </div> id="downloads-count">Loading...</p>
+                    </div>div>
                     <div class="stat-card">
                         <div class="stat-icon"><i class="fas fa-clock"></i></div>
-                        <div class="stat-info">
-                            <h3>Uptime</h3>
+                        <div class="stat-info"><i class="fas fa-clock"></i></div>
+                            <h3>Uptime</h3>fo">
                             <p id="uptime">Loading...</p>
-                        </div>
-                    </div>
+                        </div> id="uptime">Loading...</p>
+                    </div>div>
+                </div>div>
                 </div>
-
                 <div class="features-section">
                     <h3><i class="fas fa-toggle-on"></i> Quick Settings</h3>
-                    <div class="feature-toggles">
+                    <div class="feature-toggles">n"></i> Quick Settings</h3>
                         <div class="toggle-card">
                             <div class="toggle-info">
-                                <h4>Auto Reply</h4>
+                                <h4>Auto Reply</h4>">
                                 <p>Automatically respond to messages</p>
-                            </div>
+                            </div>>Automatically respond to messages</p>
                             <label class="switch">
                                 <input type="checkbox" id="auto-reply-toggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
+                                <span class="slider round"></span>ply-toggle">
+                            </label>n class="slider round"></span>
+                        </div>label>
                         <!-- Add new privacy toggle cards -->
-                        <div class="toggle-card">
+                        <div class="toggle-card">le cards -->
                             <div class="toggle-info">
                                 <h4>Hide Online Status</h4>
                                 <p>Hide "online" status from contacts</p>
-                            </div>
+                            </div>>Hide "online" status from contacts</p>
                             <label class="switch">
                                 <input type="checkbox" id="hide-online-toggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
+                                <span class="slider round"></span>line-toggle">
+                            </label>n class="slider round"></span>
+                        </div>label>
                         <div class="toggle-card">
                             <div class="toggle-info">
                                 <h4>Disable Read Receipts</h4>
                                 <p>Don't send blue ticks for read messages</p>
-                            </div>
+                            </div>>Don't send blue ticks for read messages</p>
                             <label class="switch">
                                 <input type="checkbox" id="disable-receipts-toggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
+                                <span class="slider round"></span>-receipts-toggle">
+                            </label>n class="slider round"></span>
+                        </div>label>
                         <!-- ...existing toggle cards... -->
-                        <div class="toggle-card">
+                        <div class="toggle-card">ards... -->
                             <div class="toggle-info">
                                 <h4>Social Media Download</h4>
                                 <p>Download content from social media links</p>
-                            </div>
+                            </div>>Download content from social media links</p>
                             <label class="switch">
                                 <input type="checkbox" id="social-media-toggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
+                                <span class="slider round"></span>media-toggle">
+                            </label>n class="slider round"></span>
+                        </div>label>
                         <div class="toggle-card">
                             <div class="toggle-info">
-                                <h4>Link Saving</h4>
+                                <h4>Link Saving</h4>>
                                 <p>Save media links when auto-download is disabled</p>
-                            </div>
+                            </div>>Save media links when auto-download is disabled</p>
                             <label class="switch">
                                 <input type="checkbox" id="link-saving-toggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
+                                <span class="slider round"></span>ving-toggle">
+                            </label>n class="slider round"></span>
+                        </div>label>
                         <div class="toggle-card">
                             <div class="toggle-info">
                                 <h4>Auto Status View</h4>
                                 <p>Automatically view contact statuses</p>
-                            </div>
+                            </div>>Automatically view contact statuses</p>
                             <label class="switch">
                                 <input type="checkbox" id="status-view-toggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                                <span class="slider round"></span>view-toggle">
+                            </label>n class="slider round"></span>
+                        </div>label>
+                    </div>div>
+                </div>div>
             </section>
-
+            </section>
             <section class="content-section" id="settings">
-                <div class="card">
+                <div class="card">t-section" id="settings">
                     <div class="card-header">
                         <h3><i class="fas fa-wrench"></i> Bot Configuration</h3>
-                    </div>
+                    </div>3><i class="fas fa-wrench"></i> Bot Configuration</h3>
                     <div class="card-body">
                         <form id="config-form">
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="prefix">Command Prefix</label>
                                     <input type="text" id="prefix" name="PREFIX">
-                                </div>
+                                </div>nput type="text" id="prefix" name="PREFIX">
                                 <div class="form-group">
                                     <label for="owner-number">Owner Number</label>
                                     <input type="text" id="owner-number" name="OWNER_NUMBER">
-                                </div>
-                            </div>
+                                </div>nput type="text" id="owner-number" name="OWNER_NUMBER">
+                            </div>div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="bot-name">Bot Name</label>
                                     <input type="text" id="bot-name" name="BOT_NAME">
-                                </div>
+                                </div>nput type="text" id="bot-name" name="BOT_NAME">
                                 <div class="form-group">
                                     <label for="session-id">Session ID</label>
                                     <input type="text" id="session-id" name="SESSION_ID">
-                                </div>
-                            </div>
+                                </div>nput type="text" id="session-id" name="SESSION_ID">
+                            </div>div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="download-folder">Download Folder</label>
                                     <input type="text" id="download-folder" name="DOWNLOAD_FOLDER">
-                                </div>
-                            </div>
+                                </div>nput type="text" id="download-folder" name="DOWNLOAD_FOLDER">
+                            </div>div>
                             <div class="form-row">
                                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Configuration</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                            </div>utton type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Configuration</button>
+                        </form>iv>
+                    </div>form>
+                </div>div>
             </section>
-
+            </section>
             <section class="content-section" id="groups">
-                <div class="card">
+                <div class="card">t-section" id="groups">
                     <div class="card-header">
                         <h3><i class="fas fa-users"></i> Group Management</h3>
-                    </div>
+                    </div>3><i class="fas fa-users"></i> Group Management</h3>
                     <div class="card-body">
                         <div class="form-group">
                             <label for="allowed-groups">Allowed Download Groups</label>
-                            <div class="info-text">
+                            <div class="info-text">ups">Allowed Download Groups</label>
                                 <p><i class="fas fa-info-circle"></i> Groups listed here will be allowed to use auto-download for social media links.</p>
-                            </div>
+                            </div>><i class="fas fa-info-circle"></i> Groups listed here will be allowed to use auto-download for social media links.</p>
                             <div class="tag-input-container">
                                 <input type="text" id="group-input" placeholder="Add a group ID (e.g., 123456789@g.us)">
-                                <button id="add-group" class="btn btn-sm"><i class="fas fa-plus"></i></button>
-                            </div>
+                                <button id="add-group" class="btn btn-sm"><i class="fas fa-plus"></i></button>89@g.us)">
+                            </div>utton id="add-group" class="btn btn-sm"><i class="fas fa-plus"></i></button>
                             <div id="groups-container" class="tags-container">
-                                <!-- Group tags will be inserted here -->
-                            </div>
-                        </div>
+                                <!-- Group tags will be inserted here -->ner">
+                            </div>-- Group tags will be inserted here -->
+                        </div>div>
                         <div class="form-row">
                             <button id="save-groups" class="btn btn-primary"><i class="fas fa-save"></i> Save Groups</button>
-                            <div class="info-text ml-3">
+                            <div class="info-text ml-3">ss="btn btn-primary"><i class="fas fa-save"></i> Save Groups</button>
                                 <p><i class="fas fa-check-circle"></i> Groups are auto-saved when added or removed</p>
-                            </div>
-                        </div>
+                            </div>><i class="fas fa-check-circle"></i> Groups are auto-saved when added or removed</p>
+                        </div>div>
                         <div class="group-commands-help mt-4">
                             <h4>Group Management Commands</h4>
-                            <ul>
+                            <ul>Group Management Commands</h4>
                                 <li><code>.getid</code> - Get the current group ID</li>
                                 <li><code>.allowedgroups</code> - List all allowed groups</li>
                                 <li><code>.addallowedgroup current</code> - Add current group to allowed list</li>
                                 <li><code>.removeallowedgroup current</code> - Remove current group from allowed list</li>
-                                <li><code>.checkgroup</code> - Check if current group is allowed</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+                                <li><code>.checkgroup</code> - Check if current group is allowed</li>rom allowed list</li>
+                            </ul>li><code>.checkgroup</code> - Check if current group is allowed</li>
+                        </div>ul>
+                    </div>div>
+                </div>div>
             </section>
-
+            </section>
             <section class="content-section" id="saved-links">
-                <div class="card">
+                <div class="card">t-section" id="messages">
                     <div class="card-header">
                         <h3><i class="fas fa-link"></i> Saved Links</h3>
-                        <div class="refresh-controls">
+                        <div class="refresh-controls">ne"></i> Send Messages</h3>
                             <button id="refresh-links" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
-                        </div>
-                    </div>
+                        </div>utton id="refresh-contacts" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh Contacts</button>
+                    </div>div>
                     <div class="card-body">
                         <div class="status-filters">
                             <div class="status-search">
                                 <input type="text" id="links-search" placeholder="Search by URL, group, or user...">
-                            </div>
-                            <div class="status-sort">
-                                <label>Filter: </label>
-                                <select id="links-platform-filter">
+                            </div>abel for="recipient-type">Recipient Type</label>
+                            <div class="status-sort">-type" class="form-control">
+                                <label>Filter: </label>p">Group</option>
+                                <select id="links-platform-filter">vidual</option>
                                     <option value="all" selected>All Platforms</option>
                                     <option value="YouTube">YouTube</option>
                                     <option value="TikTok">TikTok</option>
-                                    <option value="Instagram">Instagram</option>
-                                    <option value="Facebook">Facebook</option>
-                                    <option value="Twitter">Twitter</option>
+                                    <option value="Instagram">Instagram</option>r">
+                                    <option value="Facebook">Facebook</option>el>
+                                    <option value="Twitter">Twitter</option>trol">
+                                </select>on value="">Loading groups...</option>
+                            </div>select>
+                        </div>div>
+                            
+                        <div id="saved-links-container">individual-recipient-container" style="display:none;">
+                            <div class="loading-indicator">Loading saved links...</div>>
+                            <!-- Saved links will be inserted here -->s="form-control">
+                        </div>      <option value="">Loading contacts...</option>
                                 </select>
-                            </div>
-                        </div>
-                        
-                        <div id="saved-links-container">
-                            <div class="loading-indicator">Loading saved links...</div>
-                            <!-- Saved links will be inserted here -->
-                        </div>
-                        
                         <div id="no-links" class="no-data-message" style="display:none;">
                             No saved links found.
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Status Viewer Section -->
-            <section class="content-section" id="statuses">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-image"></i> Status Viewer</h3>
+                        </div>iv class="form-group">
+                    </div>      <label for="message-text">Message</label>
+                </div>          <textarea id="message-text" class="form-control" rows="4" placeholder="Type your message here..."></textarea>
+            </section>      </div>
+                            
+            <!-- Status Viewer Section -->rm-group">
+            <section class="content-section" id="statuses">Attach Media (Optional)</label>
+                <div class="card">iv class="media-upload-container">
+                    <div class="card-header">pe="file" id="message-media" class="form-control">
+                        <h3><i class="fas fa-image"></i> Status Viewer</h3>mats: jpg, jpeg, png, mp4, mp3</small>
                         <div class="refresh-controls">
                             <button id="refresh-statuses" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
                             <select id="status-filter">
                                 <option value="all" selected>All Types</option>
                                 <option value="image">Images Only</option>
-                                <option value="video">Videos Only</option>
-                            </select>
-                        </div>
-                    </div>
+                                <option value="video">Videos Only</option>" class="btn btn-primary">
+                            </select>i class="fas fa-paper-plane"></i> Send Message
+                        </div>  </button>
+                    </div>  </div>
                     <div class="card-body">
                         <div class="status-filters">
-                            <div class="status-search">
+                            <div class="status-search">ainer mt-4">
                                 <input type="text" id="contact-search" placeholder="Search by contact...">
-                            </div>
-                            <div class="status-sort">
+                            </div>d="recent-messages">
+                            <div class="status-sort">>No messages sent yet.</p>
                                 <label>Sort by: </label>
                                 <select id="status-sort">
                                     <option value="newest">Newest First</option>
                                     <option value="oldest">Oldest First</option>
                                 </select>
                             </div>
-                        </div>
-                        
+                        </div>ntent-section" id="saved-links">
+                        ss="card">
                         <div class="status-container" id="status-grid">
                             <div class="loading-indicator">Loading statuses...</div>
                             <!-- Statuses will be inserted here -->
+                        </div>utton id="refresh-links" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
                         </div>
-                        
                         <div id="no-statuses" class="no-data-message" style="display:none;">
                             No status updates have been saved yet.
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- System Logs Section -->
-            <section class="content-section" id="system-logs">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-list"></i> System Logs</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="log-container">
+                        </div>lass="status-filters">
+                    </div>  <div class="status-search">
+                </div>          <input type="text" id="links-search" placeholder="Search by URL, group, or user...">
+            </section>      </div>
+                            <div class="status-sort">
+            <!-- System Logs Section -->ilter: </label>
+            <section class="content-section" id="system-logs">ter">
+                <div class="card">  <option value="all" selected>All Platforms</option>
+                    <div class="card-header">alue="YouTube">YouTube</option>
+                        <h3><i class="fas fa-list"></i> System Logs</h3>n>
+                    </div>          <option value="Instagram">Instagram</option>
+                    <div class="card-body"> value="Facebook">Facebook</option>
+                        <div class="log-container">Twitter">Twitter</option>
                             <div class="log-entry">
                                 <span class="log-time">10:23:45</span>
                                 <span class="log-type info">INFO</span>
                                 <span class="log-message">Bot started successfully</span>
-                            </div>
-                            <div class="log-entry">
+                            </div>aved-links-container">
+                            <div class="log-entry">icator">Loading saved links...</div>
                                 <span class="log-time">10:24:12</span>
                                 <span class="log-type success">SUCCESS</span>
                                 <span class="log-message">Downloaded video from YouTube</span>
+                            </div>o-links" class="no-data-message" style="display:none;">
+                            <div class="log-entry">
+                                <span class="log-time">10:25:30</span>
+                                <span class="log-type warning">WARNING</span>
+                                <span class="log-message">Rate limit reached for TikTok API</span>
                             </div>
                             <div class="log-entry">
+                                <span class="log-time">10:26:15</span>
+                                <span class="log-type error">ERROR</span>
+                                <span class="log-message">Failed to download Instagram content</span>
+                            </div>rd-header">
+                            <!-- More log entries would go here -->wer</h3>
+                        </div>lass="refresh-controls">
+                    </div>  <button id="refresh-statuses" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
+                </div>      <select id="status-filter">
+            </section>          <option value="all" selected>All Types</option>
+                                <option value="image">Images Only</option>
+            <!-- Chat Logs Section -->n value="video">Videos Only</option>
+            <section class="content-section" id="chat-logs">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-comment-dots"></i> Chat Logs</h3>
+                        <div class="refresh-controls">
+                            <button id="refresh-logs" class="btn btn-sm"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            <select id="logs-limit">d="contact-search" placeholder="Search by contact...">
+                                <option value="25">25 entries</option>
+                                <option value="50">50 entries</option>
+                                <option value="100" selected>100 entries</option>
+                                <option value="200">200 entries</option>
+                            </select>option value="newest">Newest First</option>
+                        </div>      <option value="oldest">Oldest First</option>
+                    </div>      </select>
+                    <div class="card-body">
+                        <div class="logs-filter">
+                            <label>Filter: </label>
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="text">Text</button>
+                            <button class="filter-btn" data-filter="media">Media</button>
+                            <button class="filter-btn" data-filter="group">Groups</button>
+                            <button class="filter-btn" data-filter="private">Private</button>
+                        </div>d="no-statuses" class="no-data-message" style="display:none;">
+                        <div class="chat-log-container" id="chat-logs-container">
+                            <div class="loading-indicator">Loading logs...</div>
+                            <!-- Chat logs will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </section>m Logs Section -->
+        </main>ction class="content-section" id="system-logs">
+    </div>      <div class="card">
+                    <div class="card-header">
+    <div id="toast" class="toast"></div>s fa-list"></i> System Logs</h3>
+                    </div>
+    <!-- Updated script imports -->d-body">
+    <script src="js/modules/ui-utils.js"></script>>
+    <script src="js/modules/config-manager.js"></script>
+    <script src="js/modules/navigation-manager.js"></script>:45</span>
+    <script src="js/modules/dashboard-manager.js"></script>>INFO</span>
+    <script src="js/modules/chat-logs-manager.js"></script>ot started successfully</span>
+    <script src="js/modules/statuses-manager.js"></script>
+    <script src="js/modules/saved-links-manager.js"></script>
+    <script src="js/modules/groups-manager.js"></script>0:24:12</span>
+    <script src="js/modules/messaging-manager.js"></script>class="log-type success">SUCCESS</span>
+    <script src="js/main.js"></script>                         <span class="log-message">Downloaded video from YouTube</span>
+</body>                     </div>
+</html>                            <div class="log-entry">
+
                                 <span class="log-time">10:25:30</span>
                                 <span class="log-type warning">WARNING</span>
                                 <span class="log-message">Rate limit reached for TikTok API</span>

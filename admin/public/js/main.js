@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     statusesManager.init();
     savedLinksManager.init();
     groupsManager.init();
+    messagingManager.init();
     
     // Set up toast notifications
     window.showToast = uiUtils.showToast;
