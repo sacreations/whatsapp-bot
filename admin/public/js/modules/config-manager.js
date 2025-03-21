@@ -4,6 +4,8 @@ const configManager = {
     socialMediaToggle: null,
     statusViewToggle: null,
     linkSavingToggle: null,
+    hideOnlineToggle: null,         // Add new toggle references
+    disableReceiptsToggle: null,
     
     init: function() {
         this.configForm = document.getElementById('config-form');
@@ -11,6 +13,8 @@ const configManager = {
         this.socialMediaToggle = document.getElementById('social-media-toggle');
         this.statusViewToggle = document.getElementById('status-view-toggle');
         this.linkSavingToggle = document.getElementById('link-saving-toggle');
+        this.hideOnlineToggle = document.getElementById('hide-online-toggle');         // Initialize new toggles
+        this.disableReceiptsToggle = document.getElementById('disable-receipts-toggle');
         
         this.setupEventListeners();
         this.loadConfig();
@@ -42,6 +46,20 @@ const configManager = {
         if (this.linkSavingToggle) {
             this.linkSavingToggle.addEventListener('change', async function() {
                 await configManager.updateConfig('ENABLE_LINK_SAVING', this.checked.toString());
+            });
+        }
+
+        if (this.hideOnlineToggle) {
+            this.hideOnlineToggle.addEventListener('change', async function() {
+                await configManager.updateConfig('HIDE_ONLINE_STATUS', this.checked.toString());
+                showToast('Changes will take effect after bot restart', 'info');
+            });
+        }
+        
+        if (this.disableReceiptsToggle) {
+            this.disableReceiptsToggle.addEventListener('change', async function() {
+                await configManager.updateConfig('DISABLE_READ_RECEIPTS', this.checked.toString());
+                showToast('Changes will take effect after bot restart', 'info');
             });
         }
     },
@@ -125,6 +143,15 @@ const configManager = {
                 
                 if (this.linkSavingToggle && config.ENABLE_LINK_SAVING !== undefined) {
                     this.linkSavingToggle.checked = config.ENABLE_LINK_SAVING === 'true';
+                }
+
+                // Set new privacy toggles
+                if (this.hideOnlineToggle) {
+                    this.hideOnlineToggle.checked = config.HIDE_ONLINE_STATUS === 'true';
+                }
+                
+                if (this.disableReceiptsToggle) {
+                    this.disableReceiptsToggle.checked = config.DISABLE_READ_RECEIPTS === 'true';
                 }
                 
                 // Load group IDs - this will be handled by the groups manager

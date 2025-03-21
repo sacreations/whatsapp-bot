@@ -77,7 +77,11 @@ async function connectToWhatsApp() {
         logger,
         browser: ['WhatsAppBot', 'Chrome', '103.0.5060.114'],
         downloadHistory: false,
-        syncFullHistory: false
+        syncFullHistory: false,
+        presence: {
+            available: !config.HIDE_ONLINE_STATUS // Hide online status if configured
+        },
+        readReceipts: !config.DISABLE_READ_RECEIPTS // Disable read receipts if configured
     });
     
     // Make socket available globally

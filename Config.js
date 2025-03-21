@@ -107,6 +107,15 @@ const config = {
     return this.get('ENABLE_LINK_SAVING', 'true') === 'true'; 
   },
   
+  // Privacy settings
+  get HIDE_ONLINE_STATUS() {
+    return this.get('HIDE_ONLINE_STATUS', 'false') === 'true';
+  },
+  
+  get DISABLE_READ_RECEIPTS() {
+    return this.get('DISABLE_READ_RECEIPTS', 'false') === 'true';
+  },
+  
   // Create required directories
   createDirectories: () => {
     const dirs = [config.DOWNLOAD_FOLDER];
