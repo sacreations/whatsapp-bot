@@ -185,24 +185,36 @@ const messagingManager = {
         try {
             const recipientType = this.recipientTypeSelect.value;
             let recipientId = '';
+            let recipientName = 'Unknown';
+            let selectedContact = null;
+            let manualNumber = null;
             
             if (recipientType === 'group') {
                 recipientId = this.groupRecipientSelect.value;
                 if (!recipientId) {
                     return showToast('Please select a group', 'error');
                 }
+                
+                // Get group name for display
+                const group = this.groups.find(g => g.id === recipientId);
+                if (group) recipientName = group.name;
             } else {
                 // Check if a contact is selected from dropdown or manual number is entered
-                const selectedContact = this.individualRecipientSelect.value;
-                const manualNumber = this.manualPhoneNumber.value.trim();
+                selectedContact = this.individualRecipientSelect.value;
+                manualNumber = this.manualPhoneNumber.value.trim();
                 
                 if (selectedContact) {
                     // Use selected contact from dropdown
                     recipientId = selectedContact;
+                    
+                    // Get contact name for display
+                    const contact = this.contacts.find(c => c.id === recipientId);
+                    if (contact) recipientName = contact.name;
                 } else if (manualNumber) {
                     // Use manually entered number
                     // Ensure it doesn't already have the @s.whatsapp.net suffix
                     recipientId = manualNumber.includes('@') ? manualNumber : `${manualNumber}@s.whatsapp.net`;
+                    recipientName = manualNumber; // Use number as name
                 } else {
                     return showToast('Please select a contact or enter a phone number', 'error');
                 }
@@ -249,19 +261,6 @@ const messagingManager = {
                 // Reset form
                 this.messageForm.reset();
                 this.mediaPreview.innerHTML = '';
-                
-                // Get recipient name for display
-                let recipientName = 'Unknown';
-                if (recipientType === 'group') {
-                    const group = this.groups.find(g => g.id === recipientId);
-                    if (group) recipientName = group.name;
-                } else if (selectedContact) {
-                    const contact = this.contacts.find(c => c.id === recipientId);
-                    if (contact) recipientName = contact.name;
-                } else {
-                    // For manual number, just show the number
-                    recipientName = manualNumber;
-                }
                 
                 // Add to recent messages
                 this.addToRecentMessages(recipientType, recipientId, messageText, mediaFile, recipientName);
