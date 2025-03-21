@@ -1270,6 +1270,34 @@ textarea.form-control {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.manual-number-container.manual-entry-active {
+    background: rgba(99, 102, 241, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--primary-color);
+}
+
+.manual-entry-active .input-container input {
+    border-color: var(--primary-color);
+}
+
+.input-container {
+    margin-top: 0.5rem;
+}
+
+.input-container small {
+    display: block;
+    margin-top: 0.25rem;
+}
+
+/* Manual number input in messaging section */
+.manual-number-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
 }
 
 .input-container {

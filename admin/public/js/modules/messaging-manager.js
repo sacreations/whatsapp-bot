@@ -127,11 +127,28 @@ const messagingManager = {
         
         let options = '<option value="">Select a contact...</option>';
         
+        // Add manual entry option at the top
+        options += '<option value="manual-entry">-- Manual Number Entry --</option>';
+        
         this.contacts.forEach(contact => {
             options += `<option value="${contact.id}">${contact.name}</option>`;
         });
         
         this.individualRecipientSelect.innerHTML = options;
+        
+        // Add event listener to respond to the manual entry selection
+        this.individualRecipientSelect.addEventListener('change', () => {
+            const manualNumberContainer = document.querySelector('.manual-number-container');
+            if (this.individualRecipientSelect.value === 'manual-entry') {
+                manualNumberContainer.classList.add('manual-entry-active');
+                // Focus on the input field
+                setTimeout(() => {
+                    this.manualPhoneNumber.focus();
+                }, 100);
+            } else {
+                manualNumberContainer.classList.remove('manual-entry-active');
+            }
+        });
     },
     
     handleMediaPreview: function() {
@@ -199,24 +216,28 @@ const messagingManager = {
                 const group = this.groups.find(g => g.id === recipientId);
                 if (group) recipientName = group.name;
             } else {
-                // Check if a contact is selected from dropdown or manual number is entered
+                // Check if manual entry is selected or a contact is selected
                 selectedContact = this.individualRecipientSelect.value;
                 manualNumber = this.manualPhoneNumber.value.trim();
                 
-                if (selectedContact) {
-                    // Use selected contact from dropdown
+                if (selectedContact === 'manual-entry') {
+                    // Using manual entry
+                    if (!manualNumber) {
+                        return showToast('Please enter a phone number', 'error');
+                    }
+                    
+                    // Ensure it doesn't already have the @s.whatsapp.net suffix
+                    recipientId = manualNumber.includes('@') ? manualNumber : `${manualNumber}@s.whatsapp.net`;
+                    recipientName = manualNumber; // Use number as name
+                } else if (selectedContact) {
+                    // Using selected contact from dropdown
                     recipientId = selectedContact;
                     
                     // Get contact name for display
                     const contact = this.contacts.find(c => c.id === recipientId);
                     if (contact) recipientName = contact.name;
-                } else if (manualNumber) {
-                    // Use manually entered number
-                    // Ensure it doesn't already have the @s.whatsapp.net suffix
-                    recipientId = manualNumber.includes('@') ? manualNumber : `${manualNumber}@s.whatsapp.net`;
-                    recipientName = manualNumber; // Use number as name
                 } else {
-                    return showToast('Please select a contact or enter a phone number', 'error');
+                    return showToast('Please select a contact or manual entry option', 'error');
                 }
             }
             
