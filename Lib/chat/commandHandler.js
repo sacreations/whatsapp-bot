@@ -1,88 +1,108 @@
-import config from "../../Config.js";
+import config from '../../Config.js';
+import message from './messageHandler.js';
 
+// Store for commands
 const commands = [];
 
 /**
- * Register a command
- * @param {Object} command - Command configuration
- * @param {Function} handler - Command handler function
+ * Register a new bot command
  */
-export const bot = (command, handler) => {
-    const pattern = typeof command.pattern === 'string' ? command.pattern.toLowerCase() : command.pattern;
-    const commandObj = { ...command, pattern, handler };
-    
-    // Replace existing command with same pattern
-    const existingCommandIndex = commands.findIndex(cmd => 
-        (typeof cmd.pattern === 'string' && cmd.pattern === pattern) || 
-        (cmd.pattern instanceof RegExp && cmd.pattern.toString() === commandObj.pattern.toString())
-    );
-    
-    if (existingCommandIndex !== -1) {
-        commands.splice(existingCommandIndex, 1);
+export function bot(info, handler) {
+    if (typeof info !== 'object' || typeof handler !== 'function') {
+        throw new Error('Invalid command registration');
     }
     
-    commands.push(commandObj);
-};
+    commands.push({
+        ...info,
+        handler
+    });
+}
 
 /**
- * Handle incoming message and check for commands
- * @param {Object} m - Message object
- * @param {Object} sock - Socket connection
+ * List all registered commands
  */
-export const handleMessage = async (m, sock) => {
-    // Get message text from various message types
-    const msg = (m.message?.conversation || 
-                 m.message?.extendedTextMessage?.text || 
-                 m.message?.imageMessage?.caption ||
-                 m.message?.videoMessage?.caption || "").trim();
-    
-    // Check if message starts with command prefix
-    if (!msg || !msg.startsWith(config.PREFIX)) return false;
-    
-    // Extract command name and arguments
-    const cmdPart = msg.slice(config.PREFIX.length).trim();
-    const cmdSplit = cmdPart.split(' ');
-    const cmdName = cmdSplit[0].toLowerCase();
-    const cmdArgs = cmdSplit.slice(1).join(' ');
-    
-    // Find matching command
-    let matched = false;
-    
-    for (const cmd of commands) {
-        if (typeof cmd.pattern === 'string') {
-            // String pattern matching
-            if (cmd.pattern === cmdName) {
-                if (cmd.fromMe && !m.key.fromMe) continue;
-                
-                try {
-                    await cmd.handler(m, sock, cmdArgs);
-                    matched = true;
-                    break;
-                } catch (error) {
-                    console.error(`Error executing command ${cmd.pattern}:`, error);
-                }
-            }
-        } else if (cmd.pattern instanceof RegExp) {
-            // Regex pattern matching
-            const match = msg.slice(config.PREFIX.length).match(cmd.pattern);
-            if (match) {
-                if (cmd.fromMe && !m.key.fromMe) continue;
-                
-                try {
-                    await cmd.handler(m, sock, match);
-                    matched = true;
-                    break;
-                } catch (error) {
-                    console.error(`Error executing regex command ${cmd.pattern}:`, error);
-                }
+export function listCommands() {
+    return [...commands];
+}
+
+/**
+ * Main message handler
+ */
+export async function handleMessage(m, sock) {
+    try {
+        // Early return if the bot is paused (except for owner commands)
+        if (config.BOT_PAUSED) {
+            // Check if message is from owner
+            const sender = m.key.remoteJid;
+            if (sender !== config.OWNER_NUMBER && !sender.includes(config.OWNER_NUMBER)) {
+                return false;
             }
         }
+        
+        // Get message text from various message types
+        const messageText = (
+            m.message?.conversation || 
+            m.message?.extendedTextMessage?.text || 
+            m.message?.imageMessage?.caption ||
+            m.message?.videoMessage?.caption || 
+            ''
+        ).trim();
+        
+        // Check if the message starts with the command prefix
+        if (!messageText.startsWith(config.PREFIX)) {
+            return false;
+        }
+        
+        // Extract command and args
+        const [command, ...args] = messageText.slice(config.PREFIX.length).trim().split(' ');
+        const fullArgs = args.join(' ');
+        
+        console.log(`Command detected: ${command}, Args: ${fullArgs}`);
+        
+        // Find matching command
+        for (const cmd of commands) {
+            // Check if pattern matches
+            const pattern = cmd.pattern;
+            let matches = false;
+            
+            if (typeof pattern === 'string' && pattern === command) {
+                matches = true;
+            } else if (pattern instanceof RegExp && pattern.test(command)) {
+                matches = true;
+            }
+            
+            if (!matches) continue;
+            
+            // Check if command is fromMe only
+            if (cmd.fromMe) {
+                const sender = m.key.remoteJid;
+                if (sender !== config.OWNER_NUMBER && !sender.includes(config.OWNER_NUMBER)) {
+                    await message.reply('This command is only available to the bot owner.', m, sock);
+                    return true;
+                }
+            }
+            
+            // Check if in maintenance mode - only respond to owner commands
+            if (config.MAINTENANCE_MODE && !cmd.fromMe) {
+                await message.reply('Bot is currently in maintenance mode. Only owner commands are available.', m, sock);
+                return true;
+            }
+            
+            // Execute the command
+            try {
+                await cmd.handler(m, sock, fullArgs, { command });
+                return true;
+            } catch (error) {
+                console.error(`Error executing command ${command}:`, error);
+                await message.reply(`Error executing command: ${error.message}`, m, sock);
+                return true;
+            }
+        }
+        
+        // No matching command found
+        return false;
+    } catch (error) {
+        console.error('Error in message handler:', error);
+        return false;
     }
-    
-    return matched;
-};
-
-/**
- * Get list of all registered commands
- */
-export const listCommands = () => commands;
+}

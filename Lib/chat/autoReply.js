@@ -168,8 +168,10 @@ function isGroupAllowedForDownloads(groupId) {
  * Main auto-reply handler
  */
 export async function handleAutoReply(m, sock) {
-    // Dynamically check auto-reply settings
-    if (!config.ENABLE_AUTO_REPLY) return false;
+    // Early return if autoReply is disabled or bot is paused
+    if (!config.ENABLE_AUTO_REPLY || config.BOT_PAUSED || config.MAINTENANCE_MODE) {
+        return false;
+    }
     
     try {
         const messageType = getMessageType(m);
@@ -229,6 +231,15 @@ export async function handleAutoReply(m, sock) {
                     }
                 }
             }
+        }
+        
+        // Auto media download feature (for media messages)
+        if (config.ENABLE_AUTO_MEDIA_DOWNLOAD && 
+            ['image', 'video', 'audio', 'document'].includes(messageType) && 
+            isGroupAllowedForDownloads(m.key.remoteJid)) {
+            // React to acknowledge receipt
+            await message.react('📥', m, sock);
+            return true;
         }
         
         // Simple auto-responses - these can work in both private and group chats

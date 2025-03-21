@@ -4,8 +4,11 @@ const configManager = {
     socialMediaToggle: null,
     statusViewToggle: null,
     linkSavingToggle: null,
-    hideOnlineToggle: null,         // Add new toggle references
+    hideOnlineToggle: null,         
     disableReceiptsToggle: null,
+    pauseBotToggle: null,
+    maintenanceModeToggle: null,
+    autoMediaToggle: null,
     
     init: function() {
         this.configForm = document.getElementById('config-form');
@@ -13,8 +16,11 @@ const configManager = {
         this.socialMediaToggle = document.getElementById('social-media-toggle');
         this.statusViewToggle = document.getElementById('status-view-toggle');
         this.linkSavingToggle = document.getElementById('link-saving-toggle');
-        this.hideOnlineToggle = document.getElementById('hide-online-toggle');         // Initialize new toggles
+        this.hideOnlineToggle = document.getElementById('hide-online-toggle');         
         this.disableReceiptsToggle = document.getElementById('disable-receipts-toggle');
+        this.pauseBotToggle = document.getElementById('pause-bot-toggle');
+        this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
+        this.autoMediaToggle = document.getElementById('auto-media-toggle');
         
         this.setupEventListeners();
         this.loadConfig();
@@ -62,12 +68,32 @@ const configManager = {
                 showToast('Changes will take effect after bot restart', 'info');
             });
         }
+
+        if (this.pauseBotToggle) {
+            this.pauseBotToggle.addEventListener('change', async function() {
+                await configManager.updateConfig('BOT_PAUSED', this.checked.toString());
+                showToast(this.checked ? 'Bot paused successfully' : 'Bot resumed successfully', 'info');
+            });
+        }
+        
+        if (this.maintenanceModeToggle) {
+            this.maintenanceModeToggle.addEventListener('change', async function() {
+                await configManager.updateConfig('MAINTENANCE_MODE', this.checked.toString());
+                showToast(this.checked ? 'Maintenance mode enabled' : 'Maintenance mode disabled', 'info');
+            });
+        }
+        
+        if (this.autoMediaToggle) {
+            this.autoMediaToggle.addEventListener('change', async function() {
+                await configManager.updateConfig('ENABLE_AUTO_MEDIA_DOWNLOAD', this.checked.toString());
+                showToast('Auto media download setting updated', 'info');
+            });
+        }
     },
     
     handleConfigSubmit: async function(e) {
         e.preventDefault();
         
-        // Get form data
         const formData = new FormData(this.configForm);
         const config = {};
         
@@ -103,7 +129,7 @@ const configManager = {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                credentials: 'same-origin' // Include cookies
+                credentials: 'same-origin' 
             });
             
             console.log('Response status:', response.status);
@@ -120,7 +146,6 @@ const configManager = {
             if (data.success) {
                 const config = data.config;
                 
-                // Fill form inputs
                 Object.entries(config).forEach(([key, value]) => {
                     const input = document.querySelector(`[name="${key}"]`);
                     if (input) {
@@ -128,7 +153,6 @@ const configManager = {
                     }
                 });
                 
-                // Set toggles
                 if (this.autoReplyToggle) {
                     this.autoReplyToggle.checked = config.ENABLE_AUTO_REPLY === 'true';
                 }
@@ -145,7 +169,6 @@ const configManager = {
                     this.linkSavingToggle.checked = config.ENABLE_LINK_SAVING === 'true';
                 }
 
-                // Set new privacy toggles
                 if (this.hideOnlineToggle) {
                     this.hideOnlineToggle.checked = config.HIDE_ONLINE_STATUS === 'true';
                 }
@@ -153,8 +176,19 @@ const configManager = {
                 if (this.disableReceiptsToggle) {
                     this.disableReceiptsToggle.checked = config.DISABLE_READ_RECEIPTS === 'true';
                 }
+
+                if (this.pauseBotToggle) {
+                    this.pauseBotToggle.checked = config.BOT_PAUSED === 'true';
+                }
                 
-                // Load group IDs - this will be handled by the groups manager
+                if (this.maintenanceModeToggle) {
+                    this.maintenanceModeToggle.checked = config.MAINTENANCE_MODE === 'true';
+                }
+                
+                if (this.autoMediaToggle) {
+                    this.autoMediaToggle.checked = config.ENABLE_AUTO_MEDIA_DOWNLOAD === 'true';
+                }
+                
                 if (groupsManager && config.ALLOWED_DOWNLOAD_GROUPS) {
                     groupsManager.loadGroups(config.ALLOWED_DOWNLOAD_GROUPS);
                 }
@@ -166,7 +200,6 @@ const configManager = {
             console.error('Error loading configuration:', error);
             showToast('Error loading configuration: ' + (error.message || 'Unknown error'), 'error');
             
-            // Redirect to login if appropriate
             if (error.message && error.message.includes('Authentication required')) {
                 setTimeout(() => {
                     window.location.href = '/login.html';
@@ -177,7 +210,6 @@ const configManager = {
     
     updateConfig: async function(key, value) {
         try {
-            // Get current config first
             const response = await fetch('/api/config');
             const data = await response.json();
             
@@ -185,7 +217,6 @@ const configManager = {
                 const config = data.config;
                 config[key] = value;
                 
-                // Send updated config
                 const updateResponse = await fetch('/api/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

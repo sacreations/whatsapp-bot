@@ -116,6 +116,19 @@ const config = {
     return this.get('DISABLE_READ_RECEIPTS', 'false') === 'true';
   },
   
+  // New properties
+  get BOT_PAUSED() {
+    return this.get('BOT_PAUSED', 'false') === 'true';
+  },
+  
+  get MAINTENANCE_MODE() {
+    return this.get('MAINTENANCE_MODE', 'false') === 'true';
+  },
+  
+  get ENABLE_AUTO_MEDIA_DOWNLOAD() {
+    return this.get('ENABLE_AUTO_MEDIA_DOWNLOAD', 'true') === 'true';
+  },
+  
   // Create required directories
   createDirectories: () => {
     const dirs = [config.DOWNLOAD_FOLDER];
