@@ -160,6 +160,11 @@ app.get('/api/config', requireAuth, (req, res) => {
       config.ENABLE_AUTO_MEDIA_DOWNLOAD = 'true';
     }
     
+    // Make sure AI_ALLOWED_GROUPS exists even if not in the file
+    if (config.AI_ALLOWED_GROUPS === undefined) {
+      config.AI_ALLOWED_GROUPS = '';
+    }
+    
     // Don't expose password
     delete config.ADMIN_PASSWORD;
     

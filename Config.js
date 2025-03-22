@@ -128,6 +128,22 @@ const config = {
   get ENABLE_AUTO_MEDIA_DOWNLOAD() {
     return this.get('ENABLE_AUTO_MEDIA_DOWNLOAD', 'true') === 'true';
   },
+
+  get GROQ_API_KEY() {
+    return this.get('GROQ_API_KEY', '');
+  },
+
+  get ENABLE_AI_AUTO_REPLY() {
+    return this.get('ENABLE_AI_AUTO_REPLY', 'true') === 'true';
+  },
+
+  get ENABLE_AI_SEARCH() {
+    return this.get('ENABLE_AI_SEARCH', 'true') === 'true';
+  },
+
+  get AI_ALLOWED_GROUPS() { 
+    return this.get('AI_ALLOWED_GROUPS', '').split(',').filter(id => id.trim() !== ''); 
+  },
   
   // Create required directories
   createDirectories: () => {

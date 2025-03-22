@@ -4,6 +4,7 @@ import { downloadMedia } from '../Functions/Download_Functions/downloader.js';
 import fs from 'fs';
 import path from 'path';
 import { saveLink } from '../utils/linkStorage.js';
+import { processMessageWithAI } from '../ai/aiHandler.js';
 
 /**
  * Get message type from the message object
@@ -165,6 +166,33 @@ function isGroupAllowedForDownloads(groupId) {
 }
 
 /**
+ * Check if a group is allowed for AI auto-replies
+ * @param {string} groupId - The group ID to check
+ * @returns {boolean} - True if group is allowed, false otherwise
+ */
+function isGroupAllowedForAI(groupId) {
+    // If not a group, always allow - personal chats always get AI responses
+    if (!groupId.endsWith('@g.us')) {
+        return true;
+    }
+    
+    // Get the list of allowed groups for AI
+    const allowedGroups = config.AI_ALLOWED_GROUPS;
+    console.log(`Checking if group ${groupId} is in AI allowed list:`, allowedGroups);
+    
+    // If no specific groups are specified, don't allow AI in any group
+    if (!allowedGroups || allowedGroups.length === 0) {
+        console.log('No groups allowed for AI auto-reply');
+        return false;
+    }
+    
+    // Check if the group is in the allowed list
+    const isAllowed = allowedGroups.includes(groupId);
+    console.log(`Group ${groupId} allowed for AI: ${isAllowed}`);
+    return isAllowed;
+}
+
+/**
  * Main auto-reply handler
  */
 export async function handleAutoReply(m, sock) {
@@ -242,7 +270,62 @@ export async function handleAutoReply(m, sock) {
             return true;
         }
         
-        // Simple auto-responses - these can work in both private and group chats
+        // AI-powered auto-reply for text messages
+        if (messageType === 'text' && messageText) {
+            // Skip AI processing if message starts with command prefix
+            if (messageText.startsWith(config.PREFIX)) {
+                return false;
+            }
+            
+            // Check if this chat is allowed to use AI
+            if (isGroup && !isGroupAllowedForAI(m.key.remoteJid)) {
+                // This group is not in the allowed list for AI
+                return false;
+            }
+            
+            // For groups, still require bot to be mentioned or it's a direct reply to bot's message
+            if (isGroup) {
+                const isBotMentioned = messageText.includes('@' + sock.user.id.split(':')[0]) || 
+                                      messageText.toLowerCase().includes(config.BOT_NAME.toLowerCase());
+                                      
+                const isReplyToBot = m.message?.extendedTextMessage?.contextInfo?.participant === sock.user.id;
+                
+                if (!isBotMentioned && !isReplyToBot) {
+                    return false;
+                }
+            }
+            
+            // Show typing indicator
+            await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+            
+            try {
+                // Process with AI
+                await message.react('🤖', m, sock); // React to show AI is processing
+                
+                // Check if AI and Search are both enabled
+                if (config.ENABLE_AI_AUTO_REPLY && config.ENABLE_AI_SEARCH) {
+                    const aiResponse = await processMessageWithAI(m, messageText, sock);
+                    // Send the AI response
+                    await message.reply(aiResponse, m, sock);
+                    await message.react('✅', m, sock); // Change reaction when done
+                    return true;
+                } 
+                // If only AI is enabled without search capability
+                else if (config.ENABLE_AI_AUTO_REPLY) {
+                    // Use regular AI response without search
+                    const aiResponse = await processMessageWithAI(m, messageText, sock);
+                    await message.reply(aiResponse, m, sock);
+                    await message.react('✅', m, sock);
+                    return true;
+                }
+                // Fall back to simple auto-responses if AI is disabled
+            } catch (error) {
+                console.error('Error processing AI response:', error);
+                // Fall back to simple auto-responses if AI fails
+            }
+        }
+        
+        // Simple auto-responses as fallback
         if (messageType === 'text') {
             const greetings = ['hi', 'hello', 'hey', 'hola', 'howdy'];
             
