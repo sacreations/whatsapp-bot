@@ -19,6 +19,7 @@ const dashboardManager = {
     aiTemperatureRange: null,
     tempValueDisplay: null,
     aiHtmlExtractToggle: null,
+    aiModelSelect: null,
     
     init: function() {
         // Initialize toggle elements
@@ -41,6 +42,7 @@ const dashboardManager = {
         this.aiTemperatureRange = document.getElementById('ai-temperature');
         this.tempValueDisplay = document.getElementById('temp-value');
         this.aiHtmlExtractToggle = document.getElementById('ai-html-extract-toggle');
+        this.aiModelSelect = document.getElementById('ai-model-select');
         
         // Set up event listeners for the toggles
         this.setupToggleListeners();
@@ -190,6 +192,14 @@ const dashboardManager = {
                 this.tempValueDisplay.textContent = temp.toFixed(1);
             });
         }
+        
+        // AI Model selection
+        if (this.aiModelSelect) {
+            this.aiModelSelect.addEventListener('change', () => {
+                const selectedModel = this.aiModelSelect.value;
+                this.updateConfigSetting('AI_MODEL', selectedModel, `AI Model set to ${selectedModel}`);
+            });
+        }
     },
     
     updateConfigSetting: async function(key, value, successMessage = null) {
@@ -330,6 +340,20 @@ const dashboardManager = {
                     const temp = parseFloat(config.AI_TEMPERATURE);
                     this.aiTemperatureRange.value = (temp * 10).toString();
                     this.tempValueDisplay.textContent = temp.toFixed(1);
+                }
+                
+                // Load AI model selection
+                if (this.aiModelSelect && config.AI_MODEL) {
+                    // Set the selected model
+                    const aiModelOptions = Array.from(this.aiModelSelect.options);
+                    const matchingOption = aiModelOptions.find(option => option.value === config.AI_MODEL);
+                    
+                    if (matchingOption) {
+                        this.aiModelSelect.value = config.AI_MODEL;
+                    } else {
+                        // If model not in list, default to LLaMA
+                        this.aiModelSelect.value = 'llama-3.3-70b-versatile';
+                    }
                 }
                 
             } else {

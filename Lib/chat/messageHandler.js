@@ -39,14 +39,33 @@ const message = {
             let image;
             
             if (source.startsWith('http')) {
-                // From URL
-                image = { url: source };
+                console.log(`Fetching image from URL: ${source}`);
+                
+                try {
+                    // Using axios to get image with timeout and retries
+                    const response = await axios.get(source, {
+                        timeout: 10000, // 10 seconds timeout
+                        responseType: 'arraybuffer',
+                        maxContentLength: 10 * 1024 * 1024, // 10MB max size
+                        validateStatus: status => status >= 200 && status < 300
+                    });
+                    
+                    // Extract image from response
+                    image = Buffer.from(response.data);
+                    console.log(`Successfully fetched image (${image.length} bytes)`);
+                } catch (fetchError) {
+                    console.error(`Error fetching image from URL: ${fetchError.message}`);
+                    throw new Error(`Could not fetch image: ${fetchError.message}`);
+                }
             } else if (fs.existsSync(source)) {
                 // From local file
                 image = fs.readFileSync(source);
             } else {
                 throw new Error('Invalid image source');
             }
+            
+            // Send image with better error handling
+            console.log(`Sending image (${image.length} bytes) with caption: ${caption}`);
             
             return await sock.sendMessage(
                 m.key.remoteJid, 
@@ -59,6 +78,7 @@ const message = {
             );
         } catch (error) {
             console.error("Error in sendImage:", error);
+            throw error; // Re-throw to allow caller to handle
         }
     },
     

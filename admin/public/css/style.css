@@ -1494,3 +1494,26 @@ textarea.form-control {
 .ai-stat-card .stat-info h3 {
     color: rgba(255, 255, 255, 0.8);
 }
+
+/* Add styling for the select dropdown */
+.select-wrapper {
+    width: 200px;
+    display: flex;
+    align-items: center;
+}
+
+.toggle-card .select-wrapper select {
+    width: 100%;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    font-size: 14px;
+    color: #333;
+}
+
+.toggle-card .select-wrapper select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}

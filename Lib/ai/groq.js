@@ -16,6 +16,18 @@ export function createGroqClient() {
 }
 
 /**
+ * Filter out thinking part from model responses
+ * @param {string} text - The model's response text
+ * @returns {string} - Filtered text without thinking part
+ */
+function filterThinkingPart(text) {
+    if (!text) return "";
+    
+    // Replace <think>...</think> blocks with empty string
+    return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+}
+
+/**
  * Get a completion from Groq API
  * 
  * @param {Array} messages - Array of message objects with role and content
@@ -30,19 +42,35 @@ export async function getGroqCompletion(messages, options = {}) {
             throw new Error('Failed to initialize Groq client');
         }
         
+        // Get model from config, default to LLaMA if not set
+        const model = config.AI_MODEL || "llama-3.3-70b-versatile";
+        console.log(`Using AI model: ${model}`);
+        
         const defaultOptions = {
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.7,
+            model: model,
+            temperature: parseFloat(config.AI_TEMPERATURE || "0.7"),
             max_completion_tokens: 1024,
             top_p: 1,
             stream: false
         };
         
+        // Merge with custom options
+        const finalOptions = { ...defaultOptions, ...options };
+        
+        // Make the API call
         const response = await client.chat.completions.create({
             messages,
-            ...defaultOptions,
-            ...options
+            ...finalOptions
         });
+        
+        // If using the deepseek model, filter out the thinking part from responses
+        if (model === "deepseek-r1-distill-qwen-32b" && response.choices && response.choices.length > 0) {
+            for (const choice of response.choices) {
+                if (choice.message && choice.message.content) {
+                    choice.message.content = filterThinkingPart(choice.message.content);
+                }
+            }
+        }
         
         return response;
     } catch (error) {

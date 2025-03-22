@@ -72,22 +72,58 @@ export async function wallpaperSearch(query) {
     try {
         // Encode the query for URL
         const encodedQuery = encodeURIComponent(query);
+        console.log(`Searching for wallpapers: ${encodedQuery}`);
         
         // Make request to the Wallpaper API
         const response = await axios.get(
-            `https://delirius-apiofc.vercel.app/search/wallpapers?q=${encodedQuery}`
+            `https://delirius-apiofc.vercel.app/search/wallpapers?q=${encodedQuery}`,
+            { timeout: 15000 } // Add 15s timeout to prevent hanging
         );
         
-        // Check if the response is successful
-        if (response.data && response.data.status === true) {
-            return { type: 'wallpaper', results: response.data.data };
+        // Check if the response is successful and contains data
+        if (response.data && response.data.status === true && 
+            response.data.data && Array.isArray(response.data.data)) {
+            
+            // Log success details
+            console.log(`Wallpaper search successful. Found ${response.data.data.length} results.`);
+            
+            // Verify image URLs
+            const validResults = response.data.data.filter(item => 
+                item && item.image && typeof item.image === 'string' && 
+                item.image.startsWith('http')
+            );
+            
+            console.log(`${validResults.length} wallpapers have valid image URLs`);
+            
+            // Return a properly structured result
+            return { 
+                type: 'wallpaper', 
+                results: validResults,
+                query: query
+            };
         } else {
-            console.error('Error in wallpaper search response:', response.data);
-            return { type: 'wallpaper', results: [] };
+            // Log the issue with the response
+            if (!response.data) {
+                console.error('Empty response from wallpaper API');
+            } else if (!response.data.status) {
+                console.error('API returned error status:', response.data);
+            } else if (!response.data.data || !Array.isArray(response.data.data)) {
+                console.error('Invalid data format in API response:', response.data);
+            }
+            
+            // Return empty results
+            return { type: 'wallpaper', results: [], query: query };
         }
     } catch (error) {
-        console.error('Error performing wallpaper search:', error);
-        return { type: 'wallpaper', results: [] };
+        console.error('Error performing wallpaper search:', error.message);
+        
+        // Return empty results with error info
+        return { 
+            type: 'wallpaper', 
+            results: [], 
+            query: query,
+            error: error.message 
+        };
     }
 }
 
@@ -183,14 +219,24 @@ function formatWikipediaResults(results) {
  * Format Wallpaper search results
  */
 function formatWallpaperResults(results) {
+    if (!results || results.length === 0) {
+        return "I couldn't find any wallpapers matching your request.";
+    }
+    
     let formattedText = "I found these wallpapers for you:\n\n";
     
     results.forEach((result, index) => {
-        formattedText += `${index + 1}. ${result.title}\n`;
-        formattedText += `   Direct link: ${result.image}\n\n`;
+        const title = result.title || `Wallpaper ${index + 1}`;
+        formattedText += `${index + 1}. ${title}\n`;
+        
+        if (result.image) {
+            formattedText += `   Image URL: ${result.image}\n`;
+        }
+        
+        formattedText += '\n';
     });
     
-    formattedText += "I'll send these images to you right after this message.";
+    formattedText += "I'll send these images directly to this chat.";
     
     return formattedText;
 }

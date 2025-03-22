@@ -108,11 +108,38 @@ export async function processMessageWithAI(m, userText, sock) {
                 try {
                     // Extract the search term
                     const searchTerm = extractSearchTerm(userText, 'wallpaper');
+                    console.log(`Searching wallpapers for: "${searchTerm}"`);
+                    
+                    // Fetch wallpapers from API
                     searchResults = await wallpaperSearch(searchTerm);
-                    console.log(`Found ${searchResults.results.length} wallpapers`);
+                    console.log(`Found ${searchResults.results?.length || 0} wallpapers`);
+                    
+                    // Only continue if we actually found wallpapers
+                    if (!searchResults.results || searchResults.results.length === 0) {
+                        console.log("No wallpapers found, using regular prompt");
+                        promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                        break;
+                    }
                     
                     // Create prompt with wallpaper results
                     promptMessages = createWallpaperPrompt(userText, searchResults, getMessageHistory(senderId));
+                    
+                    // Generate AI response
+                    const response = await getGroqCompletion(promptMessages);
+                    const aiReply = response.choices[0]?.message?.content || "I found some wallpapers for you. I'll send them right away.";
+                    
+                    // Update conversation history with this exchange
+                    updateMessageHistory(senderId, userText, aiReply);
+                    
+                    // First send the reply text
+                    await message.reply(aiReply, m, sock);
+                    
+                    // Then send the wallpaper images directly
+                    await sendWallpaperImages(m, sock, searchResults.results);
+                    
+                    // Return the AI reply to prevent duplicate response
+                    return aiReply;
+                    
                 } catch (searchError) {
                     console.error('Error during wallpaper search:', searchError);
                     // Fall back to regular prompt if search fails
@@ -232,43 +259,67 @@ export async function processMessageWithAI(m, userText, sock) {
  * @param {Object} m - Message object
  * @param {Object} sock - Socket object
  * @param {Array} wallpapers - Array of wallpaper results
- * @param {string} aiReply - AI's text reply
  */
-async function sendWallpaperImages(m, sock, wallpapers, aiReply) {
+async function sendWallpaperImages(m, sock, wallpapers) {
+    if (!wallpapers || wallpapers.length === 0) {
+        console.log("No wallpapers to send");
+        return;
+    }
+    
     try {
-        // Show typing indicator briefly after sending text
+        // Show typing indicator
         await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+        
+        console.log(`Preparing to send ${Math.min(wallpapers.length, 3)} wallpapers`);
         
         // Send up to 3 images to avoid spamming
         const wallpapersToSend = wallpapers.slice(0, 3);
         
-        // Send the first image as a reply to the original message
-        if (wallpapersToSend.length > 0) {
-            // Send first with caption if we haven't sent a text reply yet
-            await message.sendImage(
-                wallpapersToSend[0].image,
-                "", // No caption, as we already sent the text
-                m,
-                sock
-            );
+        for (let i = 0; i < wallpapersToSend.length; i++) {
+            const wallpaper = wallpapersToSend[i];
             
-            // Send remaining images without caption
-            for (let i = 1; i < wallpapersToSend.length; i++) {
+            try {
+                console.log(`Sending wallpaper ${i+1}/${wallpapersToSend.length}: ${wallpaper.image}`);
+                
+                // Verify the image URL is valid
+                if (!wallpaper.image || !wallpaper.image.startsWith('http')) {
+                    console.log(`Invalid image URL for wallpaper ${i+1}: ${wallpaper.image}`);
+                    continue;
+                }
+                
+                // Add a small delay between sending images
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+                }
+                
+                // Send the image
                 await message.sendImage(
-                    wallpapersToSend[i].image,
-                    "",
+                    wallpaper.image,
+                    i === 0 ? "Wallpaper found for you" : "", // Add caption only to first image
                     m,
                     sock
                 );
                 
-                // Small delay between images to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 500));
+                console.log(`Successfully sent wallpaper ${i+1}`);
+                
+            } catch (error) {
+                console.error(`Error sending wallpaper ${i+1}:`, error);
             }
         }
+        
+        // React with success emoji after sending all wallpapers
+        await message.react('✅', m, sock);
+        
     } catch (error) {
-        console.error('Error sending wallpaper images:', error);
-        // If error sending images, at least let the user know
-        await message.reply("I found some wallpapers but couldn't send them. You can check the links in my previous message.", m, sock);
+        console.error('Error in sendWallpaperImages:', error);
+        
+        // If error sending images, let the user know
+        try {
+            await message.reply("I found some wallpapers but had trouble sending them. Please try again.", m, sock);
+        } catch (replyError) {
+            console.error('Error sending error message:', replyError);
+        }
     }
 }
 

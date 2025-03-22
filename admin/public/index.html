@@ -143,6 +143,34 @@
                                     <span class="slider"></span>
                                 </label>
                             </div>
+                            
+                            <!-- AI Model Selection -->
+                            <div class="toggle-card">
+                                <div class="toggle-info">
+                                    <h4>AI Model</h4>
+                                    <p>Select the AI model to use for responses</p>
+                                </div>
+                                <div class="select-wrapper">
+                                    <select id="ai-model-select" class="form-control">
+                                        <option value="llama-3.3-70b-versatile">LLaMA 3.3 70B</option>
+                                        <option value="qwen-2.5-32b">Qwen 2.5 32B</option>
+                                        <option value="qwen-2.5-coder-32b">Qwen 2.5 Coder 32B</option>
+                                        <option value="deepseek-r1-distill-qwen-32b">DeepSeek R1 Distill Qwen 32B</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Temperature Setting -->
+                            <div class="toggle-card">
+                                <div class="toggle-info">
+                                    <h4>AI Temperature</h4>
+                                    <p>Adjust the temperature for AI responses</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="ai-temperature-toggle">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
                         </div>
                         
                         <div class="api-key-section mt-4">
