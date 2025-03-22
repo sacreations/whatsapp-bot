@@ -143,3 +143,125 @@ bot({
         return await message.reply(`Error: ${error.message}`, m, sock);
     }
 });
+
+bot({
+    pattern: 'poststatus',
+    fromMe: true,
+    desc: 'Post media as a WhatsApp status',
+    usage: 'Reply to a media message or attach media with caption'
+}, async (m, sock) => {
+    try {
+        // Check if the message has media or is replying to a message with media
+        const quotedMsg = m.message.extendedTextMessage?.contextInfo?.quotedMessage;
+        
+        let mediaType, mediaUrl, caption, mediaBuffer;
+        
+        // Get caption text if any
+        caption = m.message.imageMessage?.caption || 
+                 m.message.videoMessage?.caption || 
+                 m.message.extendedTextMessage?.text || '';
+        
+        if (caption.startsWith('.poststatus ')) {
+            caption = caption.slice('.poststatus '.length);
+        }
+        
+        // Try to get media from quoted message or original message
+        if (quotedMsg) {
+            if (quotedMsg.imageMessage) {
+                mediaType = 'image';
+                mediaBuffer = await downloadMediaMessage(
+                    { message: { imageMessage: quotedMsg.imageMessage } },
+                    'buffer',
+                    {},
+                    { logger }
+                );
+            } else if (quotedMsg.videoMessage) {
+                mediaType = 'video';
+                mediaBuffer = await downloadMediaMessage(
+                    { message: { videoMessage: quotedMsg.videoMessage } },
+                    'buffer',
+                    {},
+                    { logger }
+                );
+            } else {
+                return await message.reply('Please reply to an image or video to post as status', m, sock);
+            }
+        } else if (m.message.imageMessage) {
+            mediaType = 'image';
+            mediaBuffer = await downloadMediaMessage(m, 'buffer', {}, { logger });
+        } else if (m.message.videoMessage) {
+            mediaType = 'video';
+            mediaBuffer = await downloadMediaMessage(m, 'buffer', {}, { logger });
+        } else {
+            return await message.reply('Please send an image or video to post as status, or reply to one', m, sock);
+        }
+        
+        // Temporary file path to save the media
+        const timestamp = Date.now();
+        const tempMediaPath = path.join(config.DOWNLOAD_FOLDER, `status_${timestamp}_temp.${mediaType === 'image' ? 'jpg' : 'mp4'}`);
+        const optimizedMediaPath = path.join(config.DOWNLOAD_FOLDER, `status_${timestamp}.${mediaType === 'image' ? 'jpg' : 'mp4'}`);
+        
+        // Save the media to file
+        fs.writeFileSync(tempMediaPath, mediaBuffer);
+        
+        // If it's a video, optimize it for WhatsApp status
+        if (mediaType === 'video') {
+            try {
+                await message.react('⏳', m, sock);
+                await message.reply('Optimizing video for status...', m, sock);
+                
+                // Import the optimizeVideoForWhatsApp function
+                const { optimizeVideoForWhatsApp } = await import('../Lib/Functions/Download_Functions/downloader.js');
+                
+                // Optimize the video specifically for status
+                await optimizeVideoForWhatsApp(tempMediaPath, optimizedMediaPath, {
+                    maxDuration: 30, // WhatsApp status max duration
+                    maxWidth: 1280,
+                    maxHeight: 720,
+                    forStatus: true
+                });
+                
+                // Use the optimized video for posting
+                if (fs.existsSync(tempMediaPath)) {
+                    fs.unlinkSync(tempMediaPath); // Remove the temporary file
+                }
+            } catch (optError) {
+                console.error('Error optimizing video for status:', optError);
+                // If optimization fails, use the original
+                fs.copyFileSync(tempMediaPath, optimizedMediaPath);
+            }
+        } else {
+            // For images, just copy the file
+            fs.copyFileSync(tempMediaPath, optimizedMediaPath);
+            fs.unlinkSync(tempMediaPath);
+        }
+        
+        // Read the media from the optimized file
+        const statusMediaBuffer = fs.readFileSync(optimizedMediaPath);
+        
+        // Post the status
+        await message.react('⏳', m, sock);
+        
+        if (mediaType === 'image') {
+            await sock.sendMessage('status@broadcast', {
+                image: statusMediaBuffer,
+                caption: caption
+            });
+        } else {
+            await sock.sendMessage('status@broadcast', {
+                video: statusMediaBuffer,
+                caption: caption
+            });
+        }
+        
+        // Clean up the file
+        fs.unlinkSync(optimizedMediaPath);
+        
+        await message.react('✅', m, sock);
+        await message.reply('Status posted successfully!', m, sock);
+    } catch (error) {
+        console.error('Error posting status:', error);
+        await message.react('❌', m, sock);
+        await message.reply(`Error posting status: ${error.message}`, m, sock);
+    }
+});

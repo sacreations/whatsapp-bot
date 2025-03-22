@@ -354,73 +354,293 @@ async function downloadFromTwitter(url) {
 }
 
 /**
- * Download media from social media platforms with optimization
+ * Optimize video for WhatsApp compatibility
+ * @param {string} inputPath - Path to input video
+ * @param {string} outputPath - Path for optimized output video
+ * @param {Object} options - Options for optimization
+ * @returns {Promise<string>} - Path to optimized video
+ */
+async function optimizeVideoForWhatsApp(inputPath, outputPath, options = {}) {
+    try {
+        console.log(`Optimizing video for WhatsApp compatibility: ${inputPath}`);
+        
+        const {
+            maxDuration = 30, // WhatsApp status max duration in seconds
+            maxWidth = 1280,  // Max width for good compatibility
+            maxHeight = 720,  // Max height for good compatibility
+            targetFileSize = 15 * 1024 * 1024, // 15MB target (WhatsApp limit is 16MB)
+            forStatus = false // Special flag for status videos
+        } = options;
+        
+        // Get video information
+        const videoInfo = await getVideoInfo(inputPath);
+        console.log('Video info:', videoInfo);
+        
+        // Determine output parameters based on input video
+        const duration = videoInfo.duration || 0;
+        const width = videoInfo.width || 1280;
+        const height = videoInfo.height || 720;
+        const fileSize = videoInfo.size || 0;
+        
+        // Calculate target bitrate to achieve desired file size
+        // Formula: (target size in bits) / (duration in seconds)
+        let targetBitrate = Math.floor((targetFileSize * 8) / duration);
+        
+        // Cap bitrate for very short videos to avoid quality issues
+        if (duration < 5) {
+            targetBitrate = Math.min(targetBitrate, 4000000); // 4Mbps max for short videos
+        }
+        
+        // Determine resolution scaling
+        let vfParams = [];
+        if (width > maxWidth || height > maxHeight) {
+            vfParams.push(`scale=min(${maxWidth},iw):min(${maxHeight},ih):force_original_aspect_ratio=decrease`);
+        }
+        
+        // Add status-specific optimizations if needed
+        if (forStatus) {
+            // WhatsApp status requires specific encoding parameters
+            vfParams.push('format=yuv420p'); // Ensure YUV 4:2:0 pixel format compatibility
+        }
+        
+        // Build the filter string
+        const vfString = vfParams.length > 0 ? `-vf "${vfParams.join(',')}"` : '';
+        
+        // Trim video if it's longer than maxDuration and forStatus is true
+        const trimParams = (forStatus && duration > maxDuration) ? 
+            `-t ${maxDuration}` : '';
+        
+        // Build ffmpeg command with optimized parameters for WhatsApp
+        const ffmpegCmd = `ffmpeg -i "${inputPath}" ${trimParams} ${vfString} ` +
+            `-c:v libx264 -profile:v baseline -level 3.0 ` +
+            `-preset medium -crf 23 -maxrate ${targetBitrate} -bufsize ${targetBitrate * 2} ` +
+            `-c:a aac -b:a 128k -ar 44100 -strict experimental ` +
+            `-movflags +faststart -pix_fmt yuv420p "${outputPath}" -y`;
+        
+        console.log(`Running FFMPEG command: ${ffmpegCmd}`);
+        
+        // Execute the command
+        const { stdout, stderr } = await execAsync(ffmpegCmd);
+        
+        // Check if output file exists
+        if (!fs.existsSync(outputPath)) {
+            throw new Error('FFMPEG failed to create output file');
+        }
+        
+        // Get optimized video info
+        const optimizedInfo = await getVideoInfo(outputPath);
+        console.log('Optimized video info:', optimizedInfo);
+        
+        return outputPath;
+    } catch (error) {
+        console.error('Error optimizing video for WhatsApp:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get video information using ffprobe
+ * @param {string} videoPath - Path to video file
+ * @returns {Promise<Object>} - Video information
+ */
+async function getVideoInfo(videoPath) {
+    try {
+        // Get file size
+        const stats = fs.statSync(videoPath);
+        const fileSizeInBytes = stats.size;
+        
+        // Get video metadata with ffprobe
+        const ffprobeCmd = `ffprobe -v error -select_streams v:0 -show_entries stream=width,height,duration,codec_name -show_entries format=duration -of json "${videoPath}"`;
+        const { stdout } = await execAsync(ffprobeCmd);
+        
+        const data = JSON.parse(stdout);
+        const stream = data.streams && data.streams[0] ? data.streams[0] : {};
+        const format = data.format || {};
+        
+        return {
+            width: stream.width,
+            height: stream.height,
+            // Use stream duration if available, fall back to format duration, or default to 0
+            duration: parseFloat(stream.duration || format.duration || 0),
+            codec: stream.codec_name,
+            size: fileSizeInBytes
+        };
+    } catch (error) {
+        console.error('Error getting video info:', error);
+        return { width: 0, height: 0, duration: 0, codec: null, size: 0 };
+    }
+}
+
+/**
+ * Download and process media from various platforms
  * @param {string} url - Media URL
- * @param {string} platform - Platform name
- * @param {object} options - Download options
- * @returns {string} - Path to downloaded and optimized file
+ * @param {string} platform - Platform name (YouTube, TikTok, etc.)
+ * @param {Object} options - Download options
+ * @returns {Promise<string>} - Path to downloaded media
  */
 export async function downloadMedia(url, platform, options = {}) {
     try {
-        console.log(`Downloading media from ${platform}: ${url}`);
+        // Create download directory if it doesn't exist
+        if (!fs.existsSync(config.DOWNLOAD_FOLDER)) {
+            fs.mkdirSync(config.DOWNLOAD_FOLDER, { recursive: true });
+        }
         
-        let downloadedPath = '';
+        // Generate a unique filename
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const tempOutputPath = path.join(config.DOWNLOAD_FOLDER, `${platform}_${timestamp}_${randomStr}_temp.mp4`);
+        const finalOutputPath = path.join(config.DOWNLOAD_FOLDER, `${platform}_${timestamp}_${randomStr}.mp4`);
         
-        // Set compression options based on platform or user preferences
-        const compressionOptions = {
-            compressionLevel: options.compressionLevel || getPlatformCompressionLevel(platform),
-            maxResolution: options.maxResolution || 720,
-            targetSize: options.targetSize || 0
-        };
+        // Additional options
+        const isAudio = options.isAudio === true;
         
-        console.log(`Using compression level: ${compressionOptions.compressionLevel}`);
+        console.log(`Downloading ${platform} ${isAudio ? 'audio' : 'video'}`);
+
+        // Download based on platform
+        let downloadPath;
         
         switch(platform) {
             case 'YouTube':
                 // Use YouTube downloader with isAudio option
-                downloadedPath = await (options.isAudio 
+                downloadPath = await (options.isAudio 
                     ? downloadYoutubeAudio(url, generateFilename('youtube', 'mp3'))
                     : downloadYoutubeVideo(url, generateFilename('youtube', 'mp4')));
                 break;
                 
             case 'TikTok':
-                downloadedPath = await downloadFromTikTok(url);
+                downloadPath = await downloadFromTikTok(url);
                 break;
                 
             case 'Instagram':
-                downloadedPath = await downloadFromInstagram(url);
+                downloadPath = await downloadFromInstagram(url);
                 break;
                 
             case 'Facebook':
-                downloadedPath = await downloadFromFacebook(url);
+                downloadPath = await downloadFromFacebook(url);
                 break;
                 
             case 'Twitter':
-                downloadedPath = await downloadFromTwitter(url);
+                downloadPath = await downloadFromTwitter(url);
                 break;
                 
             default:
                 throw new Error(`Unsupported platform: ${platform}`);
         }
         
-        // Check if downloaded path is an object (some downloaders return object with filepath)
-        if (typeof downloadedPath === 'object' && downloadedPath.filePath) {
-            downloadedPath = downloadedPath.filePath;
+        // After download, process the video to ensure universal compatibility
+        if (!isAudio && fs.existsSync(downloadPath) && downloadPath.endsWith('.mp4')) {
+            return await optimizeVideoForUniversalCompatibility(downloadPath, finalOutputPath);
         }
         
-        // Optimize the file based on format
-        const outputFormat = options.isAudio ? 'mp3' : 'mp4';
-        const optimizedPath = await remuxMedia(downloadedPath, outputFormat, compressionOptions);
-        
-        // Delete the original file if optimization was successful and created a new file
-        if (optimizedPath !== downloadedPath && fs.existsSync(optimizedPath)) {
-            fs.unlinkSync(downloadedPath);
-        }
-        
-        return optimizedPath;
+        // Return the downloaded path for non-video files or audio
+        return downloadPath;
     } catch (error) {
-        console.error(`Error downloading from ${platform}:`, error);
+        console.error(`Error downloading ${platform} content:`, error);
         throw error;
+    }
+}
+
+/**
+ * Optimize video for universal compatibility (WhatsApp status + all devices)
+ * @param {string} inputPath - Path to input video
+ * @param {string} outputPath - Path for optimized output video
+ * @returns {Promise<string>} - Path to optimized video
+ */
+async function optimizeVideoForUniversalCompatibility(inputPath, outputPath) {
+    try {
+        console.log(`Optimizing video for universal compatibility: ${inputPath}`);
+        
+        // Get video information
+        const videoInfo = await getVideoInfo(inputPath);
+        console.log('Original video info:', videoInfo);
+        
+        // Determine output parameters based on input video
+        const duration = videoInfo.duration || 0;
+        const width = videoInfo.width || 1280;
+        const height = videoInfo.height || 720;
+        const fileSize = videoInfo.size || 0;
+        
+        // For universal compatibility:
+        // 1. Max resolution: 1280x720 (HD)
+        // 2. Codec: H.264 with baseline profile level 3.0
+        // 3. Format: MP4 with fast start for quicker playback
+        // 4. Pixel format: YUV420P for maximum device compatibility
+        // 5. Reasonable bitrate based on duration to keep file size manageable
+        
+        // Status videos should be 30 seconds or less, but we don't auto-trim non-status videos
+        const shouldTrim = duration > 180; // Only trim extremely long videos (3+ minutes)
+        const targetDuration = shouldTrim ? 180 : duration;
+        
+        // Target file size: ~15MB (WhatsApp limit for status is ~16MB)
+        const targetFileSize = 15 * 1024 * 1024; // 15MB in bytes
+        
+        // Calculate target bitrate to achieve desired file size
+        // Formula: (target size in bits) / (duration in seconds)
+        let targetBitrate = Math.floor((targetFileSize * 8) / targetDuration);
+        
+        // Cap bitrate for very short videos to avoid quality issues
+        if (duration < 5) {
+            targetBitrate = Math.min(targetBitrate, 4000000); // 4Mbps max for short videos
+        }
+        
+        // Ensure bitrate is reasonable
+        targetBitrate = Math.min(Math.max(targetBitrate, 500000), 6000000); // Between 500kbps and 6Mbps
+        
+        // Set up video filter parameters
+        let vfParams = [];
+        
+        // Scale video if needed
+        if (width > 1280 || height > 720) {
+            vfParams.push('scale=min(1280,iw):min(720,ih):force_original_aspect_ratio=decrease');
+        }
+        
+        // Ensure YUV 4:2:0 pixel format for maximum compatibility
+        vfParams.push('format=yuv420p');
+        
+        // Build the filter string
+        const vfString = vfParams.length > 0 ? `-vf "${vfParams.join(',')}"` : '';
+        
+        // Trim parameter (only for very long videos)
+        const trimParams = shouldTrim ? `-t ${targetDuration}` : '';
+        
+        // Build ffmpeg command with universal compatibility parameters
+        const ffmpegCmd = `ffmpeg -i "${inputPath}" ${trimParams} ${vfString} ` +
+            `-c:v libx264 -profile:v baseline -level 3.0 ` +
+            `-preset medium -crf 23 -maxrate ${targetBitrate} -bufsize ${targetBitrate * 2} ` +
+            `-c:a aac -b:a 128k -ar 44100 -strict experimental ` +
+            `-movflags +faststart -pix_fmt yuv420p "${outputPath}" -y`;
+        
+        console.log(`Running FFMPEG command: ${ffmpegCmd}`);
+        
+        // Execute the command
+        const { stdout, stderr } = await execAsync(ffmpegCmd);
+        
+        // Check if output file exists
+        if (!fs.existsSync(outputPath)) {
+            throw new Error('FFMPEG failed to create output file');
+        }
+        
+        // Get optimized video info
+        const optimizedInfo = await getVideoInfo(outputPath);
+        console.log('Optimized video info:', optimizedInfo);
+        
+        // Show file size reduction
+        const originalSize = videoInfo.size;
+        const optimizedSize = optimizedInfo.size;
+        const percentReduction = ((originalSize - optimizedSize) / originalSize * 100).toFixed(2);
+        console.log(`File size reduction: ${formatSize(originalSize)} → ${formatSize(optimizedSize)} (${percentReduction}% reduction)`);
+        
+        // Delete the original file to save space
+        if (inputPath !== outputPath && fs.existsSync(inputPath)) {
+            fs.unlinkSync(inputPath);
+            console.log(`Deleted temporary file: ${inputPath}`);
+        }
+        
+        return outputPath;
+    } catch (error) {
+        console.error('Error optimizing video for universal compatibility:', error);
+        // If optimization fails, return the original file path
+        return inputPath;
     }
 }
 

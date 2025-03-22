@@ -305,3 +305,128 @@ bot({
         return await message.reply(`Error: ${error.message}`, m, sock);
     }
 });
+
+// Status-ready video converter
+bot({
+    pattern: 'statusready',
+    fromMe: false,
+    desc: 'Convert video to be compatible with WhatsApp status',
+    usage: 'Reply to a video message or use with a URL'
+}, async (m, sock, args) => {
+    try {
+        await message.react('⏳', m, sock);
+        
+        let videoPath;
+        let tempOutput;
+        
+        // Case 1: User replied to a video message
+        if (m.message?.extendedTextMessage?.contextInfo?.quotedMessage?.videoMessage) {
+            const quotedMsg = m.message.extendedTextMessage.contextInfo.quotedMessage;
+            
+            // Download the video
+            const buffer = await downloadMediaMessage(
+                { message: { videoMessage: quotedMsg.videoMessage } },
+                'buffer',
+                {},
+                { logger }
+            );
+            
+            // Save the buffer to a temporary file
+            const timestamp = Date.now();
+            const randomStr = Math.random().toString(36).substring(2, 8);
+            tempOutput = path.join(config.DOWNLOAD_FOLDER, `status_temp_${timestamp}_${randomStr}.mp4`);
+            videoPath = path.join(config.DOWNLOAD_FOLDER, `status_${timestamp}_${randomStr}.mp4`);
+            
+            fs.writeFileSync(tempOutput, buffer);
+        }
+        // Case 2: User provided a URL
+        else if (args && args.startsWith('http')) {
+            const url = args;
+            
+            // First check if this is a social media URL
+            const platform = detectPlatform(url);
+            
+            if (platform) {
+                await message.reply(`Downloading ${platform} video and optimizing for status...`, m, sock);
+                
+                try {
+                    // Download using the regular media downloader
+                    tempOutput = await downloadMedia(url, platform);
+                    
+                    // Set up the final output path
+                    const timestamp = Date.now();
+                    const randomStr = Math.random().toString(36).substring(2, 8);
+                    videoPath = path.join(config.DOWNLOAD_FOLDER, `status_${timestamp}_${randomStr}.mp4`);
+                } catch (dlError) {
+                    await message.react('❌', m, sock);
+                    return await message.reply(`Error downloading video: ${dlError.message}`, m, sock);
+                }
+            } else {
+                await message.react('❌', m, sock);
+                return await message.reply('Please provide a valid social media URL or reply to a video', m, sock);
+            }
+        } else {
+            await message.react('❌', m, sock);
+            return await message.reply('Please reply to a video or provide a social media URL', m, sock);
+        }
+        
+        // Now we have the video file at tempOutput, optimize it for status
+        await message.reply('Processing video for WhatsApp status compatibility...', m, sock);
+        
+        try {
+            // Import the optimizeVideoForWhatsApp function
+            const { optimizeVideoForWhatsApp } = await import('../Lib/Functions/Download_Functions/downloader.js');
+            
+            // Optimize the video specifically for status
+            await optimizeVideoForWhatsApp(tempOutput, videoPath, {
+                maxDuration: 30,
+                maxWidth: 1280,
+                maxHeight: 720,
+                forStatus: true
+            });
+            
+            // Clean up temp file
+            if (fs.existsSync(tempOutput) && tempOutput !== videoPath) {
+                fs.unlinkSync(tempOutput);
+            }
+            
+            // Send the optimized video back to the user
+            await message.reply('Here is your status-ready video. You can now post it as a status:', m, sock);
+            await message.sendVideo(videoPath, 'Status-ready video', m, sock);
+            
+            // Clean up output file after sending
+            if (fs.existsSync(videoPath)) {
+                fs.unlinkSync(videoPath);
+            }
+            
+            await message.react('✅', m, sock);
+        } catch (optimizeError) {
+            console.error('Error optimizing video for status:', optimizeError);
+            await message.react('❌', m, sock);
+            return await message.reply(`Error optimizing video for status: ${optimizeError.message}`, m, sock);
+        }
+    } catch (error) {
+        console.error('Error in statusready command:', error);
+        await message.react('❌', m, sock);
+        return await message.reply(`Error processing video: ${error.message}`, m, sock);
+    }
+});
+
+// Helper function to detect social media platform
+function detectPlatform(url) {
+    const platforms = [
+        { name: 'YouTube', regex: /youtu\.?be(.com)?/ },
+        { name: 'TikTok', regex: /tiktok\.com/ },
+        { name: 'Instagram', regex: /instagram\.com/ },
+        { name: 'Facebook', regex: /facebook\.com|fb\.watch/ },
+        { name: 'Twitter', regex: /twitter\.com|x\.com/ }
+    ];
+    
+    for (const platform of platforms) {
+        if (platform.regex.test(url)) {
+            return platform.name;
+        }
+    }
+    
+    return null;
+}
