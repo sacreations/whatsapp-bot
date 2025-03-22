@@ -37,6 +37,40 @@ export async function processMessageWithAI(m, userText, sock) {
         let promptMessages;
         let searchResults = null;
         
+        // Log the incoming message
+        console.log(`AI processing message: "${userText}"`);
+        
+        // For simple factual questions, prioritize search
+        if (isFastFactQuestion(userText)) {
+            console.log("Detected fast fact question, prioritizing search");
+            try {
+                await message.react('🔍', m, sock);
+                searchResults = await googleSearch(userText);
+                console.log(`Fast fact search found ${searchResults.results?.length || 0} results`);
+                
+                if (searchResults.results && searchResults.results.length > 0) {
+                    promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
+                    
+                    // Track search stats if available
+                    if (global.aiStats) {
+                        global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
+                    }
+                    
+                    const response = await getGroqCompletion(promptMessages);
+                    const aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
+                    
+                    // Update conversation history with this exchange
+                    updateMessageHistory(senderId, userText, aiReply);
+                    
+                    return aiReply;
+                }
+                // If no search results or search failed, continue with normal classification
+            } catch (searchError) {
+                console.error('Error during fast fact search:', searchError);
+                // Continue with normal classification
+            }
+        }
+        
         // Classify the query type using AI instead of keyword detection
         const queryType = await classifyQueryType(userText);
         console.log(`Query classified as: ${queryType}`);
@@ -98,10 +132,21 @@ export async function processMessageWithAI(m, userText, sock) {
                 
                 try {
                     searchResults = await googleSearch(userText);
-                    console.log(`Found ${searchResults.results.length} search results`);
+                    console.log(`Found ${searchResults.results?.length || 0} search results`);
                     
-                    // Create prompt with search results
-                    promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
+                    // Track search stats if available
+                    if (global.aiStats) {
+                        global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
+                    }
+                    
+                    // Only use search results if we actually found any
+                    if (searchResults.results && searchResults.results.length > 0) {
+                        // Create prompt with search results
+                        promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
+                    } else {
+                        console.log("No search results found, using regular prompt");
+                        promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                    }
                 } catch (searchError) {
                     console.error('Error during search:', searchError);
                     // Fall back to regular prompt if search fails
@@ -252,6 +297,30 @@ async function classifyQueryType(query) {
         // Default to general in case of error
         return 'general';
     }
+}
+
+/**
+ * Detects if a message is a simple factual question that should be searched immediately
+ * 
+ * This helps bypass classification for obvious fact-based questions
+ */
+function isFastFactQuestion(text) {
+    const lowerText = text.toLowerCase().trim();
+    
+    // Patterns for factual questions
+    const factPatterns = [
+        /^who is /, /^who was /, /^who are /,
+        /^what is /, /^what are /, /^what was /,
+        /^when is /, /^when was /, /^when are /,
+        /^where is /, /^where was /, /^where are /,
+        /^which is /, /^which was /, /^which are /,
+        /^how many /, /^how much /, /^how old /,
+        /^current .* president/, /^president of /,
+        /^capital of /
+    ];
+    
+    // Check if any pattern matches
+    return factPatterns.some(pattern => pattern.test(lowerText));
 }
 
 /**

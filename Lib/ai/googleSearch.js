@@ -3,25 +3,32 @@ import axios from 'axios';
 /**
  * Perform a Google search using the provided API
  * @param {string} query - The search query
- * @returns {Promise<Array>} - Array of search results
+ * @returns {Promise<Object>} - Object with search results
  */
 export async function googleSearch(query) {
     try {
         // Encode the query for URL
         const encodedQuery = encodeURIComponent(query);
+        console.log(`Performing Google search for: ${encodedQuery}`);
         
         // Make request to the search API
         const response = await axios.get(`https://delirius-apiofc.vercel.app/search/googlesearch?query=${encodedQuery}`);
         
-        // Check if the response is successful
-        if (response.data && response.data.status === true) {
+        // Check if the response is successful and contains actual data
+        if (response.data && response.data.status === true && response.data.data && Array.isArray(response.data.data)) {
+            if (response.data.data.length === 0) {
+                console.log('Search API returned empty results array');
+            } else {
+                console.log(`Search API returned ${response.data.data.length} results`);
+            }
             return { type: 'google', results: response.data.data };
         } else {
-            console.error('Error in Google search response:', response.data);
+            console.error('Invalid Google search response format:', response.data);
             return { type: 'google', results: [] };
         }
     } catch (error) {
-        console.error('Error performing Google search:', error);
+        console.error('Error performing Google search:', error.message);
+        // Return empty results array if the search fails
         return { type: 'google', results: [] };
     }
 }

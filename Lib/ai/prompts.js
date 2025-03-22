@@ -81,10 +81,11 @@ Special instruction: I've performed a web search for the user's query and found 
 
 ${formattedResults}
 
-Use this information to provide a helpful response. Synthesize the search results and present the key points that answer the user's question.
-Don't mention that you performed a search - just incorporate the information naturally.
-Stick to the facts from the search results rather than making up information.
-Keep your response concise and to the point.`;
+Use this information to provide a helpful, factual response. Focus on directly answering the user's question with the most relevant facts from the search results.
+Do NOT mention that you performed a search - just incorporate the information naturally as if you knew it.
+Prioritize factual accuracy from the search results rather than making assumptions.
+Give a direct, concise answer first, followed by additional context if helpful.
+If the search results don't contain relevant information to answer the query, admit that you don't have that specific information rather than guessing.`;
 
     return [
         { role: "system", content: searchEnhancedPrompt },
