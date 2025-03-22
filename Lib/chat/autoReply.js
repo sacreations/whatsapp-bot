@@ -193,6 +193,32 @@ function isGroupAllowedForAI(groupId) {
 }
 
 /**
+ * Check if a message should be ignored by auto-reply system
+ * @param {string} text - Message text
+ * @returns {boolean} - Whether the message should be ignored
+ */
+function isIgnoredMessage(text) {
+    if (!text) return true;
+    
+    // Common patterns to ignore
+    const ignorePatterns = [
+        /^[.!#$%&'*+/=?^_`{|}~-]/, // Messages starting with common command prefixes
+        /^[\u0600-\u06FF]+$/, // Pure Arabic text (potential spam)
+        /^[\u4e00-\u9fa5]+$/, // Pure Chinese text (potential spam)
+        /\u200e|\u200f/, // Messages with RTL/LTR markers
+        /^(.)\1{4,}/, // Repetitive characters (e.g., "aaaaaa")
+        /^[^a-zA-Z0-9\s\u00C0-\u00FF]{5,}$/, // Messages with 5+ special characters
+        /^[0-9]{5,}$/, // Messages with 5+ digits
+        /^http[s]?:\/\//i, // URLs
+        /^sewa/i, // Rental spam
+        /^beli/i, // Purchase spam
+        /^join/i, // Join group spam
+    ];
+    
+    return ignorePatterns.some(pattern => pattern.test(text));
+}
+
+/**
  * Handle auto-reply to user messages using AI
  * @param {Object} m - Message object
  * @param {Object} sock - Socket connection
