@@ -560,54 +560,88 @@ async function optimizeVideoForUniversalCompatibility(inputPath, outputPath) {
         const height = videoInfo.height || 720;
         const fileSize = videoInfo.size || 0;
         
-        // For universal compatibility:
-        // 1. Max resolution: 1280x720 (HD)
-        // 2. Codec: H.264 with baseline profile level 3.0
-        // 3. Format: MP4 with fast start for quicker playback
-        // 4. Pixel format: YUV420P for maximum device compatibility
-        // 5. Reasonable bitrate based on duration to keep file size manageable
+        // Create a temporary path for first-pass output if needed
+        const tempOutputPath = outputPath.replace('.mp4', '_temp.mp4');
         
-        // Status videos should be 30 seconds or less, but we don't auto-trim non-status videos
-        const shouldTrim = duration > 180; // Only trim extremely long videos (3+ minutes)
-        const targetDuration = shouldTrim ? 180 : duration;
-        
-        // Target file size: ~15MB (WhatsApp limit for status is ~16MB)
-        const targetFileSize = 15 * 1024 * 1024; // 15MB in bytes
-        
-        // Calculate target bitrate to achieve desired file size
-        // Formula: (target size in bits) / (duration in seconds)
-        let targetBitrate = Math.floor((targetFileSize * 8) / targetDuration);
-        
-        // Cap bitrate for very short videos to avoid quality issues
-        if (duration < 5) {
-            targetBitrate = Math.min(targetBitrate, 4000000); // 4Mbps max for short videos
+        // Calculate target size more conservatively to ensure it's under limitations
+        // Target smaller files for longer videos
+        let targetFileSize;
+        if (duration <= 15) {
+            // Very short videos can have higher quality
+            targetFileSize = 12 * 1024 * 1024; // 12MB
+        } else if (duration <= 30) {
+            // Standard status videos
+            targetFileSize = 10 * 1024 * 1024; // 10MB
+        } else if (duration <= 60) {
+            // Medium-length videos
+            targetFileSize = 8 * 1024 * 1024; // 8MB
+        } else {
+            // Long videos need more aggressive compression
+            targetFileSize = 7 * 1024 * 1024; // 7MB per minute, max 30MB
+            // Cap at 30MB for very long videos
+            targetFileSize = Math.min(30 * 1024 * 1024, targetFileSize * (Math.ceil(duration / 60)));
         }
         
-        // Ensure bitrate is reasonable
-        targetBitrate = Math.min(Math.max(targetBitrate, 500000), 6000000); // Between 500kbps and 6Mbps
+        // Use original file size to determine compression strategy
+        const compressionRatio = targetFileSize / fileSize;
+        
+        // Determine adaptive CRF (quality) based on compression needed
+        // For reference: 18 is very high quality, 23 is default, 28 is lower quality, 32+ is very compressed
+        let crf;
+        if (compressionRatio >= 0.8) {
+            crf = 23; // Minimal compression needed
+        } else if (compressionRatio >= 0.5) {
+            crf = 26; // Moderate compression
+        } else if (compressionRatio >= 0.3) {
+            crf = 28; // Higher compression
+        } else if (compressionRatio >= 0.1) {
+            crf = 30; // Much higher compression
+        } else {
+            crf = 33; // Extreme compression for very large files
+        }
+        
+        console.log(`Using CRF ${crf} based on compression ratio ${compressionRatio.toFixed(2)}`);
+        
+        // Should we scale down the resolution?
+        // More aggressive scaling for larger files
+        let maxHeight = 720; // Default to 720p
+        
+        if (compressionRatio < 0.3 && height > 720) {
+            maxHeight = 480; // Scale to 480p for larger files needing compression
+            console.log(`Scaling down to 480p for better compression`);
+        } else if (compressionRatio < 0.1 && height > 480) {
+            maxHeight = 360; // Scale to 360p for extremely large files 
+            console.log(`Scaling down to 360p for extreme compression`);
+        }
+        
+        // Calculate matching width while maintaining aspect ratio
+        const maxWidth = Math.floor((width / height) * maxHeight);
         
         // Set up video filter parameters
         let vfParams = [];
         
-        // Scale video if needed
-        if (width > 1280 || height > 720) {
-            vfParams.push('scale=min(1280,iw):min(720,ih):force_original_aspect_ratio=decrease');
-        }
+        // Scale video to target resolution
+        vfParams.push(`scale=${maxWidth}:${maxHeight}:force_original_aspect_ratio=decrease`);
         
         // Ensure YUV 4:2:0 pixel format for maximum compatibility
         vfParams.push('format=yuv420p');
         
         // Build the filter string
-        const vfString = vfParams.length > 0 ? `-vf "${vfParams.join(',')}"` : '';
+        const vfString = `-vf "${vfParams.join(',')}"`;
         
-        // Trim parameter (only for very long videos)
-        const trimParams = shouldTrim ? `-t ${targetDuration}` : '';
+        // Adjust audio bitrate based on content type and duration
+        let audioBitrate = '64k'; // Default to low for most videos
         
-        // Build ffmpeg command with universal compatibility parameters
-        const ffmpegCmd = `ffmpeg -i "${inputPath}" ${trimParams} ${vfString} ` +
+        // For short videos or videos with important audio (determined by fileSize/duration ratio)
+        if (duration < 30 || (fileSize / duration) > 500000) {
+            audioBitrate = '96k';
+        }
+        
+        // Base FFMPEG settings - prioritizing size over quality
+        let ffmpegCmd = `ffmpeg -i "${inputPath}" ${vfString} ` +
             `-c:v libx264 -profile:v baseline -level 3.0 ` +
-            `-preset medium -crf 23 -maxrate ${targetBitrate} -bufsize ${targetBitrate * 2} ` +
-            `-c:a aac -b:a 128k -ar 44100 -strict experimental ` +
+            `-preset slower -crf ${crf} ` + // Use slower preset for better compression
+            `-c:a aac -b:a ${audioBitrate} -ar 44100 -ac 1 ` + // Mono audio to save space
             `-movflags +faststart -pix_fmt yuv420p "${outputPath}" -y`;
         
         console.log(`Running FFMPEG command: ${ffmpegCmd}`);
@@ -620,7 +654,43 @@ async function optimizeVideoForUniversalCompatibility(inputPath, outputPath) {
             throw new Error('FFMPEG failed to create output file');
         }
         
-        // Get optimized video info
+        // Verify file size after first pass
+        const firstPassInfo = await getVideoInfo(outputPath);
+        const firstPassSize = firstPassInfo.size;
+        
+        console.log(`First pass result: ${formatSize(firstPassSize)}`);
+        
+        // If still too large (>30MB), do a second pass with more aggressive settings
+        if (firstPassSize > 30 * 1024 * 1024) {
+            console.log(`Output still too large (${formatSize(firstPassSize)}), performing second pass`);
+            
+            // More aggressive second pass
+            const secondPassCrf = crf + 4; // Much more aggressive quality reduction
+            const secondPassHeight = maxHeight > 360 ? 360 : 240; // Further reduce resolution
+            const secondPassWidth = Math.floor((width / height) * secondPassHeight);
+            
+            // Temporary second pass output
+            const secondPassOutput = outputPath.replace('.mp4', '_pass2.mp4');
+            
+            const secondPassCmd = `ffmpeg -i "${outputPath}" -vf "scale=${secondPassWidth}:${secondPassHeight},format=yuv420p" ` +
+                `-c:v libx264 -profile:v baseline -level 3.0 ` +
+                `-preset slower -crf ${secondPassCrf} ` +
+                `-c:a aac -b:a 48k -ar 44100 -ac 1 ` + // Even lower audio quality
+                `-movflags +faststart -pix_fmt yuv420p "${secondPassOutput}" -y`;
+            
+            console.log(`Running second pass FFMPEG command: ${secondPassCmd}`);
+            
+            await execAsync(secondPassCmd);
+            
+            // Check if second pass output exists and replace original output
+            if (fs.existsSync(secondPassOutput)) {
+                fs.unlinkSync(outputPath); // Remove first pass output
+                fs.renameSync(secondPassOutput, outputPath); // Rename second pass to final output
+                console.log(`Second pass complete, replaced output with smaller file`);
+            }
+        }
+        
+        // Get final optimized video info
         const optimizedInfo = await getVideoInfo(outputPath);
         console.log('Optimized video info:', optimizedInfo);
         
