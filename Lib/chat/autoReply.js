@@ -202,6 +202,11 @@ export async function handleAutoReply(m, sock) {
     }
     
     try {
+        // Skip if message is from the bot itself
+        if (m.key.fromMe === true) {
+            return false;
+        }
+        
         const messageType = getMessageType(m);
         const messageText = getMessageText(m);
         const isGroup = m.key.remoteJid.endsWith('@g.us');
