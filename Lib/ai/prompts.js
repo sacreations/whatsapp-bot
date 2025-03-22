@@ -2,7 +2,7 @@ import config from '../../Config.js';
 import { formatSearchResults } from './googleSearch.js';
 
 /**
- * System prompt to define the AI assistant's behavior
+ * Enhanced system prompt to define the AI assistant's behavior with command awareness
  */
 export const SYSTEM_PROMPT = `You are an AI assistant for a WhatsApp bot named ${config.BOT_NAME}.
 Your task is to provide helpful, accurate, and concise responses to user queries.
@@ -16,7 +16,26 @@ Guidelines:
 6. If the user wants to send a message to the admin, politely note that you'll forward it.
 7. Never generate harmful, illegal, unethical or deceptive content.
 8. Don't share personal information about users.
-9. Avoid political or controversial topics.`;
+9. Avoid political or controversial topics.
+
+IMPORTANT - COMMAND AWARENESS:
+When a user query can be fulfilled by a bot command, ALWAYS suggest using the appropriate command rather than trying to answer directly. For example:
+- For time queries: Suggest using "${config.PREFIX}time" command 
+- For date queries: Suggest using "${config.PREFIX}date" command
+- For media downloads: Suggest using "${config.PREFIX}yt", "${config.PREFIX}ig", etc.
+- For admin help: Suggest using "${config.PREFIX}help" or "${config.PREFIX}menu"
+- For wallpapers: Suggest using "${config.PREFIX}wallpaper [type]" command instead of providing links
+
+Available commands:
+- ${config.PREFIX}menu - Show all available commands
+- ${config.PREFIX}time - Show current time
+- ${config.PREFIX}date - Show current date
+- ${config.PREFIX}yt [URL] - Download YouTube videos
+- ${config.PREFIX}ig [URL] - Download Instagram content
+- ${config.PREFIX}wallpaper [query] - Download wallpapers
+- ${config.PREFIX}help - Get help information
+
+YOUR PRIMARY GOAL is to help users access the bot's actual functionality through commands rather than providing general information.`;
 
 /**
  * Template for regular user interaction
@@ -225,5 +244,34 @@ Keep your response concise and focused on the most relevant information.`;
         { role: "system", content: htmlExtractionPrompt },
         ...chatHistory,
         { role: "user", content: userMessage }
+    ];
+}
+
+/**
+ * New template for checking if user query matches a command
+ */
+export function createCommandMatchPrompt(userMessage) {
+    const commandMatchPrompt = `You need to determine if a user's message should be handled by a specific bot command rather than a general AI response.
+
+Available bot commands:
+1. "${config.PREFIX}time" - For any questions about current time
+2. "${config.PREFIX}date" - For any questions about current date or day
+3. "${config.PREFIX}wallpaper [query]" - For requests for wallpapers, images, backgrounds, pictures
+4. "${config.PREFIX}yt [URL]" - For YouTube downloads
+5. "${config.PREFIX}tiktok [URL]" - For TikTok downloads
+6. "${config.PREFIX}ig [URL]" - For Instagram downloads
+7. "${config.PREFIX}fb [URL]" - For Facebook downloads
+8. "${config.PREFIX}menu" - For help with commands or bot features
+
+Analyze this user message: "${userMessage}"
+
+If it matches any of the command functions above, respond with ONLY the command name without the prefix (e.g., "time", "wallpaper", etc.). 
+If it doesn't match any command, respond with "none".
+Be strict - only match if the user is clearly asking for that specific functionality.
+
+Response:`;
+
+    return [
+        { role: "system", content: commandMatchPrompt },
     ];
 }

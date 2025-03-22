@@ -308,19 +308,28 @@ export async function handleAutoReply(m, sock) {
                 await message.react('🤖', m, sock); // React to show AI is processing
                 
                 // Check if AI and Search are both enabled
-                if (config.ENABLE_AI_AUTO_REPLY && config.ENABLE_AI_SEARCH) {
+                if (config.ENABLE_AI_AUTO_REPLY) {
                     const aiResponse = await processMessageWithAI(m, messageText, sock);
-                    // Send the AI response
-                    await message.reply(aiResponse, m, sock);
+                    
+                    // Check if the response is suggesting a command and that command exists
+                    const commandMatch = aiResponse.match(new RegExp(`${config.PREFIX}(\\w+)`));
+                    if (commandMatch && commandMatch[1]) {
+                        const suggestedCommand = commandMatch[1];
+                        
+                        // Send the AI response with the command suggestion
+                        await message.reply(aiResponse, m, sock);
+                        
+                        // Add a subtle hint to try the command
+                        setTimeout(async () => {
+                            await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+                            await message.react('💡', m, sock);
+                        }, 500);
+                    } else {
+                        // Regular response without command suggestion
+                        await message.reply(aiResponse, m, sock);
+                    }
+                    
                     await message.react('✅', m, sock); // Change reaction when done
-                    return true;
-                } 
-                // If only AI is enabled without search capability
-                else if (config.ENABLE_AI_AUTO_REPLY) {
-                    // Use regular AI response without search
-                    const aiResponse = await processMessageWithAI(m, messageText, sock);
-                    await message.reply(aiResponse, m, sock);
-                    await message.react('✅', m, sock);
                     return true;
                 }
                 // Fall back to simple auto-responses if AI is disabled

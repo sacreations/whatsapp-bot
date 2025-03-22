@@ -7,7 +7,8 @@ import {
     createWikipediaPrompt,
     createWallpaperPrompt,
     createQueryClassificationPrompt,
-    createHtmlExtractionPrompt
+    createHtmlExtractionPrompt,
+    createCommandMatchPrompt
 } from './prompts.js';
 import { 
     googleSearch, 
@@ -39,6 +40,20 @@ export async function processMessageWithAI(m, userText, sock) {
         
         // Log the incoming message
         console.log(`AI processing message: "${userText}"`);
+        
+        // Step 1: First check if the query matches a bot command
+        const matchingCommand = await checkForCommandMatch(userText);
+        console.log(`Command match check result: ${matchingCommand}`);
+        
+        if (matchingCommand !== 'none') {
+            // This query should be handled by suggesting a bot command
+            const commandResponse = await generateCommandSuggestion(userText, matchingCommand);
+            
+            // Update conversation history
+            updateMessageHistory(senderId, userText, commandResponse);
+            
+            return commandResponse;
+        }
         
         // For simple factual questions, prioritize search
         if (isFastFactQuestion(userText)) {
@@ -296,6 +311,73 @@ async function classifyQueryType(query) {
         console.error('Error classifying query type:', error);
         // Default to general in case of error
         return 'general';
+    }
+}
+
+/**
+ * Check if a user query should be handled by a bot command
+ * 
+ * @param {string} query - The user's message
+ * @returns {Promise<string>} - The matching command or 'none'
+ */
+async function checkForCommandMatch(query) {
+    try {
+        const commandMatchPrompt = createCommandMatchPrompt(query);
+        
+        const response = await getGroqCompletion(commandMatchPrompt, {
+            temperature: 0.1,
+            max_completion_tokens: 10
+        });
+        
+        const result = response.choices[0]?.message?.content?.trim().toLowerCase() || "none";
+        
+        // List of valid command matches
+        const validCommands = ['time', 'date', 'wallpaper', 'yt', 'tiktok', 'ig', 'fb', 'menu'];
+        
+        // Check if the result is a valid command
+        if (validCommands.includes(result)) {
+            return result;
+        }
+        
+        return 'none';
+    } catch (error) {
+        console.error('Error checking for command match:', error);
+        return 'none';
+    }
+}
+
+/**
+ * Generate a response that suggests using a bot command
+ * 
+ * @param {string} userMessage - The user's original message
+ * @param {string} command - The matching command
+ * @returns {Promise<string>} - A response suggesting the command
+ */
+async function generateCommandSuggestion(userMessage, command) {
+    // For common commands, provide direct suggestions
+    switch (command) {
+        case 'time':
+            return `To check the current time, please use the command: ${config.PREFIX}time`;
+            
+        case 'date':
+            return `To check today's date, please use the command: ${config.PREFIX}date`;
+            
+        case 'wallpaper':
+            // Extract the wallpaper subject from the query
+            const wallpaperSubject = extractSearchTerm(userMessage, 'wallpaper');
+            return `For wallpapers, please use: ${config.PREFIX}wallpaper ${wallpaperSubject}\n\nThis will send actual wallpaper images to your chat.`;
+            
+        case 'menu':
+            return `To see all available commands, please use: ${config.PREFIX}menu`;
+            
+        case 'yt':
+        case 'tiktok':
+        case 'ig':
+        case 'fb':
+            return `To download content, please use the ${config.PREFIX}${command} command followed by the URL.\n\nExample: ${config.PREFIX}${command} [URL]`;
+            
+        default:
+            return `You might want to try using the ${config.PREFIX}${command} command, or type ${config.PREFIX}menu to see all available commands.`;
     }
 }
 
