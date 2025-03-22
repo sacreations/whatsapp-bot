@@ -330,11 +330,17 @@ export async function handleAutoReply(m, sock) {
                     }
                     
                     await message.react('✅', m, sock); // Change reaction when done
+                    
+                    // Clear typing indicator after sending the response
+                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                    
                     return true;
                 }
                 // Fall back to simple auto-responses if AI is disabled
             } catch (error) {
                 console.error('Error processing AI response:', error);
+                // Clear typing indicator on error
+                await sock.sendPresenceUpdate('paused', m.key.remoteJid);
                 // Fall back to simple auto-responses if AI fails
             }
         }
@@ -359,6 +365,8 @@ export async function handleAutoReply(m, sock) {
         return false;
     } catch (error) {
         console.error('Error in handleAutoReply:', error);
+        // Clear typing indicator on error
+        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         return false;
     }
 }

@@ -9,9 +9,15 @@ const message = {
      */
     reply: async (text, m, sock) => {
         try {
-            return await sock.sendMessage(m.key.remoteJid, { text }, { quoted: m });
+            await sock.sendMessage(m.key.remoteJid, { text }, { quoted: m });
+            // Clear typing indicator after sending message
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return true;
         } catch (error) {
             console.error("Error in reply:", error);
+            // Clear typing indicator on error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return false;
         }
     },
     
@@ -67,7 +73,7 @@ const message = {
             // Send image with better error handling
             console.log(`Sending image (${image.length} bytes) with caption: ${caption}`);
             
-            return await sock.sendMessage(
+            await sock.sendMessage(
                 m.key.remoteJid, 
                 { 
                     image, 
@@ -76,8 +82,14 @@ const message = {
                 }, 
                 { quoted: m }
             );
+            
+            // Clear typing indicator after sending image
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return true;
         } catch (error) {
             console.error("Error in sendImage:", error);
+            // Clear typing indicator on error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
             throw error; // Re-throw to allow caller to handle
         }
     },
@@ -99,7 +111,7 @@ const message = {
                 throw new Error('Invalid video source');
             }
             
-            return await sock.sendMessage(
+            await sock.sendMessage(
                 m.key.remoteJid, 
                 { 
                     video, 
@@ -108,8 +120,15 @@ const message = {
                 }, 
                 { quoted: m }
             );
+            
+            // Clear typing indicator after sending video
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return true;
         } catch (error) {
             console.error("Error in sendVideo:", error);
+            // Clear typing indicator on error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return false;
         }
     },
     
@@ -128,7 +147,7 @@ const message = {
                 throw new Error('Invalid audio source');
             }
             
-            return await sock.sendMessage(
+            await sock.sendMessage(
                 m.key.remoteJid, 
                 { 
                     audio,
@@ -137,8 +156,15 @@ const message = {
                 }, 
                 { quoted: m }
             );
+            
+            // Clear typing indicator after sending audio
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return true;
         } catch (error) {
             console.error("Error in sendAudio:", error);
+            // Clear typing indicator on error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return false;
         }
     },
     
@@ -157,7 +183,7 @@ const message = {
                 throw new Error('Invalid document source');
             }
             
-            return await sock.sendMessage(
+            await sock.sendMessage(
                 m.key.remoteJid, 
                 { 
                     document,
@@ -166,8 +192,15 @@ const message = {
                 }, 
                 { quoted: m }
             );
+            
+            // Clear typing indicator after sending document
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return true;
         } catch (error) {
             console.error("Error in sendDocument:", error);
+            // Clear typing indicator on error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return false;
         }
     },
     
@@ -186,13 +219,20 @@ const message = {
                 throw new Error('Invalid sticker source');
             }
             
-            return await sock.sendMessage(
+            await sock.sendMessage(
                 m.key.remoteJid, 
                 { sticker }, 
                 { quoted: m }
             );
+            
+            // Clear typing indicator after sending sticker
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return true;
         } catch (error) {
             console.error("Error in sendSticker:", error);
+            // Clear typing indicator on error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            return false;
         }
     }
 };

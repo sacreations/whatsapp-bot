@@ -77,6 +77,8 @@ export async function processMessageWithAI(m, userText, sock) {
                     // Update conversation history with this exchange
                     updateMessageHistory(senderId, userText, aiReply);
                     
+                    // Make sure to clear typing indicator even for fast facts
+                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
                     return aiReply;
                 }
                 // If no search results or search failed, continue with normal classification
@@ -136,6 +138,9 @@ export async function processMessageWithAI(m, userText, sock) {
                     
                     // Then send the wallpaper images directly
                     await sendWallpaperImages(m, sock, searchResults.results);
+                    
+                    // Make sure typing indicator is cleared after all operations
+                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
                     
                     // Return the AI reply to prevent duplicate response
                     return aiReply;
@@ -241,14 +246,14 @@ export async function processMessageWithAI(m, userText, sock) {
         // Update conversation history with this exchange
         updateMessageHistory(senderId, userText, aiReply);
         
-        // For wallpaper requests, also send the actual wallpaper images
-        if (queryType === 'wallpaper' && searchResults && searchResults.results && searchResults.results.length > 0) {
-            await sendWallpaperImages(m, sock, searchResults.results, aiReply);
-        }
+        // Ensure typing indicator is cleared after all processing
+        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         
         return aiReply;
     } catch (error) {
         console.error('Error processing message with AI:', error);
+        // Clear typing indicator on error
+        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         return "I'm having trouble connecting to my brain right now. Please try again later.";
     }
 }
@@ -311,14 +316,21 @@ async function sendWallpaperImages(m, sock, wallpapers) {
         // React with success emoji after sending all wallpapers
         await message.react('✅', m, sock);
         
+        // Clear typing indicator after all wallpapers are sent
+        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+        
     } catch (error) {
         console.error('Error in sendWallpaperImages:', error);
         
         // If error sending images, let the user know
         try {
             await message.reply("I found some wallpapers but had trouble sending them. Please try again.", m, sock);
+            // Make sure to clear typing indicator even after error
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         } catch (replyError) {
             console.error('Error sending error message:', replyError);
+            // Last resort attempt to clear typing indicator
+            await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         }
     }
 }
