@@ -320,7 +320,6 @@ export async function handleAutoReply(m, sock) {
                         
                         // Add a subtle hint to try the command
                         setTimeout(async () => {
-                            await sock.sendPresenceUpdate('composing', m.key.remoteJid);
                             await message.react('💡', m, sock);
                         }, 500);
                     } else {
@@ -338,7 +337,7 @@ export async function handleAutoReply(m, sock) {
             } catch (error) {
                 console.error('Error processing AI response:', error);
                 // Clear typing indicator on error
-                await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                
                 // Fall back to simple auto-responses if AI fails
             }
         }
@@ -364,7 +363,7 @@ export async function handleAutoReply(m, sock) {
     } catch (error) {
         console.error('Error in handleAutoReply:', error);
         // Clear typing indicator on error
-        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+        await message.react('❌', m, sock);
         return false;
     }
 }
