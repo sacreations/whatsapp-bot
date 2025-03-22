@@ -384,6 +384,22 @@ async function classifyQueryType(query) {
  * @returns {Promise<string>} - The matching command or 'none'
  */
 async function checkForCommandMatch(query) {
+    // Quick check to skip command matching for obvious knowledge-based questions
+    const lowerQuery = query.toLowerCase();
+    
+    // Skip command matching for programming/code-related queries
+    if (lowerQuery.includes('code') || 
+        lowerQuery.includes('program') || 
+        lowerQuery.includes('api') || 
+        lowerQuery.includes('function') ||
+        lowerQuery.includes('script') ||
+        lowerQuery.includes('develop') ||
+        lowerQuery.includes('tutorial') ||
+        lowerQuery.includes('write') ||
+        lowerQuery.includes('create')) {
+        return 'none';
+    }
+    
     try {
         const commandMatchPrompt = createCommandMatchPrompt(query);
         
@@ -451,6 +467,16 @@ async function generateCommandSuggestion(userMessage, command) {
  */
 function isFastFactQuestion(text) {
     const lowerText = text.toLowerCase().trim();
+    
+    // Exclude programming/code requests from fast fact patterns
+    if (lowerText.includes('code') || 
+        lowerText.includes('program') || 
+        lowerText.includes('api') || 
+        lowerText.includes('function') ||
+        lowerText.includes('script') ||
+        lowerText.includes('develop')) {
+        return false;
+    }
     
     // Patterns for factual questions
     const factPatterns = [
