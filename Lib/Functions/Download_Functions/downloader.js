@@ -184,15 +184,50 @@ async function downloadFromYouTube(url, isAudio = false) {
 async function downloadFromTikTok(url) {
     try {
         const response = await axios.get(Tiktok_apiEndpoint + url);
-        if (!response.data || !response.data.data || !response.data.data.meta || !response.data.data.meta.media) {
+        if (!response.data || !response.data.data) {
             throw new Error('Invalid API response structure');
         }
         
-        const media = response.data.data.meta.media[0];
-        const videoUrl = media.hd || media.org;
+        // Check if we have the expected meta data structure
+        const mediaData = response.data.data;
+        const isNewApiStructure = mediaData.meta && mediaData.meta.media && mediaData.meta.media.length > 0;
         
-        if (!videoUrl) {
-            throw new Error('No valid video URL found in response');
+        let videoUrl;
+        let isPreOptimized = false; // Flag to indicate if the video is already optimized
+        
+        if (isNewApiStructure) {
+            console.log('Using new TikTok API response structure with direct media');
+            
+            const media = mediaData.meta.media[0];
+            
+            // Check if org version is available and use it directly (already optimized)
+            if (media.org) {
+                console.log('Using pre-optimized "org" version from TikTok API');
+                videoUrl = media.org;
+                isPreOptimized = true;  // Mark as pre-optimized to skip FFMPEG later
+            } 
+            // Fall back to HD if available
+            else if (media.hd) {
+                videoUrl = media.hd;
+            } 
+            // Last resort, use watermarked version
+            else if (media.wm) {
+                videoUrl = media.wm;
+            } else {
+                throw new Error('No valid video URL found in response');
+            }
+        } else {
+            // Handle old API structure if needed
+            if (!response.data.data.meta || !response.data.data.meta.media) {
+                throw new Error('Invalid API response structure');
+            }
+            
+            const media = response.data.data.meta.media[0];
+            videoUrl = media.hd || media.org;
+            
+            if (!videoUrl) {
+                throw new Error('No valid video URL found in response');
+            }
         }
         
         const filename = generateFilename('TikTok', 'mp4');
@@ -207,7 +242,10 @@ async function downloadFromTikTok(url) {
         videoResponse.data.pipe(writeStream);
         
         return new Promise((resolve, reject) => {
-            writeStream.on('finish', () => resolve(filename));
+            writeStream.on('finish', () => {
+                // Return both the filename and the pre-optimized flag
+                resolve({ path: filename, isPreOptimized });
+            });
             writeStream.on('error', reject);
         });
     } catch (error) {
@@ -498,6 +536,7 @@ export async function downloadMedia(url, platform, options = {}) {
 
         // Download based on platform
         let downloadPath;
+        let isPreOptimized = false; // Flag to track if the media is already optimized
         
         switch(platform) {
             case 'YouTube':
@@ -508,7 +547,10 @@ export async function downloadMedia(url, platform, options = {}) {
                 break;
                 
             case 'TikTok':
-                downloadPath = await downloadFromTikTok(url);
+                // Get result from TikTok download function which now returns an object
+                const tiktokResult = await downloadFromTikTok(url);
+                downloadPath = tiktokResult.path;
+                isPreOptimized = tiktokResult.isPreOptimized;
                 break;
                 
             case 'Instagram':
@@ -529,7 +571,26 @@ export async function downloadMedia(url, platform, options = {}) {
         
         // After download, process the video to ensure universal compatibility
         if (!isAudio && fs.existsSync(downloadPath) && downloadPath.endsWith('.mp4')) {
-            return await optimizeVideoForUniversalCompatibility(downloadPath, finalOutputPath);
+            // Skip FFMPEG processing if the file is already optimized (TikTok org version)
+            if (platform === 'TikTok' && isPreOptimized) {
+                console.log('Skipping FFMPEG processing as TikTok video is already optimized');
+                // Simply copy the file to the final path
+                fs.copyFileSync(downloadPath, finalOutputPath);
+                // Delete the original file to save space
+                if (fs.existsSync(downloadPath)) {
+                    fs.unlinkSync(downloadPath);
+                }
+                return finalOutputPath;
+            }
+            
+            // If specifically for status, use the dedicated status optimization function
+            if (options.forStatus === true) {
+                console.log("Optimizing specifically for WhatsApp status");
+                return await optimizeVideoForStatus(downloadPath, finalOutputPath);
+            } else {
+                // Otherwise use the regular universal compatibility function
+                return await optimizeVideoForUniversalCompatibility(downloadPath, finalOutputPath);
+            }
         }
         
         // Return the downloaded path for non-video files or audio
@@ -724,5 +785,148 @@ export function cleanupDownloads(maxAgeInHours = 24) {
         }
     } catch (error) {
         console.error('Error cleaning up downloads:', error);
+    }
+}
+
+/**
+ * Optimize video specifically for WhatsApp status compatibility
+ * This function enforces stricter parameters than the universal compatibility function
+ * @param {string} inputPath - Path to input video
+ * @param {string} outputPath - Path for optimized output video
+ * @returns {Promise<string>} - Path to optimized video
+ */
+export async function optimizeVideoForStatus(inputPath, outputPath) {
+    try {
+        console.log(`Optimizing video specifically for WhatsApp status: ${inputPath}`);
+        
+        // Get video information
+        const videoInfo = await getVideoInfo(inputPath);
+        console.log('Original video info:', videoInfo);
+        
+        // WhatsApp status has strict requirements
+        const maxDuration = 30; // WhatsApp status max 30 seconds
+        const maxWidth = 1280;
+        const maxHeight = 720;
+        const targetFileSize = 7 * 1024 * 1024; // Target 7MB for better compatibility
+        
+        // Determine duration (with safety checks)
+        const duration = videoInfo.duration || 0;
+        
+        // Trim video if it's longer than maxDuration
+        const needsTrimming = duration > maxDuration;
+        const trimParams = needsTrimming ? `-t ${maxDuration}` : '';
+        
+        if (needsTrimming) {
+            console.log(`Video duration (${duration}s) exceeds maximum allowed (${maxDuration}s). Will trim.`);
+        }
+        
+        // Calculate target bitrate more conservatively for status videos
+        // Formula: (target size in bits) / (duration in seconds)
+        const effectiveDuration = Math.min(duration, maxDuration);
+        let targetBitrate = Math.floor((targetFileSize * 8) / effectiveDuration);
+        
+        // Cap bitrate for very short videos
+        if (effectiveDuration < 5) {
+            targetBitrate = Math.min(targetBitrate, 2500000); // 2.5Mbps max for short status videos
+        } else {
+            targetBitrate = Math.min(targetBitrate, 1500000); // 1.5Mbps for regular status videos
+        }
+        
+        // Determine scale parameters if needed
+        const width = videoInfo.width || 1280;
+        const height = videoInfo.height || 720;
+        
+        // Always scale for status videos to ensure compatibility
+        const scaleFactor = Math.min(1, maxWidth / width, maxHeight / height);
+        const newWidth = Math.round(width * scaleFactor);
+        const newHeight = Math.round(height * scaleFactor);
+        
+        // Set up video filter parameters - more strict for status videos
+        let vfParams = [];
+        
+        // Add scaling
+        vfParams.push(`scale=${newWidth}:${newHeight}`);
+        
+        // Ensure YUV 4:2:0 pixel format for maximum compatibility
+        vfParams.push('format=yuv420p');
+        
+        // Build the filter string
+        const vfString = `-vf "${vfParams.join(',')}"`;
+        
+        // Use 'veryfast' preset for speed but add a second pass for quality control
+        // First pass (analysis)
+        const passLogFile = outputPath.replace('.mp4', '-passlog');
+        
+        const firstPassCmd = `ffmpeg -y -i "${inputPath}" ${trimParams} ` +
+            `-c:v libx264 -preset veryfast -b:v ${targetBitrate} ` +
+            `-pass 1 -passlogfile "${passLogFile}" -an ${vfString} ` +
+            `-profile:v baseline -level 3.0 -pix_fmt yuv420p -f mp4 /dev/null`;
+        
+        // Second pass (encoding) - keep stereo audio by removing the -ac parameter
+        const secondPassCmd = `ffmpeg -y -i "${inputPath}" ${trimParams} ` +
+            `-c:v libx264 -preset veryfast -b:v ${targetBitrate} ` +
+            `-pass 2 -passlogfile "${passLogFile}" ${vfString} ` +
+            `-profile:v baseline -level 3.0 ` +
+            `-c:a aac -b:a 96k -ar 44100 ` + // Keep stereo audio (removed -ac 1)
+            `-movflags +faststart -pix_fmt yuv420p "${outputPath}"`;
+        
+        console.log('Running first pass analysis...');
+        console.log(firstPassCmd);
+        await execAsync(firstPassCmd.replace('/dev/null', process.platform === 'win32' ? 'NUL' : '/dev/null'));
+        
+        console.log('Running second pass encoding...');
+        console.log(secondPassCmd);
+        await execAsync(secondPassCmd);
+        
+        // Clean up passlog files
+        if (fs.existsSync(`${passLogFile}-0.log`)) {
+            fs.unlinkSync(`${passLogFile}-0.log`);
+        }
+        if (fs.existsSync(`${passLogFile}-0.log.mbtree`)) {
+            fs.unlinkSync(`${passLogFile}-0.log.mbtree`);
+        }
+        
+        // Verify the result
+        if (!fs.existsSync(outputPath)) {
+            throw new Error('Status optimization failed to create output file');
+        }
+        
+        const optimizedInfo = await getVideoInfo(outputPath);
+        console.log('Optimized status video info:', optimizedInfo);
+        
+        // Verify file size is under limit
+        const maxAllowedSize = 15 * 1024 * 1024; // 15MB absolute maximum
+        if (optimizedInfo.size > maxAllowedSize) {
+            console.log(`Optimized video still too large (${formatSize(optimizedInfo.size)}), performing emergency compression`);
+            
+            // Emergency final pass with more aggressive settings - keep stereo audio
+            const emergencyOutput = outputPath.replace('.mp4', '_emergency.mp4');
+            
+            const emergencyCmd = `ffmpeg -y -i "${outputPath}" ` +
+                `-c:v libx264 -preset faster -crf 30 ` +
+                `-vf "scale=640:360,format=yuv420p" ` +
+                `-profile:v baseline -level 3.0 ` +
+                `-c:a aac -b:a 48k -ar 44100 ` + // Keep stereo audio (removed -ac 1)
+                `-movflags +faststart "${emergencyOutput}"`;
+            
+            console.log(emergencyCmd);
+            await execAsync(emergencyCmd);
+            
+            // Replace output with emergency version
+            if (fs.existsSync(emergencyOutput)) {
+                fs.unlinkSync(outputPath);
+                fs.renameSync(emergencyOutput, outputPath);
+                
+                // Get final info
+                const finalInfo = await getVideoInfo(outputPath);
+                console.log('Emergency compressed video info:', finalInfo);
+            }
+        }
+        
+        // Video is now optimized for WhatsApp status
+        return outputPath;
+    } catch (error) {
+        console.error('Error optimizing video for WhatsApp status:', error);
+        throw error;
     }
 }

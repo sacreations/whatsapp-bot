@@ -210,16 +210,11 @@ bot({
                 await message.react('⏳', m, sock);
                 await message.reply('Optimizing video for status...', m, sock);
                 
-                // Import the optimizeVideoForWhatsApp function
-                const { optimizeVideoForWhatsApp } = await import('../Lib/Functions/Download_Functions/downloader.js');
+                // Import the optimizeVideoForStatus function
+                const { optimizeVideoForStatus } = await import('../Lib/Functions/Download_Functions/downloader.js');
                 
-                // Optimize the video specifically for status
-                await optimizeVideoForWhatsApp(tempMediaPath, optimizedMediaPath, {
-                    maxDuration: 30, // WhatsApp status max duration
-                    maxWidth: 1280,
-                    maxHeight: 720,
-                    forStatus: true
-                });
+                // Optimize the video specifically for status using the dedicated function
+                await optimizeVideoForStatus(tempMediaPath, optimizedMediaPath);
                 
                 // Use the optimized video for posting
                 if (fs.existsSync(tempMediaPath)) {
@@ -227,8 +222,8 @@ bot({
                 }
             } catch (optError) {
                 console.error('Error optimizing video for status:', optError);
-                // If optimization fails, use the original
-                fs.copyFileSync(tempMediaPath, optimizedMediaPath);
+                await message.reply('Error optimizing video. The video may not be compatible with WhatsApp status.', m, sock);
+                return;
             }
         } else {
             // For images, just copy the file
@@ -242,23 +237,29 @@ bot({
         // Post the status
         await message.react('⏳', m, sock);
         
-        if (mediaType === 'image') {
-            await sock.sendMessage('status@broadcast', {
-                image: statusMediaBuffer,
-                caption: caption
-            });
-        } else {
-            await sock.sendMessage('status@broadcast', {
-                video: statusMediaBuffer,
-                caption: caption
-            });
+        try {
+            if (mediaType === 'image') {
+                await sock.sendMessage('status@broadcast', {
+                    image: statusMediaBuffer,
+                    caption: caption
+                });
+            } else {
+                await sock.sendMessage('status@broadcast', {
+                    video: statusMediaBuffer,
+                    caption: caption
+                });
+            }
+            
+            // Clean up the file
+            fs.unlinkSync(optimizedMediaPath);
+            
+            await message.react('✅', m, sock);
+            await message.reply('Status posted successfully!', m, sock);
+        } catch (postError) {
+            console.error('Error posting to status:', postError);
+            await message.react('❌', m, sock);
+            await message.reply(`WhatsApp couldn't post this media to status: ${postError.message}`, m, sock);
         }
-        
-        // Clean up the file
-        fs.unlinkSync(optimizedMediaPath);
-        
-        await message.react('✅', m, sock);
-        await message.reply('Status posted successfully!', m, sock);
     } catch (error) {
         console.error('Error posting status:', error);
         await message.react('❌', m, sock);
