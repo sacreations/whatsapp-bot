@@ -86,6 +86,14 @@ const requireAuth = (req, res, next) => {
   }
 };
 
+// Define the isAuthenticated middleware function
+function isAuthenticated(req, res, next) {
+    if (req.session && req.session.authenticated) {
+        return next();
+    }
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+}
+
 // Root route - redirect to dashboard if authenticated, otherwise to login
 app.get('/', (req, res) => {
   if (req.session.authenticated) {
