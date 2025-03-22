@@ -195,8 +195,10 @@ const dashboardManager = {
         
         // AI Model selection
         if (this.aiModelSelect) {
+            console.log("Setting up AI model selector event listener");
             this.aiModelSelect.addEventListener('change', () => {
                 const selectedModel = this.aiModelSelect.value;
+                console.log(`AI model changed to: ${selectedModel}`);
                 this.updateConfigSetting('AI_MODEL', selectedModel, `AI Model set to ${selectedModel}`);
             });
         }
@@ -212,7 +214,11 @@ const dashboardManager = {
             
             if (data.success) {
                 const config = data.config;
-                config[key] = value.toString();
+                
+                // Ensure value is properly converted to string
+                config[key] = String(value);
+                
+                console.log(`Sending updated config with ${key}=${config[key]}`);
                 
                 // Send updated config
                 const updateResponse = await fetch('/api/config', {
@@ -229,21 +235,30 @@ const dashboardManager = {
                     } else {
                         showToast(`${key} updated successfully`, 'success');
                     }
+                    
+                    // Log successful update
+                    console.log(`Successfully updated ${key} to ${value}`);
+                    return true;
                 } else {
                     showToast(`Failed to update ${key}: ${updateData.message}`, 'error');
+                    console.error(`Error updating ${key}: ${updateData.message}`);
                     // Revert UI state since update failed
                     this.loadToggleStates();
+                    return false;
                 }
             } else {
                 showToast('Failed to fetch current configuration', 'error');
+                console.error('Failed to fetch configuration:', data.message);
                 // Revert UI state
                 this.loadToggleStates();
+                return false;
             }
         } catch (error) {
             console.error(`Error updating ${key}:`, error);
             showToast(`Error updating ${key}`, 'error');
             // Revert UI state
             this.loadToggleStates();
+            return false;
         }
     },
     

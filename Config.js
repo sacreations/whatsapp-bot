@@ -184,6 +184,8 @@ const config = {
   // Save config value to config.env file
   set: function(key, value) {
     try {
+      console.log(`Setting config value: ${key}=${value}`);
+      
       // Read the current config file
       let configContent = fs.readFileSync(configPath, 'utf8');
       
@@ -192,9 +194,11 @@ const config = {
       if (configContent.match(keyRegex)) {
         // Update existing key
         configContent = configContent.replace(keyRegex, `${key}=${value}`);
+        console.log(`Updated existing config key: ${key}`);
       } else {
         // Add new key
         configContent += `\n${key}=${value}`;
+        console.log(`Added new config key: ${key}`);
       }
       
       // Write back to config file
