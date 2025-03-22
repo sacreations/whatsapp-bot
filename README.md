@@ -1,197 +1,102 @@
-# WhatsApp Bot + Admin Panel
+# WhatsApp Bot
 
-A modular WhatsApp bot built with Node.js and the @whiskeysockets/baileys library, featuring plugin-based command system, media handling, auto-replies, and social media downloaders.
+An advanced WhatsApp bot with plugin-based commands, social media downloaders, group management, and AI-powered features.
 
 ## Features
 
-- 🔌 Modular plugin-based command system
-- 🖼️ Media handling (images, videos, audio, documents, stickers)
-- 📥 Social media downloading (YouTube, TikTok, Instagram, Facebook, Twitter)
-- 🤖 Auto-reply system with customizable patterns
-- 👥 Group management tools
-- 🛠️ Utility commands and media conversion
-- 🖥️ Web-based admin panel for easy configuration
+- **AI-Powered Assistant** - Intelligent responses to user messages powered by advanced AI capabilities:
+  - **Auto-Reply**: Responds to user queries using natural language understanding
+  - **Real-time Search**: Fetches current information from the web
+  - **Wikipedia Integration**: Retrieves factual information from Wikipedia
+  - **Wallpaper Search**: Finds and sends wallpapers on request
+  - **HTML Extraction**: Analyzes webpage content and provides insights
+  
+- **Social Media Downloaders**
+  - YouTube videos and audio
+  - TikTok videos
+  - Instagram posts and reels
+  - Facebook videos
+  - Twitter/X media
 
-## Installation
+- **Group Management**
+  - Admin tools
+  - Anti-spam features
+  - Welcome messages
+
+- **Status Viewing**
+  - Automatic status viewing
+  - Status saving
+
+- **Admin Dashboard**
+  - Web interface for management
+  - Configuration controls
+  - Message sending
+  - Statistics and logs
+
+## Setup
 
 ### Prerequisites
 
 - Node.js (v14 or higher)
 - npm (v6 or higher)
-- FFmpeg (for media conversion)
 
-### Setup
+### Installation
 
-1. Clone the repository:
+1. Clone the repository
    ```bash
-   git clone https://github.com/sacreations/whatsapp-bot.git
+   git clone https://github.com/yourusername/whatsapp-bot.git
    cd whatsapp-bot
    ```
 
-2. Install dependencies:
+2. Install dependencies
    ```bash
    npm install
    ```
 
-3. Configure the bot by copying `config.env.example` to `config.env`:
-   ```bash
-   cp config.env.example config.env
-   ```
+3. Set up configuration
+   - Copy `config.env.example` to `config.env`
+   - Edit `config.env` with your settings:
+     ```
+     PREFIX=.
+     OWNER_NUMBER=1234567890
+     BOT_NAME=WhatsAppBot
+     SESSION_ID=bot_session
+     ADMIN_PASSWORD=your_secure_password
+     GROQ_API_KEY=your_groq_api_key_here
+     ```
 
-4. Edit `config.env` with your settings:
-   ```
-   PREFIX=.
-   OWNER_NUMBER=1234567890
-   BOT_NAME=MyWhatsAppBot
-   ALLOWED_DOWNLOAD_GROUPS=123456789-1234567,987654321-1234567
-   ADMIN_PASSWORD=yourSecurePassword
-   ```
-
-5. Start the bot:
+4. Run the bot
    ```bash
    npm start
    ```
 
-6. Scan the QR code with your WhatsApp account.
+5. Scan the QR code with WhatsApp to authenticate
 
-## Admin Panel
-
-The bot comes with a beautiful web-based admin panel for easy configuration and management:
-
-### Starting the Admin Panel
+### Running the Admin Dashboard
 
 ```bash
 npm run admin
 ```
 
-This starts the admin panel server on port 3000 (default) or the port specified in your config.env file.
+The admin dashboard will be available at `http://localhost:3000`
 
-### Accessing the Admin Panel
+## AI Features
 
-1. Open your browser and navigate to: `http://localhost:3000` (or your custom port)
-2. Enter the password you set in `ADMIN_PASSWORD` in config.env
-3. You now have access to the admin dashboard
+### AI Auto-Reply
 
-### Admin Features
+The bot uses Groq AI to provide intelligent responses to user messages. To enable:
 
-- **Dashboard**: View bot statistics, uptime, and quick toggles for features
-- **Settings**: Configure bot parameters like prefix, name, and other settings
-- **Group Management**: Manage which groups can use auto-download features
-- **Logs**: View recent activity and error logs
+1. Get a Groq API key from [groq.com](https://groq.com)
+2. Add your API key to the `config.env` file:
+   ```
+   GROQ_API_KEY=your_groq_api_key_here
+   ENABLE_AI_AUTO_REPLY=true
+   ```
 
-### Security
+### Real-Time Search
 
-The admin panel is password protected. Make sure to:
-- Set a strong password in your config.env file
-- Change the default port if running on a public server
-- Consider using HTTPS if exposing the panel to the internet
+The bot can search the web for current information when answering questions:
 
-## Configuration
+## Acknowledgments
 
-The bot can be configured using the `config.env` file:
-
-- `PREFIX` - Command prefix (default: `.`)
-- `OWNER_NUMBER` - Your WhatsApp number for owner commands
-- `BOT_NAME` - Name of your bot
-- `SESSION_ID` - ID for the WhatsApp session
-- `ENABLE_AUTO_REPLY` - Enable/disable auto-replies (true/false)
-- `ENABLE_SOCIAL_MEDIA_DOWNLOAD` - Enable/disable social media downloaders (true/false)
-- `DOWNLOAD_FOLDER` - Path to save downloaded files
-- `ALLOWED_DOWNLOAD_GROUPS` - Comma-separated list of group IDs where auto-downloading is allowed
-- `ADMIN_PORT` - Port for the web admin panel (default: 3000)
-- `ADMIN_PASSWORD` - Password to access the admin panel
-
-## Available Commands
-
-### User Commands
-
-- `.menu` - Display available commands
-- `.help <command>` - Get help for a specific command
-- `.info` - Show bot information
-- `.ping` - Check if bot is online and measure response time
-- `.echo <text>` - Repeat the given text
-- `.sticker` - Convert image to sticker
-- `.status` - Check bot status and uptime
-- `.save` - Save media from message
-- `.convert <format>` - Convert media to different format
-- `.mediainfo` - Get information about media
-- `.yt <URL>` - Download YouTube videos
-- `.tiktok <URL>` - Download TikTok videos
-- `.ig <URL>` - Download Instagram posts/reels
-- `.fb <URL>` - Download Facebook videos
-- `.twitter <URL>` - Download Twitter/X media
-- `.x <URL>` - Alias for twitter command
-- `.groupinfo` - Get information about the current group
-- `.groupmembers` - List all members in the group
-
-### Owner Commands
-
-- `.getgroups` - Get the list of all group IDs
-- `.sysinfo` - Get detailed system information
-- `.testall` - Test all message types
-- `.netstat` - Test network connectivity and latency
-- `.add <number>` - Add a user to the group
-- `.kick <@mention>` - Remove a user from the group
-- `.promote <@mention>` - Promote a user to admin
-- `.demote <@mention>` - Demote an admin to regular user
-
-## Automatic Features
-
-The bot includes automatic functionality:
-
-1. **Social Media Auto-Download**:
-   - Automatically detects links from YouTube, TikTok, Instagram, Facebook, and Twitter
-   - Downloads media and sends it in the chat (works only in allowed groups)
-
-2. **Auto-Replies**:
-   - Responds to common greetings
-   - Can be expanded with custom patterns
-
-## Plugin System
-
-The bot uses a modular plugin system for easy extension:
-
-### Creating a Plugin
-
-1. Create a new .js file in the `plugins` directory:
-
-```javascript
-// plugins/myplugin.js
-import { bot } from '../Lib/chat/commandHandler.js';
-import message from '../Lib/chat/messageHandler.js';
-import config from '../Config.js';
-
-bot({
-    pattern: 'hello',
-    fromMe: false,
-    desc: 'Says hello to the user'
-}, async (m, sock) => {
-    return await message.reply('Hello, world!', m, sock);
-});
-```
-
-2. The bot will automatically load your plugin on startup or reconnection.
-
-### Plugin Structure
-
-Each plugin should export one or more commands using the `bot()` function:
-
-```javascript
-bot({
-    pattern: 'commandname',    // Command pattern (e.g., 'hello')
-    fromMe: false,             // Whether command can only be used by the bot owner
-    desc: 'Description',       // Command description for help
-    usage: '<arguments>'       // Usage example
-}, async (m, sock, args) => {
-    // Command implementation
-    return await message.reply('Response text', m, sock);
-});
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the ISC License.
+Special thanks to darlyn1234 for providing the free public API used in this project.

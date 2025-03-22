@@ -18,6 +18,7 @@ const dashboardManager = {
     saveApiKeyBtn: null,
     aiTemperatureRange: null,
     tempValueDisplay: null,
+    aiHtmlExtractToggle: null,
     
     init: function() {
         // Initialize toggle elements
@@ -39,6 +40,7 @@ const dashboardManager = {
         this.saveApiKeyBtn = document.getElementById('save-api-key');
         this.aiTemperatureRange = document.getElementById('ai-temperature');
         this.tempValueDisplay = document.getElementById('temp-value');
+        this.aiHtmlExtractToggle = document.getElementById('ai-html-extract-toggle');
         
         // Set up event listeners for the toggles
         this.setupToggleListeners();
@@ -150,6 +152,13 @@ const dashboardManager = {
         if (this.aiWallpapersToggle) {
             this.aiWallpapersToggle.addEventListener('change', () => {
                 this.updateConfigSetting('ENABLE_AI_WALLPAPERS', this.aiWallpapersToggle.checked);
+            });
+        }
+        
+        // AI HTML Extract toggle
+        if (this.aiHtmlExtractToggle) {
+            this.aiHtmlExtractToggle.addEventListener('change', () => {
+                this.updateConfigSetting('ENABLE_AI_HTML_EXTRACT', this.aiHtmlExtractToggle.checked);
             });
         }
         
@@ -298,6 +307,10 @@ const dashboardManager = {
                 
                 if (this.aiWallpapersToggle) {
                     this.aiWallpapersToggle.checked = config.ENABLE_AI_WALLPAPERS === 'true';
+                }
+                
+                if (this.aiHtmlExtractToggle) {
+                    this.aiHtmlExtractToggle.checked = config.ENABLE_AI_HTML_EXTRACT === 'true';
                 }
                 
                 // Load API key (masked)

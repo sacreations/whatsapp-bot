@@ -515,7 +515,8 @@ app.get('/api/dashboard-stats', requireAuth, (req, res) => {
             messagesProcessed: global.aiStats?.messagesProcessed || 0,
             searchesPerformed: global.aiStats?.searchesPerformed || 0,
             wikipediaLookups: global.aiStats?.wikipediaLookups || 0,
-            wallpaperSearches: global.aiStats?.wallpaperSearches || 0
+            wallpaperSearches: global.aiStats?.wallpaperSearches || 0,
+            htmlExtractions: global.aiStats?.htmlExtractions || 0
         };
         
         res.json({

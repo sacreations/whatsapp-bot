@@ -164,6 +164,10 @@ const config = {
   get AI_CONTEXT_LENGTH() {
     return parseInt(this.get('AI_CONTEXT_LENGTH', '5'));
   },
+
+  get ENABLE_AI_HTML_EXTRACT() {
+    return this.get('ENABLE_AI_HTML_EXTRACT', 'true') === 'true';
+  },
   
   // Create required directories
   createDirectories: () => {

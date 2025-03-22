@@ -6,12 +6,14 @@ import {
     createSearchEnhancedPrompt,
     createWikipediaPrompt,
     createWallpaperPrompt,
-    createQueryClassificationPrompt
+    createQueryClassificationPrompt,
+    createHtmlExtractionPrompt
 } from './prompts.js';
 import { 
     googleSearch, 
     wikipediaSearch, 
-    wallpaperSearch, 
+    wallpaperSearch,
+    extractHtml,
     formatSearchResults 
 } from './googleSearch.js';
 import config from '../../Config.js';
@@ -107,6 +109,36 @@ export async function processMessageWithAI(m, userText, sock) {
                 }
                 break;
                 
+            case 'webpage':
+                console.log(`Detected webpage extraction request: "${userText}"`);
+                await message.react('🌐', m, sock); // React with globe emoji
+                
+                try {
+                    // Extract URL from the message
+                    const url = extractUrl(userText);
+                    
+                    if (!url) {
+                        await message.reply("I couldn't find a valid URL in your message. Please provide a URL to extract content from.", m, sock);
+                        return "I couldn't find a valid URL in your message. Please provide a URL to extract content from.";
+                    }
+                    
+                    console.log(`Extracting HTML from URL: ${url}`);
+                    const extractionResults = await extractHtml(url);
+                    
+                    if (!extractionResults.result) {
+                        await message.reply(`I couldn't extract content from the URL: ${url}. The website might block extraction or the URL might be invalid.`, m, sock);
+                        return `I couldn't extract content from the URL: ${url}. The website might block extraction or the URL might be invalid.`;
+                    }
+                    
+                    // Create prompt with HTML extraction results
+                    promptMessages = createHtmlExtractionPrompt(userText, extractionResults, getMessageHistory(senderId));
+                } catch (extractionError) {
+                    console.error('Error during HTML extraction:', extractionError);
+                    // Fall back to regular prompt if extraction fails
+                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                }
+                break;
+                
             case 'general':
             default:
                 // Get chat history for this sender
@@ -184,7 +216,7 @@ async function sendWallpaperImages(m, sock, wallpapers, aiReply) {
  * Classify the query type using AI
  * 
  * @param {string} query - The user's query to classify
- * @returns {Promise<string>} - Query type (wikipedia, wallpaper, realtime, admin, botinfo, general)
+ * @returns {Promise<string>} - Query type (wikipedia, wallpaper, realtime, admin, botinfo, webpage, general)
  */
 async function classifyQueryType(query) {
     try {
@@ -201,11 +233,16 @@ async function classifyQueryType(query) {
         const result = response.choices[0]?.message?.content?.trim().toLowerCase() || "";
         
         // Check which type it matches and return it
-        const validTypes = ['wikipedia', 'wallpaper', 'realtime', 'admin', 'botinfo', 'general'];
+        const validTypes = ['wikipedia', 'wallpaper', 'realtime', 'admin', 'botinfo', 'webpage', 'general'];
         for (const type of validTypes) {
             if (result.includes(type)) {
                 return type;
             }
+        }
+        
+        // Check for URL in message as a fallback for webpage detection
+        if (extractUrl(query)) {
+            return 'webpage';
         }
         
         // Default to general if no match found
@@ -215,6 +252,23 @@ async function classifyQueryType(query) {
         // Default to general in case of error
         return 'general';
     }
+}
+
+/**
+ * Extract URL from text message
+ * @param {string} text - The message text
+ * @returns {string|null} - The extracted URL or null if none found
+ */
+function extractUrl(text) {
+    // Simple URL regex pattern
+    const urlPattern = /(https?:\/\/[^\s]+)/ig;
+    const matches = text.match(urlPattern);
+    
+    if (matches && matches.length > 0) {
+        return matches[0]; // Return the first URL found
+    }
+    
+    return null;
 }
 
 /**

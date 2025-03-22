@@ -187,7 +187,8 @@ Your task is to analyze the following user message and classify it into exactly 
 3. "realtime" - The user is asking about current events, news, weather, or other real-time information
 4. "admin" - The user wants to contact the admin/owner of the bot
 5. "botinfo" - The user is asking about the bot itself, its capabilities, or how to use it
-6. "general" - Any other type of query (conversation, opinions, advice, etc.)
+6. "webpage" - The user wants to extract or analyze content from a website or URL
+7. "general" - Any other type of query (conversation, opinions, advice, etc.)
 
 Respond with ONLY one word from the list above, nothing else.
 
@@ -197,5 +198,31 @@ Query type:`;
 
     return [
         { role: "system", content: classificationPrompt },
+    ];
+}
+
+/**
+ * Template for HTML extraction results
+ */
+export function createHtmlExtractionPrompt(userMessage, extractionResults, chatHistory = []) {
+    // Format extraction results for the AI
+    const formattedResults = formatSearchResults(extractionResults);
+    
+    const htmlExtractionPrompt = `${SYSTEM_PROMPT}
+
+Special instruction: The user requested HTML extraction from a webpage. Here's the extracted information:
+
+${formattedResults}
+
+Based on this HTML extraction, provide a helpful analysis of the webpage content. 
+Highlight key information like the page title, description, and structure.
+Offer insights about what kind of website it is and what content it contains.
+If the user asked specific questions about the webpage, answer them based on the extracted content.
+Keep your response concise and focused on the most relevant information.`;
+
+    return [
+        { role: "system", content: htmlExtractionPrompt },
+        ...chatHistory,
+        { role: "user", content: userMessage }
     ];
 }
