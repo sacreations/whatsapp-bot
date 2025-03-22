@@ -6,7 +6,7 @@ import {
     createSearchEnhancedPrompt,
     createWikipediaPrompt,
     createWallpaperPrompt,
-    createRealTimeClassificationPrompt
+    createQueryClassificationPrompt
 } from './prompts.js';
 import { 
     googleSearch, 
@@ -19,7 +19,7 @@ import message from '../chat/messageHandler.js';
 
 // Message history cache (very simple implementation)
 const messageHistory = new Map();
-const MAX_HISTORY_LENGTH = 5;  // Maximum number of previous exchanges to include
+const MAX_HISTORY_LENGTH = config.AI_CONTEXT_LENGTH || 5;  // Maximum number of previous exchanges to include
 
 /**
  * Process a message with AI and get a response
@@ -35,67 +35,63 @@ export async function processMessageWithAI(m, userText, sock) {
         let promptMessages;
         let searchResults = null;
         
-        // Check if this is a request to contact admin
-        if (isAdminContactRequest(userText)) {
-            promptMessages = createAdminContactPrompt(userText);
-            
-            // Forward the message to admin
-            await forwardMessageToAdmin(m, userText, sock);
-        }
-        // Check if this is a request for bot information
-        else if (isBotInfoRequest(userText)) {
-            promptMessages = createBotInfoPrompt(userText);
-        }
-        // Check if this is a request for wallpapers or images
-        else if (isWallpaperRequest(userText)) {
-            // Perform wallpaper search
-            console.log(`Detected wallpaper request: "${userText}"`);
-            await message.react('🖼️', m, sock); // React with image emoji
-            
-            try {
-                // Extract the search term
-                const searchTerm = extractWallpaperSearchTerm(userText);
-                searchResults = await wallpaperSearch(searchTerm);
-                console.log(`Found ${searchResults.results.length} wallpapers`);
+        // Classify the query type using AI instead of keyword detection
+        const queryType = await classifyQueryType(userText);
+        console.log(`Query classified as: ${queryType}`);
+        
+        // Handle the query based on its type
+        switch (queryType) {
+            case 'admin':
+                promptMessages = createAdminContactPrompt(userText);
+                await forwardMessageToAdmin(m, userText, sock);
+                break;
                 
-                // Create prompt with wallpaper results
-                promptMessages = createWallpaperPrompt(userText, searchResults, getMessageHistory(senderId));
-            } catch (searchError) {
-                console.error('Error during wallpaper search:', searchError);
-                // Fall back to regular prompt if search fails
-                promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-            }
-        }
-        // Check if this is a request for Wikipedia information
-        else if (isWikipediaRequest(userText)) {
-            // Perform Wikipedia search
-            console.log(`Detected Wikipedia request: "${userText}"`);
-            await message.react('📚', m, sock); // React with book emoji
-            
-            try {
-                // Extract the search term
-                const searchTerm = extractWikipediaSearchTerm(userText);
-                // Determine appropriate language based on message content
-                const language = detectLanguage(userText);
-                searchResults = await wikipediaSearch(searchTerm, 5, language);
-                console.log(`Found ${searchResults.results.length} Wikipedia entries`);
+            case 'botinfo':
+                promptMessages = createBotInfoPrompt(userText);
+                break;
                 
-                // Create prompt with Wikipedia results
-                promptMessages = createWikipediaPrompt(userText, searchResults, getMessageHistory(senderId));
-            } catch (searchError) {
-                console.error('Error during Wikipedia search:', searchError);
-                // Fall back to regular prompt if search fails
-                promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-            }
-        }
-        // Check if this might need real-time information using AI classification
-        else {
-            // First classify if the query needs real-time info
-            const needsRealTimeInfo = await checkIfNeedsRealTimeInfo(userText);
-            
-            if (needsRealTimeInfo) {
-                // Perform Google search
-                console.log(`AI determined query needs real-time info: "${userText}"`);
+            case 'wallpaper':
+                console.log(`Detected wallpaper request: "${userText}"`);
+                await message.react('🖼️', m, sock); // React with image emoji
+                
+                try {
+                    // Extract the search term
+                    const searchTerm = extractSearchTerm(userText, 'wallpaper');
+                    searchResults = await wallpaperSearch(searchTerm);
+                    console.log(`Found ${searchResults.results.length} wallpapers`);
+                    
+                    // Create prompt with wallpaper results
+                    promptMessages = createWallpaperPrompt(userText, searchResults, getMessageHistory(senderId));
+                } catch (searchError) {
+                    console.error('Error during wallpaper search:', searchError);
+                    // Fall back to regular prompt if search fails
+                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                }
+                break;
+                
+            case 'wikipedia':
+                console.log(`Detected Wikipedia request: "${userText}"`);
+                await message.react('📚', m, sock); // React with book emoji
+                
+                try {
+                    // Extract the search term
+                    const searchTerm = extractSearchTerm(userText, 'wikipedia');
+                    // Determine appropriate language based on message content
+                    const language = detectLanguage(userText);
+                    searchResults = await wikipediaSearch(searchTerm, 5, language);
+                    console.log(`Found ${searchResults.results.length} Wikipedia entries`);
+                    
+                    // Create prompt with Wikipedia results
+                    promptMessages = createWikipediaPrompt(userText, searchResults, getMessageHistory(senderId));
+                } catch (searchError) {
+                    console.error('Error during Wikipedia search:', searchError);
+                    // Fall back to regular prompt if search fails
+                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                }
+                break;
+                
+            case 'realtime':
+                console.log(`Detected real-time info request: "${userText}"`);
                 await message.react('🔍', m, sock); // React to show searching
                 
                 try {
@@ -109,11 +105,14 @@ export async function processMessageWithAI(m, userText, sock) {
                     // Fall back to regular prompt if search fails
                     promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
                 }
-            } else {
+                break;
+                
+            case 'general':
+            default:
                 // Get chat history for this sender
                 const history = getMessageHistory(senderId);
                 promptMessages = createRegularPrompt(userText, history);
-            }
+                break;
         }
         
         // Call the Groq API
@@ -123,6 +122,11 @@ export async function processMessageWithAI(m, userText, sock) {
         // Update conversation history with this exchange
         updateMessageHistory(senderId, userText, aiReply);
         
+        // For wallpaper requests, also send the actual wallpaper images
+        if (queryType === 'wallpaper' && searchResults && searchResults.results && searchResults.results.length > 0) {
+            await sendWallpaperImages(m, sock, searchResults.results, aiReply);
+        }
+        
         return aiReply;
     } catch (error) {
         console.error('Error processing message with AI:', error);
@@ -131,32 +135,121 @@ export async function processMessageWithAI(m, userText, sock) {
 }
 
 /**
- * Check if a query needs real-time information using AI classification
+ * Send wallpaper images to the user
+ * 
+ * @param {Object} m - Message object
+ * @param {Object} sock - Socket object
+ * @param {Array} wallpapers - Array of wallpaper results
+ * @param {string} aiReply - AI's text reply
+ */
+async function sendWallpaperImages(m, sock, wallpapers, aiReply) {
+    try {
+        // Show typing indicator briefly after sending text
+        await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+        
+        // Send up to 3 images to avoid spamming
+        const wallpapersToSend = wallpapers.slice(0, 3);
+        
+        // Send the first image as a reply to the original message
+        if (wallpapersToSend.length > 0) {
+            // Send first with caption if we haven't sent a text reply yet
+            await message.sendImage(
+                wallpapersToSend[0].image,
+                "", // No caption, as we already sent the text
+                m,
+                sock
+            );
+            
+            // Send remaining images without caption
+            for (let i = 1; i < wallpapersToSend.length; i++) {
+                await message.sendImage(
+                    wallpapersToSend[i].image,
+                    "",
+                    m,
+                    sock
+                );
+                
+                // Small delay between images to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+    } catch (error) {
+        console.error('Error sending wallpaper images:', error);
+        // If error sending images, at least let the user know
+        await message.reply("I found some wallpapers but couldn't send them. You can check the links in my previous message.", m, sock);
+    }
+}
+
+/**
+ * Classify the query type using AI
  * 
  * @param {string} query - The user's query to classify
- * @returns {Promise<boolean>} - Whether the query needs real-time info
+ * @returns {Promise<string>} - Query type (wikipedia, wallpaper, realtime, admin, botinfo, general)
  */
-async function checkIfNeedsRealTimeInfo(query) {
+async function classifyQueryType(query) {
     try {
         // Create a classification prompt
-        const classificationPrompt = createRealTimeClassificationPrompt(query);
+        const classificationPrompt = createQueryClassificationPrompt(query);
         
         // Get AI classification response
         const response = await getGroqCompletion(classificationPrompt, {
             temperature: 0.1, // Lower temperature for more consistent classification
-            max_completion_tokens: 10 // We just need a yes/no answer
+            max_completion_tokens: 10 // We just need a single word
         });
         
         // Extract the classification result
         const result = response.choices[0]?.message?.content?.trim().toLowerCase() || "";
         
-        // Check if the response contains "yes"
-        return result.includes('yes');
+        // Check which type it matches and return it
+        const validTypes = ['wikipedia', 'wallpaper', 'realtime', 'admin', 'botinfo', 'general'];
+        for (const type of validTypes) {
+            if (result.includes(type)) {
+                return type;
+            }
+        }
+        
+        // Default to general if no match found
+        return 'general';
     } catch (error) {
-        console.error('Error classifying real-time info need:', error);
-        // Default to false to avoid unnecessary searches in case of error
-        return false;
+        console.error('Error classifying query type:', error);
+        // Default to general in case of error
+        return 'general';
     }
+}
+
+/**
+ * Extract search term based on the query type
+ */
+function extractSearchTerm(text, queryType) {
+    // Extract what comes after common phrases based on the query type
+    let searchTerm = text;
+    
+    // Remove question marks and convert to lowercase
+    searchTerm = searchTerm.replace(/\?/g, '').trim();
+    
+    // If short, just use the whole text
+    if (searchTerm.length < 30) {
+        return searchTerm;
+    }
+    
+    // Otherwise, try to intelligently extract the main subject
+    const commonPhrases = [
+        'tell me about', 'show me', 'find', 'search for', 'look up', 
+        'who is', 'what is', 'where is', 'when was', 'explain',
+        'information on', 'info about', 'facts about', 'details about',
+        'images of', 'pictures of', 'wallpaper of', 'wallpapers of'
+    ];
+    
+    for (const phrase of commonPhrases) {
+        if (searchTerm.toLowerCase().includes(phrase)) {
+            const parts = searchTerm.toLowerCase().split(phrase);
+            if (parts.length > 1 && parts[1].trim()) {
+                return parts[1].trim();
+            }
+        }
+    }
+    
+    return searchTerm;
 }
 
 /**
@@ -182,36 +275,6 @@ async function forwardMessageToAdmin(m, userText, sock) {
         console.error('Error forwarding message to admin:', error);
         return false;
     }
-}
-
-/**
- * Check if the message appears to be requesting admin contact
- */
-function isAdminContactRequest(text) {
-    const lowerText = text.toLowerCase();
-    
-    const adminKeywords = [
-        'contact admin', 'message admin', 'tell admin', 'contact owner',
-        'message owner', 'tell owner', 'send message to admin', 'send message to owner',
-        'forward to admin', 'forward to owner', 'pass to admin', 'pass to owner'
-    ];
-    
-    return adminKeywords.some(keyword => lowerText.includes(keyword));
-}
-
-/**
- * Check if the message is asking about the bot itself
- */
-function isBotInfoRequest(text) {
-    const lowerText = text.toLowerCase();
-    
-    const botKeywords = [
-        'who are you', 'what are you', 'what can you do', 'your features',
-        'bot info', 'about bot', 'bot features', 'bot capabilities',
-        'help me', 'how to use', 'tell me about yourself', 'what is this bot'
-    ];
-    
-    return botKeywords.some(keyword => lowerText.includes(keyword));
 }
 
 /**
@@ -248,69 +311,6 @@ function updateMessageHistory(senderId, userMessage, aiResponse) {
 }
 
 /**
- * Check if the message is a request for Wikipedia information
- */
-function isWikipediaRequest(text) {
-    const lowerText = text.toLowerCase();
-    
-    // Keywords that might indicate a Wikipedia request
-    const wikipediaKeywords = [
-        'who is', 'who was', 'what is', 'what are', 'when was', 'when did',
-        'where is', 'wikipedia', 'wiki', 'tell me about', 'information about',
-        'facts about', 'history of', 'definition of', 'define'
-    ];
-    
-    return wikipediaKeywords.some(keyword => lowerText.includes(keyword)) &&
-           !isWallpaperRequest(text);
-}
-
-/**
- * Extract the search term from a Wikipedia request
- */
-function extractWikipediaSearchTerm(text) {
-    const lowerText = text.toLowerCase();
-    
-    // Try to extract what comes after common phrases
-    const patterns = [
-        /who is (.*?)(?:\?|$)/i,
-        /who was (.*?)(?:\?|$)/i,
-        /what is (.*?)(?:\?|$)/i,
-        /what are (.*?)(?:\?|$)/i,
-        /when was (.*?)(?:\?|$)/i,
-        /when did (.*?)(?:\?|$)/i,
-        /where is (.*?)(?:\?|$)/i,
-        /tell me about (.*?)(?:\?|$)/i,
-        /information about (.*?)(?:\?|$)/i,
-        /facts about (.*?)(?:\?|$)/i,
-        /history of (.*?)(?:\?|$)/i,
-        /definition of (.*?)(?:\?|$)/i,
-        /define (.*?)(?:\?|$)/i
-    ];
-    
-    for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-            return match[1].trim();
-        }
-    }
-    
-    // If no patterns match, remove common wikipedia request phrases
-    let searchTerm = lowerText
-        .replace(/wikipedia/gi, '')
-        .replace(/wiki/gi, '')
-        .replace(/tell me about/gi, '')
-        .replace(/information about/gi, '')
-        .replace(/facts about/gi, '')
-        .replace(/history of/gi, '')
-        .replace(/definition of/gi, '')
-        .replace(/define/gi, '')
-        .replace(/\?/g, '')
-        .trim();
-    
-    return searchTerm || text;
-}
-
-/**
  * Detect the language of the message for Wikipedia search
  */
 function detectLanguage(text) {
@@ -325,74 +325,4 @@ function detectLanguage(text) {
     
     // Default to English
     return 'en';
-}
-
-/**
- * Check if the message is a request for wallpapers or images
- */
-function isWallpaperRequest(text) {
-    const lowerText = text.toLowerCase();
-    
-    // Keywords that might indicate a wallpaper request
-    const wallpaperKeywords = [
-        'wallpaper', 'background', 'image', 'picture', 'photo',
-        'img', 'pic', 'show me', 'find me', 'get me'
-    ];
-    
-    return wallpaperKeywords.some(keyword => lowerText.includes(keyword)) &&
-           (lowerText.includes('wallpaper') || 
-            lowerText.includes('image') || 
-            lowerText.includes('picture') || 
-            lowerText.includes('photo'));
-}
-
-/**
- * Extract the search term from a wallpaper request
- */
-function extractWallpaperSearchTerm(text) {
-    const lowerText = text.toLowerCase();
-    
-    // Try to extract what comes after common phrases
-    const patterns = [
-        /wallpaper of (.*?)(?:\?|$)/i,
-        /wallpaper for (.*?)(?:\?|$)/i,
-        /wallpapers of (.*?)(?:\?|$)/i,
-        /wallpapers for (.*?)(?:\?|$)/i,
-        /image of (.*?)(?:\?|$)/i,
-        /image for (.*?)(?:\?|$)/i,
-        /picture of (.*?)(?:\?|$)/i,
-        /picture for (.*?)(?:\?|$)/i,
-        /show me (.*?) wallpaper/i,
-        /show me (.*?) image/i,
-        /find me (.*?) wallpaper/i,
-        /get me (.*?) wallpaper/i
-    ];
-    
-    for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match && match[1]) {
-            return match[1].trim();
-        }
-    }
-    
-    // If no patterns match, remove common wallpaper request phrases
-    let searchTerm = lowerText
-        .replace(/wallpaper of/gi, '')
-        .replace(/wallpaper for/gi, '')
-        .replace(/wallpapers of/gi, '')
-        .replace(/wallpapers for/gi, '')
-        .replace(/image of/gi, '')
-        .replace(/image for/gi, '')
-        .replace(/picture of/gi, '')
-        .replace(/picture for/gi, '')
-        .replace(/show me/gi, '')
-        .replace(/find me/gi, '')
-        .replace(/get me/gi, '')
-        .replace(/wallpaper/gi, '')
-        .replace(/image/gi, '')
-        .replace(/picture/gi, '')
-        .replace(/\?/g, '')
-        .trim();
-    
-    return searchTerm || text;
 }

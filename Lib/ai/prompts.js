@@ -174,3 +174,28 @@ Does this query require real-time information? (yes/no)`;
         { role: "system", content: classificationPrompt },
     ];
 }
+
+/**
+ * Template for classifying the query type
+ */
+export function createQueryClassificationPrompt(userMessage) {
+    const classificationPrompt = `You are an AI assistant tasked with determining the type of query a user is making.
+
+Your task is to analyze the following user message and classify it into exactly one of these categories:
+1. "wikipedia" - The user is asking for factual information about a topic, person, place, concept, history, etc.
+2. "wallpaper" - The user is requesting images, wallpapers, or visual content
+3. "realtime" - The user is asking about current events, news, weather, or other real-time information
+4. "admin" - The user wants to contact the admin/owner of the bot
+5. "botinfo" - The user is asking about the bot itself, its capabilities, or how to use it
+6. "general" - Any other type of query (conversation, opinions, advice, etc.)
+
+Respond with ONLY one word from the list above, nothing else.
+
+User query: "${userMessage}"
+
+Query type:`;
+
+    return [
+        { role: "system", content: classificationPrompt },
+    ];
+}

@@ -149,12 +149,14 @@ function formatWikipediaResults(results) {
  * Format Wallpaper search results
  */
 function formatWallpaperResults(results) {
-    let formattedText = "I found these wallpapers:\n\n";
+    let formattedText = "I found these wallpapers for you:\n\n";
     
     results.forEach((result, index) => {
         formattedText += `${index + 1}. ${result.title}\n`;
-        formattedText += `   Link: ${result.image}\n\n`;
+        formattedText += `   Direct link: ${result.image}\n\n`;
     });
+    
+    formattedText += "I'll send these images to you right after this message.";
     
     return formattedText;
 }
