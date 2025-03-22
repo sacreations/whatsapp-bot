@@ -193,180 +193,145 @@ function isGroupAllowedForAI(groupId) {
 }
 
 /**
- * Main auto-reply handler
+ * Handle auto-reply to user messages using AI
+ * @param {Object} m - Message object
+ * @param {Object} sock - Socket connection
  */
 export async function handleAutoReply(m, sock) {
-    // Early return if autoReply is disabled or bot is paused
-    if (!config.ENABLE_AUTO_REPLY || config.BOT_PAUSED || config.MAINTENANCE_MODE) {
-        return false;
-    }
-    
     try {
-        // Skip if message is from the bot itself
-        if (m.key.fromMe === true) {
+        // Check if auto reply is enabled in config
+        if (!config.ENABLE_AUTO_REPLY) {
             return false;
         }
         
-        const messageType = getMessageType(m);
-        const messageText = getMessageText(m);
-        const isGroup = m.key.remoteJid.endsWith('@g.us');
+        // Check if bot is in maintenance mode
+        if (config.MAINTENANCE_MODE) {
+            return false;
+        }
         
-        // Social media link processing - only in groups
-        if (messageType === 'text' && isGroup) {
-            const urls = extractUrls(messageText);
+        // Extract relevant info from the message
+        const fromMe = m.key.fromMe;
+        const isGroup = m.key.remoteJid.endsWith('@g.us');
+        const isStatus = m.key.remoteJid === 'status@broadcast';
+        const messageContent = getMessageText(m);
+        
+        // Skip processing if any of these conditions are met
+        if (
+            fromMe || 
+            isStatus || 
+            !messageContent ||
+            messageContent.length < 2 ||  // Skip very short messages
+            m.message?.protocolMessage ||
+            m.message?.reactionMessage
+        ) {
+            return false;
+        }
+        
+        // Check if message is a command
+        if (messageContent.startsWith(config.PREFIX)) {
+            return false;
+        }
+
+        // Check for ignored message patterns
+        if (isIgnoredMessage(messageContent)) {
+            return false;
+        }
+        
+        // Handle social media URLs for auto-download
+        if (config.ENABLE_SOCIAL_MEDIA_DOWNLOAD) {
+            const urls = extractUrls(messageContent);
             
-            for (const url of urls) {
+            if (urls.length > 0) {
+                console.log(`Found ${urls.length} URLs in message:`, urls);
+                
+                // Process the first URL only to avoid spam
+                const url = urls[0];
                 const platform = detectPlatform(url);
+                
                 if (platform) {
-                    // If social media downloads are enabled and group is allowed, download directly
-                    if (config.ENABLE_SOCIAL_MEDIA_DOWNLOAD && isGroupAllowedForDownloads(m.key.remoteJid)) {
+                    console.log(`Detected ${platform} URL: ${url}`);
+                    
+                    // Check if this is in a group and if the group is allowed
+                    if (!isGroup || isGroupAllowedForDownloads(m.key.remoteJid)) {
+                        // Save link if link saving is enabled
+                        if (config.ENABLE_LINK_SAVING) {
+                            try {
+                                await saveLink({
+                                    url: url,
+                                    platform: platform,
+                                    timestamp: Date.now(),
+                                    sender: m.key.participant || m.key.remoteJid,
+                                    senderName: m.pushName || 'Unknown',
+                                    groupId: isGroup ? m.key.remoteJid : null,
+                                    messageText: messageContent
+                                });
+                                console.log(`Saved ${platform} link to database`);
+                            } catch (saveError) {
+                                console.error(`Error saving ${platform} link:`, saveError);
+                            }
+                        }
+                        
+                        // Handle media download
                         await handleMediaDownload(m, sock, url, platform);
-                        return true;
-                    } 
-                    // If link saving is enabled but downloads are disabled, save the link
-                    else if (config.ENABLE_LINK_SAVING) {
-                        // Get sender info
-                        const sender = m.key.participant || m.key.remoteJid;
-                        const senderName = m.pushName || 'Unknown';
-                        
-                        // Prepare link data
-                        const linkData = {
-                            url: url,
-                            platform: platform,
-                            timestamp: Date.now(),
-                            sender: sender,
-                            senderName: senderName,
-                            groupId: m.key.remoteJid,
-                            messageText: messageText
-                        };
-                        
-                        // Try to get group name
-                        try {
-                            const groupMetadata = await sock.groupMetadata(m.key.remoteJid);
-                            linkData.groupName = groupMetadata.subject;
-                        } catch (error) {
-                            console.log('Could not fetch group metadata:', error.message);
-                            linkData.groupName = 'Unknown Group';
-                        }
-                        
-                        // Save the link
-                        const saved = saveLink(linkData);
-                        
-                        // Reply with a message
-                        if (saved) {
-                            await message.reply(`📥 Link from ${platform} saved. It will be processed when downloads are enabled.\n\nUse .savedlinks to view all saved links.`, m, sock);
-                            await message.react('📋', m, sock);
-                        } else {
-                            await message.reply(`This link has already been saved for future download.`, m, sock);
-                        }
-                        
-                        return true;
+                        return true; // Handled by download, don't proceed to AI
                     }
                 }
             }
         }
         
-        // Auto media download feature (for media messages)
-        if (config.ENABLE_AUTO_MEDIA_DOWNLOAD && 
-            ['image', 'video', 'audio', 'document'].includes(messageType) && 
-            isGroupAllowedForDownloads(m.key.remoteJid)) {
-            // React to acknowledge receipt
-            await message.react('📥', m, sock);
-            return true;
-        }
-        
-        // AI-powered auto-reply for text messages
-        if (messageType === 'text' && messageText) {
-            // Skip AI processing if message starts with command prefix
-            if (messageText.startsWith(config.PREFIX)) {
-                return false;
-            }
-            
-            // Check if this chat is allowed to use AI
+        // If AI Auto Reply is enabled and this is a direct message or allowed group
+        if (config.ENABLE_AI_AUTO_REPLY) {
+            // Check if this is a group and if it's allowed for AI
             if (isGroup && !isGroupAllowedForAI(m.key.remoteJid)) {
-                // This group is not in the allowed list for AI
                 return false;
             }
             
-            // For groups, still require bot to be mentioned or it's a direct reply to bot's message
-            if (isGroup) {
-                const isBotMentioned = messageText.includes('@' + sock.user.id.split(':')[0]) || 
-                                      messageText.toLowerCase().includes(config.BOT_NAME.toLowerCase());
-                                      
-                const isReplyToBot = m.message?.extendedTextMessage?.contextInfo?.participant === sock.user.id;
-                
-                if (!isBotMentioned && !isReplyToBot) {
+            if (messageContent.length > 0) {
+                try {
+                    // Log the message we're responding to
+                    console.log(`AI auto-reply to: "${messageContent}"`);
+                    
+                    // Process with AI
+                    const aiResponse = await processMessageWithAI(m, messageContent, sock);
+                    
+                    // Make sure typing indicator is cleared right before sending
+                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                    
+                    // Send the AI response
+                    await message.reply(aiResponse, m, sock);
+                    
+                    // Track AI conversation count if stats are enabled
+                    if (global.aiStats) {
+                        global.aiStats.conversationsHandled = (global.aiStats.conversationsHandled || 0) + 1;
+                    }
+                    
+                    // Log the response
+                    console.log(`AI responded: "${aiResponse.substring(0, 100)}${aiResponse.length > 100 ? '...' : ''}"`);
+                    return true;
+                } catch (error) {
+                    console.error('Error in AI auto-reply:', error);
+                    // Clear typing indicator if there was an error
+                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
                     return false;
                 }
             }
-            
-            // Show typing indicator
-            await sock.sendPresenceUpdate('composing', m.key.remoteJid);
-            
-            try {
-                // Process with AI
-                await message.react('🤖', m, sock); // React to show AI is processing
-                
-                // Check if AI and Search are both enabled
-                if (config.ENABLE_AI_AUTO_REPLY) {
-                    const aiResponse = await processMessageWithAI(m, messageText, sock);
-                    
-                    // Check if the response is suggesting a command and that command exists
-                    const commandMatch = aiResponse.match(new RegExp(`${config.PREFIX}(\\w+)`));
-                    if (commandMatch && commandMatch[1]) {
-                        const suggestedCommand = commandMatch[1];
-                        
-                        // Send the AI response with the command suggestion
-                        await message.reply(aiResponse, m, sock);
-                        
-                        // Add a subtle hint to try the command
-                        setTimeout(async () => {
-                            await sock.sendPresenceUpdate('composing', m.key.remoteJid);
-                            await message.react('💡', m, sock);
-                        }, 500);
-                    } else {
-                        // Regular response without command suggestion
-                        await message.reply(aiResponse, m, sock);
-                    }
-                    
-                    await message.react('✅', m, sock); // Change reaction when done
-                    
-                    // Clear typing indicator after sending the response
-                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
-                    
-                    return true;
-                }
-                // Fall back to simple auto-responses if AI is disabled
-            } catch (error) {
-                console.error('Error processing AI response:', error);
-                // Clear typing indicator on error
-                await sock.sendPresenceUpdate('paused', m.key.remoteJid);
-                // Fall back to simple auto-responses if AI fails
-            }
-        }
-        
-        // Simple auto-responses as fallback
-        if (messageType === 'text') {
-            const greetings = ['hi', 'hello', 'hey', 'hola', 'howdy'];
-            
-            if (greetings.includes(messageText.toLowerCase())) {
-                await message.reply(`Hello! How can I help you today? Use ${config.PREFIX}menu to see available commands.`, m, sock);
-                return true;
-            }
-            
-            // Add more auto-reply patterns as needed
-            
-        } else if (messageType === 'sticker') {
-            // Maybe react to stickers
-            await message.react('👍', m, sock);
-            return true;
         }
         
         return false;
     } catch (error) {
         console.error('Error in handleAutoReply:', error);
-        // Clear typing indicator on error
-        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         return false;
     }
+}
+
+/**
+ * Get allowed AI groups from config
+ * @returns {Array} - Array of allowed group JIDs
+ */
+function getAllowedAiGroups() {
+    if (!config.AI_ALLOWED_GROUPS) {
+        return [];
+    }
+    
+    return config.AI_ALLOWED_GROUPS;
 }
