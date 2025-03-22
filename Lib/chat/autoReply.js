@@ -300,8 +300,7 @@ export async function handleAutoReply(m, sock) {
                 }
             }
             
-            // Show typing indicator
-            await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+            
             
             try {
                 // Process with AI
@@ -331,8 +330,7 @@ export async function handleAutoReply(m, sock) {
                     
                     await message.react('✅', m, sock); // Change reaction when done
                     
-                    // Clear typing indicator after sending the response
-                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+
                     
                     return true;
                 }
@@ -347,19 +345,19 @@ export async function handleAutoReply(m, sock) {
         
         // Simple auto-responses as fallback
         if (messageType === 'text') {
-            const greetings = ['hi', 'hello', 'hey', 'hola', 'howdy'];
+            // const greetings = ['hi', 'hello', 'hey', 'hola', 'howdy'];
             
-            if (greetings.includes(messageText.toLowerCase())) {
-                await message.reply(`Hello! How can I help you today? Use ${config.PREFIX}menu to see available commands.`, m, sock);
-                return true;
-            }
+            // if (greetings.includes(messageText.toLowerCase())) {
+            //     await message.reply(`Hello! How can I help you today? Use ${config.PREFIX}menu to see available commands.`, m, sock);
+            //     return true;
+            // }
             
-            // Add more auto-reply patterns as needed
+            // // Add more auto-reply patterns as needed
             
         } else if (messageType === 'sticker') {
-            // Maybe react to stickers
-            await message.react('👍', m, sock);
-            return true;
+            // // Maybe react to stickers
+            // await message.react('👍', m, sock);
+            // return true;
         }
         
         return false;
