@@ -9,6 +9,15 @@ const dashboardManager = {
     pauseBotToggle: null,
     maintenanceModeToggle: null,
     autoMediaToggle: null,
+    aiAutoReplyToggle: null,
+    aiSearchToggle: null,
+    aiWikipediaToggle: null,
+    aiWallpapersToggle: null,
+    groqApiKeyInput: null,
+    toggleApiVisibilityBtn: null,
+    saveApiKeyBtn: null,
+    aiTemperatureRange: null,
+    tempValueDisplay: null,
     
     init: function() {
         // Initialize toggle elements
@@ -21,9 +30,19 @@ const dashboardManager = {
         this.pauseBotToggle = document.getElementById('pause-bot-toggle');
         this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
         this.autoMediaToggle = document.getElementById('auto-media-toggle');
+        this.aiAutoReplyToggle = document.getElementById('ai-auto-reply-toggle');
+        this.aiSearchToggle = document.getElementById('ai-search-toggle');
+        this.aiWikipediaToggle = document.getElementById('ai-wikipedia-toggle');
+        this.aiWallpapersToggle = document.getElementById('ai-wallpapers-toggle');
+        this.groqApiKeyInput = document.getElementById('groq-api-key');
+        this.toggleApiVisibilityBtn = document.getElementById('toggle-api-visibility');
+        this.saveApiKeyBtn = document.getElementById('save-api-key');
+        this.aiTemperatureRange = document.getElementById('ai-temperature');
+        this.tempValueDisplay = document.getElementById('temp-value');
         
         // Set up event listeners for the toggles
         this.setupToggleListeners();
+        this.setupAIEventListeners();
         
         // If dashboard is the active section on page load, load its data
         if (document.querySelector('.sidebar-nav li.active').getAttribute('data-section') === 'dashboard') {
@@ -101,6 +120,65 @@ const dashboardManager = {
             this.autoMediaToggle.addEventListener('change', () => {
                 this.updateConfigSetting('ENABLE_AUTO_MEDIA_DOWNLOAD', this.autoMediaToggle.checked,
                     'Auto media download setting updated');
+            });
+        }
+    },
+    
+    setupAIEventListeners: function() {
+        // AI Auto Reply toggle
+        if (this.aiAutoReplyToggle) {
+            this.aiAutoReplyToggle.addEventListener('change', () => {
+                this.updateConfigSetting('ENABLE_AI_AUTO_REPLY', this.aiAutoReplyToggle.checked);
+            });
+        }
+        
+        // AI Search toggle
+        if (this.aiSearchToggle) {
+            this.aiSearchToggle.addEventListener('change', () => {
+                this.updateConfigSetting('ENABLE_AI_SEARCH', this.aiSearchToggle.checked);
+            });
+        }
+        
+        // AI Wikipedia toggle
+        if (this.aiWikipediaToggle) {
+            this.aiWikipediaToggle.addEventListener('change', () => {
+                this.updateConfigSetting('ENABLE_AI_WIKIPEDIA', this.aiWikipediaToggle.checked);
+            });
+        }
+        
+        // AI Wallpapers toggle
+        if (this.aiWallpapersToggle) {
+            this.aiWallpapersToggle.addEventListener('change', () => {
+                this.updateConfigSetting('ENABLE_AI_WALLPAPERS', this.aiWallpapersToggle.checked);
+            });
+        }
+        
+        // Toggle API key visibility
+        if (this.toggleApiVisibilityBtn) {
+            this.toggleApiVisibilityBtn.addEventListener('click', () => {
+                const inputType = this.groqApiKeyInput.type;
+                this.groqApiKeyInput.type = inputType === 'password' ? 'text' : 'password';
+                this.toggleApiVisibilityBtn.innerHTML = `<i class="fas fa-eye${inputType === 'password' ? '-slash' : ''}"></i>`;
+            });
+        }
+        
+        // Save API key
+        if (this.saveApiKeyBtn) {
+            this.saveApiKeyBtn.addEventListener('click', () => {
+                const apiKey = this.groqApiKeyInput.value.trim();
+                if (apiKey) {
+                    this.updateConfigSetting('GROQ_API_KEY', apiKey, 'API key saved successfully');
+                } else {
+                    showToast('Please enter a valid API key', 'error');
+                }
+            });
+        }
+        
+        // Update temperature display
+        if (this.aiTemperatureRange && this.tempValueDisplay) {
+            this.aiTemperatureRange.addEventListener('input', () => {
+                const temp = parseFloat(this.aiTemperatureRange.value) / 10;
+                this.tempValueDisplay.textContent = temp.toFixed(1);
             });
         }
     },
@@ -204,6 +282,43 @@ const dashboardManager = {
                     this.autoMediaToggle.checked = config.ENABLE_AUTO_MEDIA_DOWNLOAD === 'true';
                     console.log(`Auto media toggle set to: ${this.autoMediaToggle.checked}`);
                 }
+                
+                // Load AI toggle states
+                if (this.aiAutoReplyToggle) {
+                    this.aiAutoReplyToggle.checked = config.ENABLE_AI_AUTO_REPLY === 'true';
+                }
+                
+                if (this.aiSearchToggle) {
+                    this.aiSearchToggle.checked = config.ENABLE_AI_SEARCH === 'true';
+                }
+                
+                if (this.aiWikipediaToggle) {
+                    this.aiWikipediaToggle.checked = config.ENABLE_AI_WIKIPEDIA === 'true';
+                }
+                
+                if (this.aiWallpapersToggle) {
+                    this.aiWallpapersToggle.checked = config.ENABLE_AI_WALLPAPERS === 'true';
+                }
+                
+                // Load API key (masked)
+                if (this.groqApiKeyInput && config.GROQ_API_KEY) {
+                    // Show just first and last 4 characters if available
+                    const apiKey = config.GROQ_API_KEY;
+                    if (apiKey.length > 8) {
+                        const maskedKey = apiKey.substring(0, 4) + '*'.repeat(apiKey.length - 8) + apiKey.slice(-4);
+                        this.groqApiKeyInput.placeholder = maskedKey;
+                    } else {
+                        this.groqApiKeyInput.placeholder = '********';
+                    }
+                }
+                
+                // Load AI temperature
+                if (this.aiTemperatureRange && this.tempValueDisplay && config.AI_TEMPERATURE) {
+                    const temp = parseFloat(config.AI_TEMPERATURE);
+                    this.aiTemperatureRange.value = (temp * 10).toString();
+                    this.tempValueDisplay.textContent = temp.toFixed(1);
+                }
+                
             } else {
                 console.error('Failed to load configuration:', data.message);
             }

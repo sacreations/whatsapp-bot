@@ -510,13 +510,22 @@ app.get('/api/dashboard-stats', requireAuth, (req, res) => {
             return `${days}d ${hours}h ${minutes}m`;
         })();
         
+        // Get AI stats
+        const aiStats = {
+            messagesProcessed: global.aiStats?.messagesProcessed || 0,
+            searchesPerformed: global.aiStats?.searchesPerformed || 0,
+            wikipediaLookups: global.aiStats?.wikipediaLookups || 0,
+            wallpaperSearches: global.aiStats?.wallpaperSearches || 0
+        };
+        
         res.json({
             success: true,
             stats: {
                 groupsCount,
                 pluginsCount, 
                 downloadsCount,
-                uptime
+                uptime,
+                aiStats
             }
         });
     } catch (error) {

@@ -92,3 +92,85 @@ Keep your response concise and to the point.`;
         { role: "user", content: userMessage }
     ];
 }
+
+/**
+ * Template for enhancing responses with Wikipedia results
+ */
+export function createWikipediaPrompt(userMessage, searchResults, chatHistory = []) {
+    // Format search results for the AI
+    const formattedResults = formatSearchResults(searchResults, 3);
+    
+    const wikipediaPrompt = `${SYSTEM_PROMPT}
+
+Special instruction: I've searched Wikipedia for information about the user's query and found the following:
+
+${formattedResults}
+
+Use this information to provide a comprehensive but concise response. Focus on the most relevant facts that answer the user's question.
+If there are contradictions or multiple perspectives in the Wikipedia entries, acknowledge them.
+Don't mention that you got this from Wikipedia - just incorporate the information naturally.
+Keep your response clear and educational.`;
+
+    return [
+        { role: "system", content: wikipediaPrompt },
+        ...chatHistory,
+        { role: "user", content: userMessage }
+    ];
+}
+
+/**
+ * Template for wallpaper search results
+ */
+export function createWallpaperPrompt(userMessage, searchResults, chatHistory = []) {
+    // Format search results for the AI
+    const formattedResults = formatSearchResults(searchResults, 5);
+    
+    const wallpaperPrompt = `${SYSTEM_PROMPT}
+
+Special instruction: The user is looking for wallpapers or images. I've searched and found these wallpapers:
+
+${formattedResults}
+
+Provide a response that includes direct links to 3-5 of the best images that match what they're looking for.
+Format the response as a list of options with direct image URLs that they can download.
+Be helpful and suggest which one might be best based on what they asked for.`;
+
+    return [
+        { role: "system", content: wallpaperPrompt },
+        ...chatHistory,
+        { role: "user", content: userMessage }
+    ];
+}
+
+/**
+ * Template for classifying if a query needs real-time information
+ */
+export function createRealTimeClassificationPrompt(userMessage) {
+    const classificationPrompt = `You are an AI assistant tasked with determining if a user query requires real-time or current information.
+
+Your task is to analyze the following user message and determine if it requires fresh, up-to-date information that might be available through a web search.
+
+Examples of queries needing real-time info:
+- Questions about current events, news, or recent developments
+- Questions about weather, sports scores, or market prices
+- Questions about the current status of a person, organization, or situation
+- Questions asking "what is happening" or similar phrases indicating recency
+- Questions about "latest", "newest", "current", or "recent" information
+
+Examples of queries NOT needing real-time info:
+- Questions about historical facts or established knowledge
+- Questions about general concepts, definitions, or explanations
+- Hypothetical questions or personal advice
+- Questions about fictional characters or creative content
+- Simple conversational statements or greetings
+
+Respond with ONLY "yes" if the query needs real-time information, or "no" if it doesn't.
+
+User query: "${userMessage}"
+
+Does this query require real-time information? (yes/no)`;
+
+    return [
+        { role: "system", content: classificationPrompt },
+    ];
+}

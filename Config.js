@@ -144,6 +144,26 @@ const config = {
   get AI_ALLOWED_GROUPS() { 
     return this.get('AI_ALLOWED_GROUPS', '').split(',').filter(id => id.trim() !== ''); 
   },
+
+  get ENABLE_AI_WIKIPEDIA() {
+    return this.get('ENABLE_AI_WIKIPEDIA', 'true') === 'true';
+  },
+
+  get ENABLE_AI_WALLPAPERS() {
+    return this.get('ENABLE_AI_WALLPAPERS', 'true') === 'true';
+  },
+
+  get AI_MODEL() {
+    return this.get('AI_MODEL', 'llama-3.3-70b-versatile');
+  },
+
+  get AI_TEMPERATURE() {
+    return this.get('AI_TEMPERATURE', '0.7');
+  },
+
+  get AI_CONTEXT_LENGTH() {
+    return parseInt(this.get('AI_CONTEXT_LENGTH', '5'));
+  },
   
   // Create required directories
   createDirectories: () => {
