@@ -560,7 +560,8 @@ export async function downloadMedia(url, platform, options = {}) {
                 break;
                 
             case 'tiktok':
-                downloadedPath = await downloadTikTok(url, outputPath);
+                // Fix function name - use downloadFromTikTok instead of downloadTikTok
+                downloadedPath = await downloadFromTikTok(url);
                 
                 // Apply FFmpeg only if not disabled and not pre-optimized
                 if (!skipFfmpeg && downloadedPath && !downloadedPath.isPreOptimized) {
@@ -702,7 +703,7 @@ async function optimizeVideoForUniversalCompatibility(inputPath, outputPath) {
         // Higher quality audio for better experience
         let audioBitrate = '96k'; // Default to decent quality for most videos
         
-        // Use "fast" preset for quicker processing without much quality loss
+        // Use 'fast' preset for quicker processing without much quality loss
         let ffmpegCmd = `ffmpeg -i "${inputPath}" ${vfString} ` +
             `-c:v libx264 -profile:v baseline -level 3.0 ` +
             `-preset fast -crf ${crf} ` + // Use fast preset for speed
