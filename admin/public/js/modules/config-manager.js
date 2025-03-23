@@ -22,8 +22,11 @@ const configManager = {
         this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
         this.autoMediaToggle = document.getElementById('auto-media-toggle');
         
-        // Remove the line that creates the admin section, as it's now in the HTML
-        // this.createAdminInfoSection();
+        // Add event listener for the Admin Info save button
+        const saveAdminInfoBtn = document.getElementById('save-admin-info');
+        if (saveAdminInfoBtn) {
+            saveAdminInfoBtn.addEventListener('click', this.saveAdminInfo.bind(this));
+        }
         
         this.setupEventListeners();
         this.loadConfig();
@@ -248,6 +251,52 @@ const configManager = {
             }
         } catch (error) {
             showToast(`Error updating ${key}`, 'error');
+        }
+    },
+    
+    /**
+     * Save only admin information fields
+     */
+    saveAdminInfo: async function() {
+        try {
+            const adminInfo = {
+                ADMIN_NAME: document.getElementById('ADMIN_NAME').value,
+                ADMIN_EMAIL: document.getElementById('ADMIN_EMAIL').value,
+                ADMIN_BIO: document.getElementById('ADMIN_BIO').value
+            };
+            
+            // Fetch current config first
+            const response = await fetch('/api/config');
+            const data = await response.json();
+            
+            if (data.success) {
+                const config = data.config;
+                
+                // Update only admin info fields
+                config.ADMIN_NAME = adminInfo.ADMIN_NAME;
+                config.ADMIN_EMAIL = adminInfo.ADMIN_EMAIL;
+                config.ADMIN_BIO = adminInfo.ADMIN_BIO;
+                
+                // Save the updated config
+                const updateResponse = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config })
+                });
+                
+                const updateData = await updateResponse.json();
+                
+                if (updateData.success) {
+                    showToast('Admin information saved successfully!', 'success');
+                } else {
+                    showToast('Failed to save admin information: ' + updateData.message, 'error');
+                }
+            } else {
+                showToast('Failed to fetch current configuration', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving admin information:', error);
+            showToast('Error saving admin information', 'error');
         }
     }
 };
