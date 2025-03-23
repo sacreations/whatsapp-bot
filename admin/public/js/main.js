@@ -10,6 +10,23 @@ document.addEventListener('DOMContentLoaded', function() {
     messagingManager.init();
     contactsManager.init();
     privacyManager.init();
+    statusUpdater.init(); // Initialize the new status updater module
+    
+    // Check authentication status
+    checkAuthStatus();
+    
+    // Setup logout button
+    document.getElementById('logout-btn').addEventListener('click', function() {
+        fetch('/api/logout', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/login.html';
+            }
+        });
+    });
     
     // Set up toast notifications
     window.showToast = uiUtils.showToast;

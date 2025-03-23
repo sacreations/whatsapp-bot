@@ -24,6 +24,7 @@
                     <li data-section="groups"><i class="fas fa-users"></i> Group Management</li>
                     <li data-section="contacts"><i class="fas fa-address-book"></i> Contact Management</li>
                     <li data-section="messages"><i class="fas fa-paper-plane"></i> Send Messages</li>
+                    <li data-section="status-updater"><i class="fas fa-camera"></i> Status Updater</li>
                     <li data-section="saved-links"><i class="fas fa-link"></i> Saved Links</li>
                     <li data-section="statuses"><i class="fas fa-image"></i> Status Viewer</li>
                     <li data-section="system-logs"><i class="fas fa-list"></i> System Logs</li>
@@ -847,6 +848,49 @@
                 </div>
             </section>
 
+            <!-- Add Status Updater Section -->
+            <section class="content-section" id="status-updater">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-camera"></i> Status Updater</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-text mb-3">
+                            <p><i class="fas fa-info-circle"></i> Upload and post media as WhatsApp status updates. Supported formats: JPEG, PNG, MP4.</p>
+                        </div>
+                        
+                        <form id="status-update-form" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="status-media">Select Media for Status</label>
+                                <div class="media-upload-container">
+                                    <input type="file" id="status-media" class="form-control" accept="image/jpeg,image/png,video/mp4">
+                                    <small class="text-muted">Maximum file size: 15MB. Videos should be less than 30 seconds.</small>
+                                </div>
+                                <div id="status-preview" class="media-preview mt-3"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="status-caption">Caption (Optional)</label>
+                                <input type="text" id="status-caption" class="form-control" placeholder="Add a caption to your status...">
+                            </div>
+                            
+                            <div class="form-row">
+                                <button type="submit" id="post-status-btn" class="btn btn-primary">
+                                    <i class="fas fa-share-square"></i> Post Status
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="recent-statuses mt-4" id="recent-status-updates">
+                            <h4>Recent Status Updates</h4>
+                            <div class="status-updates-list">
+                                <p class="text-muted">No recent status updates.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -864,6 +908,7 @@
     <script src="js/modules/messaging-manager.js"></script>
     <script src="js/modules/contacts-manager.js"></script>
     <script src="js/modules/privacy-manager.js"></script>
+    <script src="js/modules/status-updater.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

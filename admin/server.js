@@ -52,6 +52,39 @@ const upload = multer({
     }
 });
 
+// Configure multer for status updates
+const statusStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '..', 'temp-uploads', 'status');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const fileExt = path.extname(file.originalname);
+        const fileName = `status_${uuidv4()}${fileExt}`;
+        cb(null, fileName);
+    }
+});
+
+const statusUpload = multer({
+    storage: statusStorage,
+    limits: {
+        fileSize: 15 * 1024 * 1024, // 15MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        // Accept only images and videos for status
+        if (file.mimetype === 'image/jpeg' || 
+            file.mimetype === 'image/png' || 
+            file.mimetype === 'video/mp4') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only JPEG, PNG, and MP4 files are allowed for status updates'), false);
+        }
+    }
+});
+
 const app = express();
 const PORT = process.env.ADMIN_PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
@@ -1089,6 +1122,145 @@ app.post('/api/send-message', requireAuth, upload.single('media'), async (req, r
     } catch (error) {
         console.error('Error sending message:', error);
         res.status(500).json({ success: false, message: 'Failed to send message: ' + error.message });
+    }
+});
+
+// Post a status update - protected
+app.post('/api/status/update', requireAuth, statusUpload.single('statusMedia'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No media file provided'
+            });
+        }
+        
+        if (!global.sock) {
+            // Clean up the uploaded file
+            if (req.file && req.file.path) {
+                fs.unlinkSync(req.file.path);
+            }
+            
+            return res.status(503).json({
+                success: false,
+                message: 'WhatsApp connection not available'
+            });
+        }
+        
+        const caption = req.body.caption || '';
+        const mediaPath = req.file.path;
+        const mediaType = req.file.mimetype.startsWith('image/') ? 'image' : 'video';
+        
+        try {
+            // Read the file as buffer
+            const mediaData = fs.readFileSync(mediaPath);
+            
+            // Create the status update
+            await global.sock.sendMessage('status@broadcast', {
+                [mediaType]: mediaData,
+                caption: caption
+            });
+            
+            // Store this status update in our history
+            const statusesDir = path.join(__dirname, '..', 'downloads', 'statuses');
+            
+            // Create directory if it doesn't exist
+            if (!fs.existsSync(statusesDir)) {
+                fs.mkdirSync(statusesDir, { recursive: true });
+            }
+            
+            // Create a timestamped copy in our statuses directory for tracking
+            const timestamp = Date.now();
+            const statusFile = path.join(statusesDir, `status_self_${timestamp}${path.extname(req.file.originalname)}`);
+            fs.copyFileSync(mediaPath, statusFile);
+            
+            // Save status update info to a JSON file
+            const statusHistory = path.join(__dirname, '..', 'data', 'status-history.json');
+            let history = [];
+            
+            // Load existing history if it exists
+            if (fs.existsSync(statusHistory)) {
+                try {
+                    history = JSON.parse(fs.readFileSync(statusHistory, 'utf8'));
+                } catch (e) {
+                    console.error('Error parsing status history:', e);
+                }
+            }
+            
+            // Add this status update to history
+            history.unshift({
+                type: mediaType,
+                caption: caption,
+                filename: path.basename(statusFile),
+                timestamp: timestamp
+            });
+            
+            // Keep only the last 20 status updates
+            if (history.length > 20) {
+                history = history.slice(0, 20);
+            }
+            
+            // Save the updated history
+            fs.writeFileSync(statusHistory, JSON.stringify(history, null, 2));
+            
+            // Clean up the temporary file
+            if (fs.existsSync(mediaPath)) {
+                fs.unlinkSync(mediaPath);
+            }
+            
+            res.json({
+                success: true,
+                message: 'Status posted successfully'
+            });
+        } catch (error) {
+            console.error('Error posting status:', error);
+            
+            // Clean up the temporary file if it exists
+            if (fs.existsSync(mediaPath)) {
+                fs.unlinkSync(mediaPath);
+            }
+            
+            res.status(500).json({
+                success: false,
+                message: 'Error posting status: ' + error.message
+            });
+        }
+    } catch (error) {
+        console.error('Error in status update endpoint:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error: ' + error.message
+        });
+    }
+});
+
+// Get recent status updates - protected
+app.get('/api/status/recent', requireAuth, (req, res) => {
+    try {
+        const statusHistory = path.join(__dirname, '..', 'data', 'status-history.json');
+        let history = [];
+        
+        // Load existing history if it exists
+        if (fs.existsSync(statusHistory)) {
+            try {
+                history = JSON.parse(fs.readFileSync(statusHistory, 'utf8'));
+            } catch (e) {
+                console.error('Error parsing status history:', e);
+            }
+        }
+        
+        // Return the history
+        res.json({
+            success: true,
+            statuses: history
+        });
+    } catch (error) {
+        console.error('Error getting recent status updates:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving status updates',
+            statuses: []
+        });
     }
 });
 
