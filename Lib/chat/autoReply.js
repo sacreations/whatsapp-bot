@@ -326,7 +326,8 @@ export async function handleAutoReply(m, sock) {
                 
                 // Check if AI and Search are both enabled
                 if (config.ENABLE_AI_AUTO_REPLY) {
-                    const aiResponse = await processMessageWithAI(m, messageText, sock);
+                    // Call with the correct parameter order
+                    const aiResponse = await processMessageWithAI(m, sock, messageText);
                     
                     // Check if the response is suggesting a command and that command exists
                     const commandMatch = aiResponse.match(new RegExp(`${config.PREFIX}(\\w+)`));
@@ -394,8 +395,20 @@ export async function processWithAI(m, sock) {
         const messageText = getMessageText(m);
         const sender = m.key.remoteJid;
         
-        // Set typing indicator
-        await sock.sendPresenceUpdate('composing', sender);
+        // Ensure messageText is a string
+        if (!messageText || typeof messageText !== 'string') {
+            console.warn(`Attempted to process non-string message with AI: ${typeof messageText}`);
+            return false;
+        }
+        
+        // Set typing indicator safely
+        try {
+            if (sock && typeof sock.sendPresenceUpdate === 'function') {
+                await sock.sendPresenceUpdate('composing', sender);
+            }
+        } catch (e) {
+            console.error(`Error setting typing indicator: ${e.message}`);
+        }
         
         // Check if this is a first-time interaction and log it
         const isFirstTime = isFirstTimeInteraction(sender);
@@ -403,14 +416,20 @@ export async function processWithAI(m, sock) {
             console.log(`First time interaction with user: ${sender}`);
         }
         
-        // Process with AI, passing the first-time status
+        // Process with AI, passing the correct parameter order: m, sock, messageText
         const response = await processMessageWithAI(m, sock, messageText);
         
         // Send the AI response
         await message.reply(response, m, sock);
         
-        // Clear typing indicator
-        await sock.sendPresenceUpdate('paused', sender);
+        // Clear typing indicator safely
+        try {
+            if (sock && typeof sock.sendPresenceUpdate === 'function') {
+                await sock.sendPresenceUpdate('paused', sender);
+            }
+        } catch (e) {
+            console.error(`Error clearing typing indicator: ${e.message}`);
+        }
         
         return true;
     } catch (error) {

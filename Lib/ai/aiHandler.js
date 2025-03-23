@@ -31,8 +31,8 @@ const firstTimeUsers = new Set();
  * Process a message with AI and get a response
  * 
  * @param {Object} m - The message object
- * @param {string} userText - The text message from the user
  * @param {Object} sock - The WhatsApp socket
+ * @param {string} userText - The text message from the user
  * @returns {Promise<string>} AI response text
  */
 export async function processMessageWithAI(m, sock, userText) {
@@ -48,7 +48,7 @@ export async function processMessageWithAI(m, sock, userText) {
         const isFirstTime = !messageHistory.has(senderId) || messageHistory.get(senderId).length === 0;
         
         // Handle greeting for first-time users
-        if (isFirstTime && isGreeting(userText)) {
+        if (isFirstTime && userText && isGreeting(userText)) {
             console.log(`First-time greeting from user: ${senderId}`);
             
             // Create a custom greeting message
@@ -291,13 +291,29 @@ export async function processMessageWithAI(m, sock, userText) {
         updateMessageHistory(senderId, userText, aiReply);
         
         // Ensure typing indicator is cleared after all processing
-        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+        const updateTypingStatus = async (status) => {
+            if (sock && typeof sock.sendPresenceUpdate === 'function') {
+                try {
+                    await sock.sendPresenceUpdate(status, m.key.remoteJid);
+                } catch (e) {
+                    console.error(`Error updating presence: ${e.message}`);
+                }
+            }
+        };
+
+        await updateTypingStatus('paused');
         
         return aiReply;
     } catch (error) {
         console.error('Error processing message with AI:', error);
         // Clear typing indicator on error
-        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+        if (sock && typeof sock.sendPresenceUpdate === 'function') {
+            try {
+                await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+            } catch (e) {
+                console.error(`Error clearing typing indicator: ${e.message}`);
+            }
+        }
         return "I'm having trouble connecting to my brain right now. Please try again later.";
     }
 }
@@ -671,6 +687,12 @@ function detectLanguage(text) {
  * @returns {boolean} - True if it's a greeting
  */
 function isGreeting(text) {
+    // First check if text is a valid string
+    if (!text || typeof text !== 'string') {
+        console.warn(`isGreeting called with invalid text: ${typeof text}`);
+        return false;
+    }
+
     const greetings = [
         'hi', 'hello', 'hey', 'hola', 'greetings', 'sup', 'whats up', 
         'good morning', 'good afternoon', 'good evening', 'howdy', 'yo',
