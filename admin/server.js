@@ -1498,7 +1498,7 @@ app.use((err, req, res, next) => {
 import { getStatusEventEmitter } from '../Lib/handlers/statusHandler.js';
 
 // Initialize WebSocket for real-time updates
-import { Server as WebSocketServer } from 'ws';
+import WebSocket from 'ws'; // Fix: Use default export instead of named export
 let wss;
 
 // Start WebSocket server when admin panel starts
@@ -1506,7 +1506,7 @@ app.listen(PORT, () => {
     console.log(`Admin panel server running on http://localhost:${PORT}`);
     
     // Create WebSocket server for real-time updates
-    wss = new WebSocketServer({ port: PORT + 1 });
+    wss = new WebSocket.Server({ port: PORT + 1 }); // Fix: Use WebSocket.Server constructor
     console.log(`WebSocket server running on port ${PORT + 1}`);
     
     // Handle WebSocket connections
