@@ -24,6 +24,14 @@ const configManager = {
         
         this.setupEventListeners();
         this.loadConfig();
+
+        // FFmpeg processing toggle
+        const disableFfmpegToggle = document.getElementById('disable-ffmpeg-toggle');
+        if (disableFfmpegToggle) {
+            disableFfmpegToggle.addEventListener('change', function() {
+                configManager.updateConfig('DISABLE_FFMPEG_PROCESSING', this.checked.toString());
+            });
+        }
     },
     
     setupEventListeners: function() {
@@ -211,6 +219,12 @@ const configManager = {
                 document.getElementById('ADMIN_NAME').value = config.ADMIN_NAME || '';
                 document.getElementById('ADMIN_EMAIL').value = config.ADMIN_EMAIL || '';
                 document.getElementById('ADMIN_BIO').value = config.ADMIN_BIO || '';
+
+                // Update FFmpeg toggle state
+                const disableFfmpegToggle = document.getElementById('disable-ffmpeg-toggle');
+                if (disableFfmpegToggle && data.config.DISABLE_FFMPEG_PROCESSING) {
+                    disableFfmpegToggle.checked = data.config.DISABLE_FFMPEG_PROCESSING === 'true';
+                }
             } else {
                 console.error('Failed to load configuration:', data.message);
                 showToast('Failed to load configuration: ' + data.message, 'error');

@@ -236,6 +236,9 @@ const config = {
   }
 };
 
+// Add a new config option for FFmpeg processing
+config.DISABLE_FFMPEG_PROCESSING = process.env.DISABLE_FFMPEG_PROCESSING === 'true';
+
 // Initial load of config
 reloadConfig();
 

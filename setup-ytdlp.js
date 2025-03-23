@@ -7,7 +7,7 @@ import os from 'os';
 const execAsync = promisify(exec);
 
 async function setupYtDlp() {
-    console.log('Setting up yt-dlp...');
+    console.log('Setting up yt-dlp for direct media downloads...');
     
     const isWindows = os.platform() === 'win32';
     const binDir = path.join(process.cwd(), 'bin');
@@ -34,11 +34,12 @@ async function setupYtDlp() {
             await execAsync('pip install yt-dlp');
             
             console.log('Making yt-dlp executable...');
-            await execAsync('chmod a+rx $(which yt-dlp)');
+            await execAsync('chmod a+rx $(which yt-dlp)`);
             
             console.log('yt-dlp installed successfully');
         }
         
+        console.log('yt-dlp setup complete. The bot will now use direct downloads without FFmpeg processing.');
         console.log('Setup completed successfully!');
     } catch (error) {
         console.error('Error setting up yt-dlp:', error);

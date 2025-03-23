@@ -519,84 +519,99 @@ async function getVideoInfo(videoPath) {
 export async function downloadMedia(url, platform, options = {}) {
     try {
         // Create download directory if it doesn't exist
-        if (!fs.existsSync(config.DOWNLOAD_FOLDER)) {
-            fs.mkdirSync(config.DOWNLOAD_FOLDER, { recursive: true });
+        const downloadDir = path.join(process.cwd(), config.DOWNLOAD_FOLDER || 'downloads');
+        if (!fs.existsSync(downloadDir)) {
+            fs.mkdirSync(downloadDir, { recursive: true });
         }
         
-        // Generate a unique filename
-        const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).substring(2, 8);
-        const tempOutputPath = path.join(config.DOWNLOAD_FOLDER, `${platform}_${timestamp}_${randomStr}_temp.mp4`);
-        const finalOutputPath = path.join(config.DOWNLOAD_FOLDER, `${platform}_${timestamp}_${randomStr}.mp4`);
+        // Parse options
+        const isAudio = options.isAudio || false;
         
-        // Additional options
-        const isAudio = options.isAudio === true;
+        // Generate unique filename
+        const timestamp = new Date().getTime();
+        const randomString = Math.random().toString(36).substring(2, 8);
+        const extension = isAudio ? 'mp3' : 'mp4';
+        const filename = `${platform}_${timestamp}_${randomString}.${extension}`;
+        const outputPath = path.join(downloadDir, filename);
         
-        console.log(`Downloading ${platform} ${isAudio ? 'audio' : 'video'}`);
-
-        // Download based on platform
-        let downloadPath;
-        let isPreOptimized = false; // Flag to track if the media is already optimized
+        console.log(`Starting ${platform} download: ${url} => ${outputPath}`);
         
-        switch(platform) {
-            case 'YouTube':
-                // Use YouTube downloader with isAudio option
-                downloadPath = await (options.isAudio 
-                    ? downloadYoutubeAudio(url, generateFilename('youtube', 'mp3'))
-                    : downloadYoutubeVideo(url, generateFilename('youtube', 'mp4')));
+        let downloadedPath;
+        
+        // Check if FFmpeg processing is disabled
+        const skipFfmpeg = config.DISABLE_FFMPEG_PROCESSING === true;
+        
+        if (skipFfmpeg) {
+            console.log('FFmpeg processing is disabled, using direct download');
+        }
+        
+        switch (platform.toLowerCase()) {
+            case 'youtube':
+                if (skipFfmpeg) {
+                    // Direct download without FFmpeg
+                    downloadedPath = await downloadYouTube(url, outputPath, isAudio, { 
+                        ...options,
+                        noPostProcessing: true 
+                    });
+                } else {
+                    // Normal download with FFmpeg processing
+                    downloadedPath = await downloadYouTube(url, outputPath, isAudio, options);
+                }
                 break;
                 
-            case 'TikTok':
-                // Get result from TikTok download function which now returns an object
-                const tiktokResult = await downloadFromTikTok(url);
-                downloadPath = tiktokResult.path;
-                isPreOptimized = tiktokResult.isPreOptimized;
+            case 'tiktok':
+                downloadedPath = await downloadTikTok(url, outputPath);
+                
+                // Apply FFmpeg only if not disabled and not pre-optimized
+                if (!skipFfmpeg && downloadedPath && !downloadedPath.isPreOptimized) {
+                    console.log('Applying FFmpeg processing to TikTok video');
+                    const processedPath = await optimizeVideoForUniversalCompatibility(
+                        downloadedPath.path || downloadedPath, 
+                        outputPath.replace('.mp4', '_optimized.mp4')
+                    );
+                    downloadedPath = processedPath;
+                } else if (downloadedPath && downloadedPath.path) {
+                    // If it's an object with path property, extract just the path
+                    downloadedPath = downloadedPath.path;
+                }
                 break;
                 
-            case 'Instagram':
-                downloadPath = await downloadFromInstagram(url);
+            case 'instagram':
+                downloadedPath = await downloadInstagram(url, outputPath);
+                // Apply FFmpeg only if not disabled
+                if (!skipFfmpeg && downloadedPath) {
+                    console.log('Applying FFmpeg processing to Instagram media');
+                    const processedPath = await optimizeVideoForUniversalCompatibility(
+                        downloadedPath, 
+                        outputPath.replace('.mp4', '_optimized.mp4')
+                    );
+                    downloadedPath = processedPath;
+                }
                 break;
                 
-            case 'Facebook':
-                downloadPath = await downloadFromFacebook(url);
+            case 'facebook':
+                downloadedPath = await downloadFacebook(url, outputPath);
+                // Apply FFmpeg only if not disabled
+                if (!skipFfmpeg && downloadedPath) {
+                    console.log('Applying FFmpeg processing to Facebook video');
+                    const processedPath = await optimizeVideoForUniversalCompatibility(
+                        downloadedPath, 
+                        outputPath.replace('.mp4', '_optimized.mp4')
+                    );
+                    downloadedPath = processedPath;
+                }
                 break;
                 
-            case 'Twitter':
-                downloadPath = await downloadFromTwitter(url);
-                break;
+            // Add more platforms as needed
                 
             default:
                 throw new Error(`Unsupported platform: ${platform}`);
         }
         
-        // After download, process the video to ensure universal compatibility
-        if (!isAudio && fs.existsSync(downloadPath) && downloadPath.endsWith('.mp4')) {
-            // Skip FFMPEG processing if the file is already optimized (TikTok org version)
-            if (platform === 'TikTok' && isPreOptimized) {
-                console.log('Skipping FFMPEG processing as TikTok video is already optimized');
-                // Simply copy the file to the final path
-                fs.copyFileSync(downloadPath, finalOutputPath);
-                // Delete the original file to save space
-                if (fs.existsSync(downloadPath)) {
-                    fs.unlinkSync(downloadPath);
-                }
-                return finalOutputPath;
-            }
-            
-            // If specifically for status, use the dedicated status optimization function
-            if (options.forStatus === true) {
-                console.log("Optimizing specifically for WhatsApp status");
-                return await optimizeVideoForStatus(downloadPath, finalOutputPath);
-            } else {
-                // Otherwise use the regular universal compatibility function
-                return await optimizeVideoForUniversalCompatibility(downloadPath, finalOutputPath);
-            }
-        }
-        
-        // Return the downloaded path for non-video files or audio
-        return downloadPath;
+        console.log(`Successfully downloaded media: ${downloadedPath}`);
+        return downloadedPath;
     } catch (error) {
-        console.error(`Error downloading ${platform} content:`, error);
+        console.error(`Error downloading media:`, error);
         throw error;
     }
 }

@@ -233,6 +233,103 @@ export const downloadYoutubeAudio = async (url, outputPath) => {
 };
 
 /**
+ * Download a YouTube video or audio
+ * @param {string} url - YouTube URL
+ * @param {string} outputPath - Where to save the file
+ * @param {boolean} isAudio - Whether to download as audio
+ * @param {Object} options - Additional options
+ * @returns {Promise<string>} - Path to downloaded file
+ */
+export async function downloadYouTube(url, outputPath, isAudio = false, options = {}) {
+    try {
+        console.log(`Downloading YouTube ${isAudio ? 'audio' : 'video'}: ${url}`);
+        
+        // Set download options without any post-processing
+        const downloadOptions = {
+            // No quality filtering or FFmpeg post-processing
+            noPostProcessing: true,  // Skip all post-processing
+            format: isAudio ? 'bestaudio' : 'best', // Get best quality directly
+            output: outputPath,
+            limitRate: options.maxBitrate || '1.5M'
+        };
+        
+        // Execute the download with yt-dlp (using direct download - no FFmpeg)
+        const ytDlpPath = await getYtDlpPath();
+        
+        // Build the yt-dlp command
+        let ytDlpArgs = [
+            url,
+            '--no-check-certificate',
+            '--no-cache-dir',
+            '--no-part',
+            '--quiet'
+        ];
+        
+        // Add format selection based on audio/video
+        if (isAudio) {
+            ytDlpArgs.push('-f', 'bestaudio');
+            ytDlpArgs.push('--extract-audio');
+            ytDlpArgs.push('--audio-format', 'mp3');
+        } else {
+            // For direct video download without FFmpeg processing:
+            ytDlpArgs.push('-f', 'best');
+        }
+        
+        // Add output path
+        ytDlpArgs.push('-o', outputPath);
+        
+        // Execute yt-dlp command
+        console.log(`Executing: ${ytDlpPath} ${ytDlpArgs.join(' ')}`);
+        await execCommand(ytDlpPath, ytDlpArgs);
+        
+        // Verify file exists
+        if (!fs.existsSync(outputPath)) {
+            throw new Error(`Download completed but file not found: ${outputPath}`);
+        }
+        
+        console.log(`YouTube download complete: ${outputPath}`);
+        return outputPath;
+    } catch (error) {
+        console.error(`Error downloading YouTube video:`, error);
+        throw error;
+    }
+}
+
+/**
+ * Execute a command with given arguments
+ * @param {string} command - Command to execute
+ * @param {Array<string>} args - Command arguments
+ * @returns {Promise<string>} - Command output
+ */
+async function execCommand(command, args) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(command, args);
+        let stdout = '';
+        let stderr = '';
+        
+        proc.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+        
+        proc.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+        
+        proc.on('close', (code) => {
+            if (code === 0) {
+                resolve(stdout);
+            } else {
+                reject(new Error(`Command failed with code ${code}: ${stderr}`));
+            }
+        });
+        
+        proc.on('error', (err) => {
+            reject(err);
+        });
+    });
+}
+
+/**
  * Search for YouTube videos
  * @param {string} query - Search query
  * @param {number} limit - Number of results to return
