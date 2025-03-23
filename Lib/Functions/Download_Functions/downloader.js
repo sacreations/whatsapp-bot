@@ -549,13 +549,10 @@ export async function downloadMedia(url, platform, options = {}) {
             case 'youtube':
                 if (skipFfmpeg) {
                     // Direct download without FFmpeg
-                    downloadedPath = await downloadYouTube(url, outputPath, isAudio, { 
-                        ...options,
-                        noPostProcessing: true 
-                    });
+                    downloadedPath = await downloadFromYouTube(url, isAudio); // Corrected function name
                 } else {
                     // Normal download with FFmpeg processing
-                    downloadedPath = await downloadYouTube(url, outputPath, isAudio, options);
+                    downloadedPath = await downloadFromYouTube(url, isAudio); // Corrected function name
                 }
                 break;
                 
@@ -578,7 +575,7 @@ export async function downloadMedia(url, platform, options = {}) {
                 break;
                 
             case 'instagram':
-                downloadedPath = await downloadInstagram(url, outputPath);
+                downloadedPath = await downloadFromInstagram(url); // Corrected function name
                 // Apply FFmpeg only if not disabled
                 if (!skipFfmpeg && downloadedPath) {
                     console.log('Applying FFmpeg processing to Instagram media');
@@ -591,7 +588,7 @@ export async function downloadMedia(url, platform, options = {}) {
                 break;
                 
             case 'facebook':
-                downloadedPath = await downloadFacebook(url, outputPath);
+                downloadedPath = await downloadFromFacebook(url); // Corrected function name
                 // Apply FFmpeg only if not disabled
                 if (!skipFfmpeg && downloadedPath) {
                     console.log('Applying FFmpeg processing to Facebook video');
