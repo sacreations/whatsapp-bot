@@ -1,35 +1,89 @@
 import axios from 'axios';
 
 /**
- * Perform a Google search using the provided API
+ * Perform a Google search and return results
  * @param {string} query - The search query
- * @returns {Promise<Object>} - Object with search results
+ * @returns {Promise<Object>} - Search results
  */
 export async function googleSearch(query) {
     try {
-        // Encode the query for URL
-        const encodedQuery = encodeURIComponent(query);
-        console.log(`Performing Google search for: ${encodedQuery}`);
+        // Try Google search first
+        console.log(`Performing Google search for: ${query}`);
+        const apiUrl = `https://delirius-apiofc.vercel.app/search/googlesearch?query=${encodeURIComponent(query)}`;
         
-        // Make request to the search API
-        const response = await axios.get(`https://delirius-apiofc.vercel.app/search/googlesearch?query=${encodedQuery}`);
-        
-        // Check if the response is successful and contains actual data
-        if (response.data && response.data.status === true && response.data.data && Array.isArray(response.data.data)) {
-            if (response.data.data.length === 0) {
-                console.log('Search API returned empty results array');
-            } else {
-                console.log(`Search API returned ${response.data.data.length} results`);
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
             }
-            return { type: 'google', results: response.data.data };
-        } else {
-            console.error('Invalid Google search response format:', response.data);
-            return { type: 'google', results: [] };
+        });
+        
+        if (!response.ok) {
+            console.log(`Google search failed with status: ${response.status}. Falling back to Bing search.`);
+            return await bingSearch(query); // Fall back to Bing search
         }
+        
+        const data = await response.json();
+        
+        // Track AI search stats if global container exists
+        if (global.aiStats) {
+            global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
+        }
+        
+        return {
+            searchEngine: 'Google',
+            query: query,
+            results: data.results || []
+        };
     } catch (error) {
-        console.error('Error performing Google search:', error.message);
-        // Return empty results array if the search fails
-        return { type: 'google', results: [] };
+        console.error(`Error in Google search: ${error.message}. Falling back to Bing search.`);
+        // If Google search fails, fall back to Bing search
+        return await bingSearch(query);
+    }
+}
+
+/**
+ * Perform a Bing search as fallback when Google search fails
+ * @param {string} query - The search query
+ * @returns {Promise<Object>} - Search results
+ */
+async function bingSearch(query) {
+    try {
+        console.log(`Performing Bing search for: ${query}`);
+        const apiUrl = `https://delirius-apiofc.vercel.app/search/bingsearch?query=${encodeURIComponent(query)}`;
+        
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Bing search API response not OK: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Track that we're using Bing as fallback in stats
+        if (global.aiStats) {
+            global.aiStats.bingSearchesFallback = (global.aiStats.bingSearchesFallback || 0) + 1;
+        }
+        
+        return {
+            searchEngine: 'Bing',
+            query: query,
+            results: data.results || []
+        };
+    } catch (error) {
+        console.error(`Error in Bing search: ${error.message}`);
+        // If both Google and Bing search fail, return empty results
+        return {
+            searchEngine: 'Failed',
+            query: query,
+            results: [],
+            error: error.message
+        };
     }
 }
 

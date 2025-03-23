@@ -95,9 +95,11 @@ export function createSearchEnhancedPrompt(userMessage, searchResults, chatHisto
     // Format search results for the AI
     const formattedResults = formatSearchResults(searchResults, 5);
     
+    const searchEngine = searchResults.searchEngine || 'the web';
+    
     const searchEnhancedPrompt = `${SYSTEM_PROMPT}
 
-Special instruction: I've performed a web search for the user's query and found the following information:
+Special instruction: I've performed a search on ${searchEngine} for the user's query and found the following information:
 
 ${formattedResults}
 

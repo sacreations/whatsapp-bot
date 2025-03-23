@@ -104,7 +104,7 @@ export async function processMessageWithAI(m, sock, userText) {
                 try {
                     await message.react('🔍', m, sock);
                     searchResults = await googleSearch(userText);
-                    console.log(`Fast fact search found ${searchResults.results?.length || 0} results`);
+                    console.log(`Fast fact search found ${searchResults.results?.length || 0} results using ${searchResults.searchEngine}`);
                     
                     if (searchResults.results && searchResults.results.length > 0) {
                         promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
@@ -121,7 +121,7 @@ export async function processMessageWithAI(m, sock, userText) {
                         updateMessageHistory(senderId, userText, aiReply);
                         
                         // Make sure to clear typing indicator even for fast facts
-                        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                        await updateTypingStatus('paused');
                         return aiReply;
                     }
                     // If no search results or search failed, continue with normal classification
@@ -222,7 +222,7 @@ export async function processMessageWithAI(m, sock, userText) {
                     
                     try {
                         searchResults = await googleSearch(userText);
-                        console.log(`Found ${searchResults.results?.length || 0} search results`);
+                        console.log(`Found ${searchResults.results?.length || 0} search results using ${searchResults.searchEngine}`);
                         
                         // Track search stats if available
                         if (global.aiStats) {
