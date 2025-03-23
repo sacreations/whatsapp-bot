@@ -127,3 +127,36 @@ export async function updateTypingStatus(sock, jid, status) {
         }
     }
 }
+
+/**
+ * Get current Sri Lanka time and date
+ * @returns {Object} - Object containing formatted time, date and timestamp
+ */
+export function getSriLankaTime() {
+    // Sri Lanka is UTC+5:30
+    const options = {
+        timeZone: 'Asia/Colombo',
+        hour12: true,
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    };
+    
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const formatted = formatter.format(now);
+    
+    // Extract date and time components
+    const [weekday, month, day, year, time] = formatted.replace(',', '').replace(',', '').replace(' at ', ' ').split(' ');
+    
+    return {
+        timeString: time,
+        dateString: `${weekday}, ${day} ${month} ${year}`,
+        fullString: `${weekday}, ${day} ${month} ${year} at ${time} (Sri Lanka time)`,
+        timestamp: now.getTime()
+    };
+}

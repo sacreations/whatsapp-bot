@@ -1,5 +1,6 @@
 import config from '../../Config.js';
 import { formatSearchResults } from './googleSearch.js';
+import { getSriLankaTime } from './utils/aiUtils.js';
 
 /**
  * Enhanced system prompt to define the AI assistant's behavior with command awareness
@@ -42,11 +43,43 @@ YOUR PRIMARY GOAL is to be helpful, knowledgeable, and provide direct answers wh
  * Template for regular user interaction
  */
 export function createRegularPrompt(userMessage, chatHistory = []) {
-    return [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...chatHistory,
-        { role: "user", content: userMessage }
-    ];
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
+    // System prompt with configuration options
+    const systemPrompt = {
+        role: "system",
+        content: `You are ${config.BOT_NAME}, a helpful WhatsApp assistant powered by AI.
+Your responses should be natural, friendly, but brief. Try to keep responses under 300 characters.
+Provide helpful guidance. If someone asks about your capabilities, mention that you can answer questions, chat, search for information, and help with WhatsApp functions.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}
+
+Be respectful and follow these guidelines:
+- Do not pretend to search for or retrieve information you don't have access to.
+- Do not provide illegal content or instructions.
+- Refuse to provide harmful, hateful, or dangerous content.
+- If you're unsure about something, say so. Don't make up information.
+- Respect privacy, don't ask for or store personal information.`
+    };
+    
+    // Construct the full prompt
+    const promptMessages = [systemPrompt];
+    
+    // Include message history if available
+    if (chatHistory && chatHistory.length > 0) {
+        chatHistory = chatHistory.slice(-10);  // Use the most recent 10 exchanges for context
+        for (const item of chatHistory) {
+            promptMessages.push(item);
+        }
+    }
+    
+    // Add the current user message
+    promptMessages.push({
+        role: "user",
+        content: userMessage
+    });
+    
+    return promptMessages;
 }
 
 /**
@@ -56,12 +89,16 @@ export function createRegularPrompt(userMessage, chatHistory = []) {
  * admin contact requests
  */
 export function createAdminContactPrompt(userMessage) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     const specialSystemPrompt = `${SYSTEM_PROMPT}
 
 Special instruction: The user is asking to contact the admin or owner. 
 Indicate that you'll forward their message to the admin. 
 Ask them if there's anything specific they want to tell the admin.
-Don't make up responses from the admin - just confirm you'll forward the message.`;
+Don't make up responses from the admin - just confirm you'll forward the message.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: specialSystemPrompt },
@@ -73,6 +110,9 @@ Don't make up responses from the admin - just confirm you'll forward the message
  * Template for when bot information is requested
  */
 export function createBotInfoPrompt(userMessage) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     const botInfoPrompt = `${SYSTEM_PROMPT}
 
 Special instruction: The user is asking about the bot itself.
@@ -80,7 +120,8 @@ Provide information about the bot's capabilities including:
 - Command prefix: ${config.PREFIX}
 - Available features: social media downloading, group management, status viewing, etc.
 - How to see available commands: use the ${config.PREFIX}menu command
-Keep the response friendly and helpful.`;
+Keep the response friendly and helpful.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: botInfoPrompt },
@@ -92,6 +133,9 @@ Keep the response friendly and helpful.`;
  * Template for enhancing responses with search results
  */
 export function createSearchEnhancedPrompt(userMessage, searchResults, chatHistory = []) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     // Format search results for the AI
     const formattedResults = formatSearchResults(searchResults, 5);
     
@@ -107,7 +151,8 @@ Use this information to provide a helpful, factual response. Focus on directly a
 Do NOT mention that you performed a search - just incorporate the information naturally as if you knew it.
 Prioritize factual accuracy from the search results rather than making assumptions.
 Give a direct, concise answer first, followed by additional context if helpful.
-If the search results don't contain relevant information to answer the query, admit that you don't have that specific information rather than guessing.`;
+If the search results don't contain relevant information to answer the query, admit that you don't have that specific information rather than guessing.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: searchEnhancedPrompt },
@@ -120,6 +165,9 @@ If the search results don't contain relevant information to answer the query, ad
  * Template for enhancing responses with Wikipedia results
  */
 export function createWikipediaPrompt(userMessage, searchResults, chatHistory = []) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     // Format search results for the AI
     const formattedResults = formatSearchResults(searchResults, 3);
     
@@ -132,7 +180,8 @@ ${formattedResults}
 Use this information to provide a comprehensive but concise response. Focus on the most relevant facts that answer the user's question.
 If there are contradictions or multiple perspectives in the Wikipedia entries, acknowledge them.
 Don't mention that you got this from Wikipedia - just incorporate the information naturally.
-Keep your response clear and educational.`;
+Keep your response clear and educational.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: wikipediaPrompt },
@@ -145,6 +194,9 @@ Keep your response clear and educational.`;
  * Template for wallpaper search results
  */
 export function createWallpaperPrompt(userMessage, searchResults, chatHistory = []) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     // Format search results for the AI
     const formattedResults = formatSearchResults(searchResults, 5);
     
@@ -156,7 +208,8 @@ ${formattedResults}
 
 Provide a response that includes direct links to 3-5 of the best images that match what they're looking for.
 Format the response as a list of options with direct image URLs that they can download.
-Be helpful and suggest which one might be best based on what they asked for.`;
+Be helpful and suggest which one might be best based on what they asked for.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: wallpaperPrompt },
@@ -169,6 +222,9 @@ Be helpful and suggest which one might be best based on what they asked for.`;
  * Template for classifying if a query needs real-time information
  */
 export function createRealTimeClassificationPrompt(userMessage) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     const classificationPrompt = `You are an AI assistant tasked with determining if a user query requires real-time or current information.
 
 Your task is to analyze the following user message and determine if it requires fresh, up-to-date information that might be available through a web search.
@@ -191,7 +247,8 @@ Respond with ONLY "yes" if the query needs real-time information, or "no" if it 
 
 User query: "${userMessage}"
 
-Does this query require real-time information? (yes/no)`;
+Does this query require real-time information? (yes/no)
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: classificationPrompt },
@@ -202,6 +259,9 @@ Does this query require real-time information? (yes/no)`;
  * Template for classifying the query type
  */
 export function createQueryClassificationPrompt(userMessage) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     const classificationPrompt = `You are an AI assistant tasked with determining the type of query a user is making.
 
 Your task is to analyze the following user message and classify it into exactly one of these categories:
@@ -217,7 +277,8 @@ Respond with ONLY one word from the list above, nothing else.
 
 User query: "${userMessage}"
 
-Query type:`;
+Query type:
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: classificationPrompt },
@@ -228,6 +289,9 @@ Query type:`;
  * Template for HTML extraction results
  */
 export function createHtmlExtractionPrompt(userMessage, extractionResults, chatHistory = []) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     // Format extraction results for the AI
     const formattedResults = formatSearchResults(extractionResults);
     
@@ -241,7 +305,8 @@ Based on this HTML extraction, provide a helpful analysis of the webpage content
 Highlight key information like the page title, description, and structure.
 Offer insights about what kind of website it is and what content it contains.
 If the user asked specific questions about the webpage, answer them based on the extracted content.
-Keep your response concise and focused on the most relevant information.`;
+Keep your response concise and focused on the most relevant information.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: htmlExtractionPrompt },
@@ -254,6 +319,9 @@ Keep your response concise and focused on the most relevant information.`;
  * New template for checking if user query matches a command
  */
 export function createCommandMatchPrompt(userMessage) {
+    // Get current Sri Lanka time and date
+    const sriLankaTime = getSriLankaTime();
+    
     const commandMatchPrompt = `You need to determine if a user's message should be handled by a specific bot command rather than a general AI response.
 
 Available bot commands:
@@ -277,7 +345,8 @@ IMPORTANT: Be very strict in your analysis:
 If it matches any of the command functions above, respond with ONLY the command name without the prefix (e.g., "time", "wallpaper", etc.). 
 If it doesn't match any command, respond with "none".
 
-Response:`;
+Response:
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
         { role: "system", content: commandMatchPrompt },
