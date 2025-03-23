@@ -24,6 +24,7 @@ import { getMessageHistory, updateMessageHistory, isFirstTimeInteraction, countA
 import { classifyQueryType, checkForCommandMatch, generateCommandSuggestion, isFastFactQuestion } from './classifiers/queryClassifier.js';
 import { sendWallpaperImages } from './handlers/mediaHandler.js';
 import { isGreeting, isAskingAboutAdmin, extractUrl, extractSearchTerm, detectLanguage, updateTypingStatus } from './utils/aiUtils.js';
+import { generateBotInfo, generateCategoryInfo, handleCommandInquiry } from './handlers/botInfoHandler.js';
 
 /**
  * Process a message with AI and get a response
@@ -57,6 +58,48 @@ export async function processMessageWithAI(m, sock, userText) {
             updateMessageHistory(senderId, userText, greeting);
             
             return greeting;
+        }
+        
+        // Check for explicit bot info request
+        if (userText.toLowerCase().includes('what can you do') || 
+            userText.toLowerCase().includes('your features') ||
+            userText.toLowerCase().includes('help menu') ||
+            userText.toLowerCase().includes('bot features') ||
+            userText.toLowerCase().includes('list commands') ||
+            userText.toLowerCase().includes('show commands')) {
+            
+            const botInfoResponse = generateBotInfo();
+            updateMessageHistory(senderId, userText, botInfoResponse);
+            return botInfoResponse;
+        }
+        
+        // Check for specific command category inquiries
+        const categoryKeywords = {
+            'social media commands': 'social',
+            'download commands': 'social', 
+            'media commands': 'media',
+            'group commands': 'groups',
+            'status commands': 'status',
+            'links commands': 'links'
+        };
+        
+        for (const [keyword, category] of Object.entries(categoryKeywords)) {
+            if (userText.toLowerCase().includes(keyword)) {
+                const categoryInfo = generateCategoryInfo(category);
+                updateMessageHistory(senderId, userText, categoryInfo);
+                return categoryInfo;
+            }
+        }
+        
+        // Check if asking about a specific command
+        if (userText.toLowerCase().includes('how to use') || 
+            userText.toLowerCase().includes('how do i use') ||
+            userText.toLowerCase().includes('command for') ||
+            userText.toLowerCase().includes('command help')) {
+            
+            const commandInfo = handleCommandInquiry(userText);
+            updateMessageHistory(senderId, userText, commandInfo);
+            return commandInfo;
         }
         
         // Check if asking about admin information

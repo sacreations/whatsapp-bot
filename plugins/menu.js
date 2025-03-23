@@ -3,164 +3,235 @@ import message from '../Lib/chat/messageHandler.js';
 import config from '../Config.js';
 import { listCommands } from '../Lib/chat/commandHandler.js';
 
-// Menu command
+// Main menu command - shows all commands with categories
 bot({
     pattern: 'menu',
     fromMe: false,
-    desc: 'Display available commands'
-}, async (m, sock) => {
-    const allCommands = listCommands();
-    
-    // Group commands by category
-    const categories = {
-        'basic': { emoji: '📋', title: 'Basic Commands', commands: [] },
-        'media': { emoji: '🖼️', title: 'Media Commands', commands: [] },
-        'downloader': { emoji: '📥', title: 'Downloader Commands', commands: [] },
-        'group': { emoji: '👥', title: 'Group Commands', commands: [] },
-        'tools': { emoji: '🛠️', title: 'Tools & Utilities', commands: [] },
-        'owner': { emoji: '👑', title: 'Owner Commands', commands: [] }
-    };
-    
-    // Categorize commands
-    allCommands.forEach(cmd => {
-        if (cmd.fromMe) {
-            categories.owner.commands.push(cmd);
-        } else if (cmd.pattern.toString().includes('convert') || 
-                  cmd.pattern.toString().includes('sticker') || 
-                  cmd.pattern.toString().includes('media')) {
-            categories.media.commands.push(cmd);
-        } else if (cmd.pattern.toString().includes('yt') || 
-                  cmd.pattern.toString().includes('tiktok') || 
-                  cmd.pattern.toString().includes('ig') || 
-                  cmd.pattern.toString().includes('fb') || 
-                  cmd.pattern.toString().includes('twitter')) {
-            categories.downloader.commands.push(cmd);
-        } else if (cmd.pattern.toString().includes('group')) {
-            categories.group.commands.push(cmd);
-        } else if (cmd.pattern.toString().includes('test') || 
-                  cmd.pattern.toString().includes('stat') || 
-                  cmd.pattern.toString().includes('ping') || 
-                  cmd.pattern.toString().includes('info') || 
-                  cmd.pattern.toString().includes('sysinfo') ||
-                  cmd.pattern.toString().includes('time') ||
-                  cmd.pattern.toString().includes('date')) {
-            categories.tools.commands.push(cmd);
-        } else {
-            categories.basic.commands.push(cmd);
-        }
-    });
-    
-    // Get current Sri Lanka time
-    const now = new Date();
-    // Sri Lanka is UTC+5:30
-    const sriLankaTime = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Colombo',
-        dateStyle: 'full',
-        timeStyle: 'medium'
-    }).format(now);
-    
-    // Build the menu text with better styling
-    let menuText = `┌─────────────────────┐\n`;
-    menuText += `│    *${config.BOT_NAME}*    │\n`;
-    menuText += `└─────────────────────┘\n\n`;
-    
-    // Add date and time
-    menuText += `📆 *Date & Time (Sri Lanka)*\n`;
-    menuText += `${sriLankaTime}\n\n`;
-    
-    // Add each category
-    Object.values(categories).forEach(category => {
-        if (category.commands.length > 0) {
-            if (category.title === 'Owner Commands' && !m.key.fromMe) {
-                return; // Skip owner commands for non-owners
-            }
+    desc: 'Show all available commands'
+}, async (m, sock, args) => {
+    try {
+        // Get all commands
+        const commands = listCommands();
+        
+        // Define command categories
+        const categories = {
+            'Social Media': ['yt', 'tiktok', 'ig', 'fb', 'twitter', 'x'],
+            'Media Tools': ['save', 'convert', 'mediainfo', 'statusready', 'wallpaper'],
+            'Status Management': ['autostatus', 'liststatus', 'poststatus', 'contacts'],
+            'Group Management': ['groupinfo', 'groupmembers', 'add', 'kick', 'promote', 'demote', 'allowedgroups', 'addallowedgroup', 'removeallowedgroup', 'checkgroup'],
+            'Saved Links': ['savedlinks', 'dllink', 'dlall', 'clearsaved'],
+            'Admin Tools': ['sysinfo', 'netstat', 'compression', 'maxresolution'],
+            'Basic Commands': ['test', 'time', 'date', 'menu', 'help']
+        };
+        
+        // Start building menu text
+        let menuText = `🤖 *${config.BOT_NAME} Command Menu* 🤖\n\n`;
+        menuText += `Prefix: ${config.PREFIX}\n\n`;
+        
+        // Add commands by category
+        for (const [category, categoryCommands] of Object.entries(categories)) {
+            const matchedCommands = commands.filter(cmd => 
+                typeof cmd.pattern === 'string' && categoryCommands.includes(cmd.pattern)
+            );
             
-            menuText += `╭─❯ ${category.emoji} *${category.title}* ❮─\n`;
-            
-            category.commands.forEach(cmd => {
-                const pattern = typeof cmd.pattern === 'string' 
-                    ? `${config.PREFIX}${cmd.pattern}` 
-                    : `${config.PREFIX}${cmd.pattern.toString().replace(/\//g, '').substring(0, 15)}`;
+            if (matchedCommands.length > 0) {
+                menuText += `*⭐ ${category} ⭐*\n`;
                 
-                const description = cmd.desc || 'No description';
-                menuText += `│ • ${pattern}\n│   ${description}\n`;
-            });
-            
-            menuText += `╰────────────────\n\n`;
+                for (const cmd of matchedCommands) {
+                    const usage = cmd.usage ? ` ${cmd.usage}` : '';
+                    menuText += `• ${config.PREFIX}${cmd.pattern}${usage}\n`;
+                    if (cmd.desc) menuText += `  ${cmd.desc}\n`;
+                }
+                
+                menuText += '\n';
+            }
         }
-    });
-    
-    // Add footer
-    menuText += `┌─────────────────────┐\n`;
-    menuText += `│ 📱 *HOW TO USE* 📱 │\n`;
-    menuText += `└─────────────────────┘\n`;
-    menuText += `Type ${config.PREFIX}help <command> for detailed info on specific commands.\n\n`;
-    menuText += `🤖 *Bot Status:* Online\n`;
-    menuText += `⚡ *Prefix:* ${config.PREFIX}\n`;
-    menuText += `🧩 *Commands:* ${allCommands.length}\n`;
-    
-    // Send the menu
-    return await message.reply(menuText, m, sock);
+        
+        // Add footer
+        menuText += `💡 For detailed help on a command, use: ${config.PREFIX}help <command>\n`;
+        menuText += `Example: ${config.PREFIX}help yt\n\n`;
+        menuText += `Created by ${config.ADMIN_NAME || 'Admin'} ❤️`;
+        
+        // Send the menu
+        return await message.reply(menuText, m, sock);
+    } catch (error) {
+        console.error('Error in menu command:', error);
+        return await message.reply(`Error generating menu: ${error.message}`, m, sock);
+    }
 });
 
-// Help command
+// Help command - shows detailed help for a specific command
 bot({
     pattern: 'help',
     fromMe: false,
-    desc: 'Get help for a specific command'
+    desc: 'Get detailed help for a command',
+    usage: '<command>'
 }, async (m, sock, args) => {
-    if (!args) {
-        return await message.reply(`Please specify a command to get help for. Example: ${config.PREFIX}help menu`, m, sock);
+    try {
+        if (!args) {
+            return await message.reply(`Please specify a command to get help for.\nExample: ${config.PREFIX}help yt`, m, sock);
+        }
+        
+        // Get all commands
+        const commands = listCommands();
+        
+        // Find the requested command
+        const command = commands.find(cmd => 
+            typeof cmd.pattern === 'string' && cmd.pattern === args.trim().toLowerCase()
+        );
+        
+        if (!command) {
+            return await message.reply(`Command not found: ${args}\nUse ${config.PREFIX}menu to see all available commands.`, m, sock);
+        }
+        
+        // Build help text
+        let helpText = `📚 *Help: ${config.PREFIX}${command.pattern}* 📚\n\n`;
+        
+        // Add description
+        if (command.desc) {
+            helpText += `*Description:*\n${command.desc}\n\n`;
+        }
+        
+        // Add usage
+        helpText += `*Usage:*\n${config.PREFIX}${command.pattern}`;
+        if (command.usage) {
+            helpText += ` ${command.usage}`;
+        }
+        helpText += '\n\n';
+        
+        // Add examples based on the command
+        helpText += '*Examples:*\n';
+        
+        switch (command.pattern) {
+            case 'yt':
+                helpText += `${config.PREFIX}yt https://www.youtube.com/watch?v=dQw4w9WgXcQ\n`;
+                helpText += `${config.PREFIX}yt https://youtu.be/dQw4w9WgXcQ audio\n`;
+                helpText += `${config.PREFIX}yt https://www.youtube.com/watch?v=dQw4w9WgXcQ hq\n`;
+                break;
+                
+            case 'tiktok':
+                helpText += `${config.PREFIX}tiktok https://www.tiktok.com/@username/video/1234567890123456789\n`;
+                break;
+                
+            case 'ig':
+                helpText += `${config.PREFIX}ig https://www.instagram.com/p/CAbCdEfGhIj/\n`;
+                helpText += `${config.PREFIX}ig https://www.instagram.com/reel/CAbCdEfGhIj/\n`;
+                break;
+                
+            case 'fb':
+                helpText += `${config.PREFIX}fb https://www.facebook.com/watch?v=1234567890\n`;
+                helpText += `${config.PREFIX}fb https://fb.watch/abcdef123/\n`;
+                break;
+                
+            case 'save':
+                helpText += `Reply to any media with ${config.PREFIX}save\n`;
+                break;
+                
+            case 'convert':
+                helpText += `Reply to media with ${config.PREFIX}convert mp3\n`;
+                helpText += `Reply to media with ${config.PREFIX}convert gif\n`;
+                break;
+                
+            case 'wallpaper':
+                helpText += `${config.PREFIX}wallpaper nature\n`;
+                helpText += `${config.PREFIX}wallpaper cute cats\n`;
+                break;
+                
+            case 'mediainfo':
+                helpText += `Reply to any media with ${config.PREFIX}mediainfo\n`;
+                break;
+                
+            case 'add':
+                helpText += `${config.PREFIX}add 94123456789\n`;
+                helpText += `${config.PREFIX}add 94123456789 94987654321\n`;
+                break;
+                
+            case 'kick':
+                helpText += `Reply to someone's message with ${config.PREFIX}kick\n`;
+                helpText += `${config.PREFIX}kick @mention\n`;
+                break;
+                
+            case 'poststatus':
+                helpText += `Send an image/video with caption ${config.PREFIX}poststatus\n`;
+                helpText += `Reply to an image/video with ${config.PREFIX}poststatus\n`;
+                break;
+                
+            case 'statusready':
+                helpText += `Reply to a video with ${config.PREFIX}statusready\n`;
+                helpText += `${config.PREFIX}statusready https://example.com/video.mp4\n`;
+                break;
+                
+            case 'dllink':
+                helpText += `${config.PREFIX}dllink https://www.youtube.com/watch?v=dQw4w9WgXcQ\n`;
+                break;
+                
+            case 'compression':
+                helpText += `${config.PREFIX}compression low\n`;
+                helpText += `${config.PREFIX}compression medium\n`;
+                helpText += `${config.PREFIX}compression high\n`;
+                break;
+                
+            default:
+                helpText += `${config.PREFIX}${command.pattern}`;
+                if (command.usage) {
+                    helpText += ` ${command.usage}`;
+                }
+                helpText += '\n';
+        }
+        
+        // Add notes for special commands
+        if (['yt', 'tiktok', 'ig', 'fb', 'twitter'].includes(command.pattern)) {
+            helpText += '\n*Options:*\n';
+            if (command.pattern === 'yt') {
+                helpText += '• audio - Download audio only\n';
+                helpText += '• hq - High quality video\n';
+                helpText += '• lq - Low quality/smaller file\n';
+            }
+            helpText += '\n*Note:* Downloaded files are optimized for WhatsApp sharing.\n';
+        }
+        
+        // Send the help text
+        return await message.reply(helpText, m, sock);
+    } catch (error) {
+        console.error('Error in help command:', error);
+        return await message.reply(`Error generating help: ${error.message}`, m, sock);
     }
-    
-    const allCommands = listCommands();
-    const commandName = args.trim().toLowerCase();
-    const command = allCommands.find(cmd => 
-        typeof cmd.pattern === 'string' ? cmd.pattern === commandName : cmd.pattern.toString().includes(commandName)
-    );
-    
-    if (!command) {
-        return await message.reply(`Command '${commandName}' not found. Use ${config.PREFIX}menu to see all commands.`, m, sock);
-    }
-    
-    // Check permission
-    if (command.fromMe && !m.key.fromMe) {
-        return await message.reply(`You don't have permission to use this command.`, m, sock);
-    }
-    
-    let helpText = `📖 *Command Help: ${commandName}* 📖\n\n`;
-    helpText += `🔹 Description: ${command.desc || 'No description available'}\n`;
-    helpText += `🔹 Usage: ${config.PREFIX}${command.pattern} ${command.usage || ''}\n`;
-    helpText += `🔹 Owner Only: ${command.fromMe ? 'Yes' : 'No'}\n`;
-    
-    if (command.example) {
-        helpText += `🔹 Example: ${command.example}\n`;
-    }
-    
-    return await message.reply(helpText, m, sock);
 });
 
-// Info command
+// Command to show bot information
 bot({
-    pattern: 'info',
+    pattern: 'about',
     fromMe: false,
-    desc: 'Show bot information'
+    desc: 'Show information about the bot'
 }, async (m, sock) => {
-    let infoText = `🤖 *${config.BOT_NAME} Information* 🤖\n\n`;
-    
-    infoText += `📝 *Bot Details*\n`;
-    infoText += `• Name: ${config.BOT_NAME}\n`;
-    infoText += `• Prefix: ${config.PREFIX}\n`;
-    infoText += `• Auto-Reply: ${config.ENABLE_AUTO_REPLY ? 'Enabled' : 'Disabled'}\n`;
-    infoText += `• Media Download: ${config.ENABLE_SOCIAL_MEDIA_DOWNLOAD ? 'Enabled' : 'Disabled'}\n\n`;
-    
-    infoText += `🔧 *Technical Info*\n`;
-    infoText += `• Library: @whiskeysockets/baileys\n`;
-    infoText += `• Platform: ${process.platform}\n`;
-    infoText += `• Node.js: ${process.version}\n`;
-    infoText += `• Commands Loaded: ${listCommands().length}\n\n`;
-    
-    infoText += `📱 Use ${config.PREFIX}menu to see available commands.`;
-    
-    return await message.reply(infoText, m, sock);
+    try {
+        let aboutText = `🤖 *About ${config.BOT_NAME}* 🤖\n\n`;
+        
+        // Basic information
+        aboutText += `*Version:* ${process.env.npm_package_version || '1.0.0'}\n`;
+        aboutText += `*Created by:* ${config.ADMIN_NAME || 'Admin'}\n`;
+        aboutText += `*Prefix:* ${config.PREFIX}\n\n`;
+        
+        // Features
+        aboutText += `*Key Features:*\n`;
+        aboutText += `• Social media downloads (YouTube, TikTok, IG, FB, Twitter)\n`;
+        aboutText += `• Advanced media conversion tools\n`;
+        aboutText += `• Group management capabilities\n`;
+        aboutText += `• WhatsApp status management\n`;
+        aboutText += `• AI-powered conversations\n`;
+        aboutText += `• Saved links management\n\n`;
+        
+        // Commands count
+        const commands = listCommands();
+        aboutText += `*Total Commands:* ${commands.length}\n\n`;
+        
+        // Footer
+        aboutText += `Type ${config.PREFIX}menu to see all available commands.\n`;
+        aboutText += `Type ${config.PREFIX}help <command> for detailed help on a specific command.`;
+        
+        return await message.reply(aboutText, m, sock);
+    } catch (error) {
+        console.error('Error in about command:', error);
+        return await message.reply(`Error generating about info: ${error.message}`, m, sock);
+    }
 });

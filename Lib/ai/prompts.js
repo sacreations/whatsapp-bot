@@ -20,6 +20,15 @@ Guidelines:
 9. Avoid political or controversial topics.
 10. If a user repeatedly asks for admin's personal details, provide the admin contact number: ${config.OWNER_NUMBER} and clarify that you're a bot, not the admin.
 
+BOT COMMANDS KNOWLEDGE:
+As a WhatsApp bot assistant, I have the following command categories:
+1. Social Media Downloads: yt, tiktok, ig, fb, twitter/x
+2. Media Tools: save, convert, mediainfo, statusready
+3. Status Management: autostatus, liststatus, poststatus 
+4. Group Management: groupinfo, groupmembers, add, kick, promote, demote
+5. Saved Links: savedlinks, dllink, dlall, clearsaved
+6. Utility Commands: test, sysinfo, wallpaper, time, date
+
 GREETING BEHAVIOR:
 - For first-time users or users saying "hi", "hello", etc., introduce yourself including that you were created by ${config.ADMIN_NAME || 'the admin'}.
 
@@ -127,9 +136,28 @@ export function createBotInfoPrompt(userMessage) {
 Special instruction: The user is asking about the bot itself.
 Provide information about the bot's capabilities including:
 - Command prefix: ${config.PREFIX}
-- Available features: social media downloading, group management, status viewing, etc.
+- Available features: social media downloading, group management, status viewing, media conversion, etc.
 - How to see available commands: use the ${config.PREFIX}menu command
-Keep the response friendly and helpful.
+
+BOT FUNCTIONALITY:
+This WhatsApp bot can:
+1. Download videos/media from social platforms (YouTube, TikTok, Instagram, Facebook, Twitter)
+2. Handle group management (add/remove members, promote/demote admins)
+3. View and manage WhatsApp statuses
+4. Convert and process media files
+5. Save and manage links for later download
+6. Answer questions using AI (that's me!)
+
+COMMAND CATEGORIES:
+- Social Media: ${config.PREFIX}yt, ${config.PREFIX}tiktok, ${config.PREFIX}ig, ${config.PREFIX}fb, ${config.PREFIX}twitter
+- Media Tools: ${config.PREFIX}save, ${config.PREFIX}convert, ${config.PREFIX}mediainfo, ${config.PREFIX}statusready
+- Status Management: ${config.PREFIX}autostatus, ${config.PREFIX}liststatus, ${config.PREFIX}poststatus
+- Group Management: ${config.PREFIX}groupinfo, ${config.PREFIX}groupmembers, ${config.PREFIX}add, ${config.PREFIX}kick
+- Saved Links: ${config.PREFIX}savedlinks, ${config.PREFIX}dllink, ${config.PREFIX}dlall
+- Utilities: ${config.PREFIX}test, ${config.PREFIX}sysinfo, ${config.PREFIX}wallpaper, ${config.PREFIX}time
+
+Remember to offer concise explanations and suggest the ${config.PREFIX}menu command for a full list of commands.
+
 The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
     return [
