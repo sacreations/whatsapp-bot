@@ -29,6 +29,24 @@ function getMessageText(m) {
            m.message?.videoMessage?.caption || "").trim();
 }
 
+// Add a helper to track users we've interacted with
+const interactedUsers = new Set();
+
+/**
+ * Check if this is a first-time interaction with this user
+ * @param {string} userId - The user's JID
+ * @returns {boolean} - True if this is the first interaction
+ */
+function isFirstTimeInteraction(userId) {
+    if (interactedUsers.has(userId)) {
+        return false;
+    }
+    
+    // Mark as interacted
+    interactedUsers.add(userId);
+    return true;
+}
+
 /**
  * Detect social media platform from URL
  */
@@ -364,6 +382,39 @@ export async function handleAutoReply(m, sock) {
         console.error('Error in handleAutoReply:', error);
         // Clear typing indicator on error
         await message.react('❌', m, sock);
+        return false;
+    }
+}
+
+/**
+ * Process message with AI
+ */
+export async function processWithAI(m, sock) {
+    try {
+        const messageText = getMessageText(m);
+        const sender = m.key.remoteJid;
+        
+        // Set typing indicator
+        await sock.sendPresenceUpdate('composing', sender);
+        
+        // Check if this is a first-time interaction and log it
+        const isFirstTime = isFirstTimeInteraction(sender);
+        if (isFirstTime) {
+            console.log(`First time interaction with user: ${sender}`);
+        }
+        
+        // Process with AI, passing the first-time status
+        const response = await processMessageWithAI(m, sock, messageText);
+        
+        // Send the AI response
+        await message.reply(response, m, sock);
+        
+        // Clear typing indicator
+        await sock.sendPresenceUpdate('paused', sender);
+        
+        return true;
+    } catch (error) {
+        console.error('Error processing message with AI:', error);
         return false;
     }
 }

@@ -22,6 +22,9 @@ const configManager = {
         this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
         this.autoMediaToggle = document.getElementById('auto-media-toggle');
         
+        // Create the admin information UI section
+        this.createAdminInfoSection();
+        
         this.setupEventListeners();
         this.loadConfig();
     },
@@ -100,6 +103,11 @@ const configManager = {
         for (const [key, value] of formData.entries()) {
             config[key] = value;
         }
+        
+        // Ensure admin fields are included
+        config.ADMIN_NAME = document.getElementById('ADMIN_NAME').value;
+        config.ADMIN_EMAIL = document.getElementById('ADMIN_EMAIL').value;
+        config.ADMIN_BIO = document.getElementById('ADMIN_BIO').value;
         
         try {
             const response = await fetch('/api/config', {
@@ -192,6 +200,11 @@ const configManager = {
                 if (groupsManager && config.ALLOWED_DOWNLOAD_GROUPS) {
                     groupsManager.loadGroups(config.ALLOWED_DOWNLOAD_GROUPS);
                 }
+
+                // Load admin settings
+                document.getElementById('ADMIN_NAME').value = config.ADMIN_NAME || '';
+                document.getElementById('ADMIN_EMAIL').value = config.ADMIN_EMAIL || '';
+                document.getElementById('ADMIN_BIO').value = config.ADMIN_BIO || '';
             } else {
                 console.error('Failed to load configuration:', data.message);
                 showToast('Failed to load configuration: ' + data.message, 'error');
@@ -236,6 +249,48 @@ const configManager = {
         } catch (error) {
             showToast(`Error updating ${key}`, 'error');
         }
+    },
+    
+    /**
+     * Create the admin information section in the config UI
+     */
+    createAdminInfoSection: function() {
+        // Find the config container
+        const configContainer = document.querySelector('.config-container') || document.getElementById('config-form');
+        
+        if (!configContainer) {
+            console.error('Config container not found');
+            return;
+        }
+        
+        // Create Admin Information Section
+        const adminSection = document.createElement('div');
+        adminSection.className = 'config-section';
+        adminSection.innerHTML = `
+            <h3>Admin Information</h3>
+            <div class="config-description">Information about the bot administrator that may be shared with users.</div>
+            
+            <div class="form-group">
+                <label for="ADMIN_NAME">Admin Name:</label>
+                <input type="text" id="ADMIN_NAME" name="ADMIN_NAME" class="form-control">
+                <div class="description">Your name as the bot administrator</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="ADMIN_EMAIL">Admin Email (Optional):</label>
+                <input type="email" id="ADMIN_EMAIL" name="ADMIN_EMAIL" class="form-control">
+                <div class="description">Your contact email (will not be shared automatically)</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="ADMIN_BIO">Admin Bio (Optional):</label>
+                <textarea id="ADMIN_BIO" name="ADMIN_BIO" class="form-control" rows="3"></textarea>
+                <div class="description">Brief information about the bot administrator</div>
+            </div>
+        `;
+        
+        // Add admin section to the config container
+        configContainer.appendChild(adminSection);
     }
 };
 

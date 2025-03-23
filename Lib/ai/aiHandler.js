@@ -24,6 +24,9 @@ import message from '../chat/messageHandler.js';
 const messageHistory = new Map();
 const MAX_HISTORY_LENGTH = config.AI_CONTEXT_LENGTH || 5;  // Maximum number of previous exchanges to include
 
+// Track first-time users
+const firstTimeUsers = new Set();
+
 /**
  * Process a message with AI and get a response
  * 
@@ -32,7 +35,7 @@ const MAX_HISTORY_LENGTH = config.AI_CONTEXT_LENGTH || 5;  // Maximum number of 
  * @param {Object} sock - The WhatsApp socket
  * @returns {Promise<string>} AI response text
  */
-export async function processMessageWithAI(m, userText, sock) {
+export async function processMessageWithAI(m, sock, userText) {
     try {
         const senderId = m.key.remoteJid;
         let promptMessages;
@@ -41,202 +44,243 @@ export async function processMessageWithAI(m, userText, sock) {
         // Log the incoming message
         console.log(`AI processing message: "${userText}"`);
         
-        // Step 1: First check if the query matches a bot command
-        const matchingCommand = await checkForCommandMatch(userText);
-        console.log(`Command match check result: ${matchingCommand}`);
+        // Check if this is a first-time user (no message history)
+        const isFirstTime = !messageHistory.has(senderId) || messageHistory.get(senderId).length === 0;
         
-        if (matchingCommand !== 'none') {
-            // This query should be handled by suggesting a bot command
-            const commandResponse = await generateCommandSuggestion(userText, matchingCommand);
+        // Handle greeting for first-time users
+        if (isFirstTime && isGreeting(userText)) {
+            console.log(`First-time greeting from user: ${senderId}`);
             
-            // Update conversation history
-            updateMessageHistory(senderId, userText, commandResponse);
+            // Create a custom greeting message
+            const adminName = config.ADMIN_NAME || 'the admin';
+            const greeting = `Hello! 👋 I'm ${config.BOT_NAME}, a WhatsApp assistant created by ${adminName}. I can help you with questions, download media from social platforms, and more. How can I assist you today?`;
             
-            return commandResponse;
+            // Update conversation history with this exchange
+            updateMessageHistory(senderId, userText, greeting);
+            
+            return greeting;
         }
         
-        // For simple factual questions, prioritize search
-        if (isFastFactQuestion(userText)) {
-            console.log("Detected fast fact question, prioritizing search");
-            try {
-                await message.react('🔍', m, sock);
-                searchResults = await googleSearch(userText);
-                console.log(`Fast fact search found ${searchResults.results?.length || 0} results`);
+        // Check if asking about admin information
+        if (isAskingAboutAdmin(userText)) {
+            console.log(`User asking about admin: ${senderId}`);
+            
+            // Check if this is a repeated or persistent inquiry about admin
+            const history = getMessageHistory(senderId);
+            const adminInquiryCount = countAdminInquiries(history);
+            
+            if (adminInquiryCount > 2) {
+                console.log(`Repeated admin inquiries (${adminInquiryCount}) - providing contact info`);
                 
-                if (searchResults.results && searchResults.results.length > 0) {
-                    promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
-                    
-                    // Track search stats if available
-                    if (global.aiStats) {
-                        global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
-                    }
-                    
-                    const response = await getGroqCompletion(promptMessages);
-                    const aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
-                    
-                    // Update conversation history with this exchange
-                    updateMessageHistory(senderId, userText, aiReply);
-                    
-                    // Make sure to clear typing indicator even for fast facts
-                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
-                    return aiReply;
-                }
-                // If no search results or search failed, continue with normal classification
-            } catch (searchError) {
-                console.error('Error during fast fact search:', searchError);
-                // Continue with normal classification
+                // After multiple inquiries, provide contact information
+                const adminContact = `I'm just a bot assistant, not ${config.ADMIN_NAME || 'the admin'} personally. If you need to contact the admin directly, please use this number: ${config.OWNER_NUMBER}`;
+                
+                // Update conversation history
+                updateMessageHistory(senderId, userText, adminContact);
+                
+                return adminContact;
             }
-        }
-        
-        // Classify the query type using AI instead of keyword detection
-        const queryType = await classifyQueryType(userText);
-        console.log(`Query classified as: ${queryType}`);
-        
-        // Handle the query based on its type
-        switch (queryType) {
-            case 'admin':
-                promptMessages = createAdminContactPrompt(userText);
-                await forwardMessageToAdmin(m, userText, sock);
-                break;
+            
+            // Use the admin-specific prompt for handling admin inquiries
+            promptMessages = createAdminContactPrompt(userText);
+        } else {
+            // Step 1: First check if the query matches a bot command
+            const matchingCommand = await checkForCommandMatch(userText);
+            console.log(`Command match check result: ${matchingCommand}`);
+            
+            if (matchingCommand !== 'none') {
+                // This query should be handled by suggesting a bot command
+                const commandResponse = await generateCommandSuggestion(userText, matchingCommand);
                 
-            case 'botinfo':
-                promptMessages = createBotInfoPrompt(userText);
-                break;
+                // Update conversation history
+                updateMessageHistory(senderId, userText, commandResponse);
                 
-            case 'wallpaper':
-                console.log(`Detected wallpaper request: "${userText}"`);
-                await message.react('🖼️', m, sock); // React with image emoji
-                
+                return commandResponse;
+            }
+            
+            // For simple factual questions, prioritize search
+            if (isFastFactQuestion(userText)) {
+                console.log("Detected fast fact question, prioritizing search");
                 try {
-                    // Extract the search term
-                    const searchTerm = extractSearchTerm(userText, 'wallpaper');
-                    console.log(`Searching wallpapers for: "${searchTerm}"`);
-                    
-                    // Fetch wallpapers from API
-                    searchResults = await wallpaperSearch(searchTerm);
-                    console.log(`Found ${searchResults.results?.length || 0} wallpapers`);
-                    
-                    // Only continue if we actually found wallpapers
-                    if (!searchResults.results || searchResults.results.length === 0) {
-                        console.log("No wallpapers found, using regular prompt");
-                        promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-                        break;
-                    }
-                    
-                    // Create prompt with wallpaper results
-                    promptMessages = createWallpaperPrompt(userText, searchResults, getMessageHistory(senderId));
-                    
-                    // Generate AI response
-                    const response = await getGroqCompletion(promptMessages);
-                    const aiReply = response.choices[0]?.message?.content || "I found some wallpapers for you. I'll send them right away.";
-                    
-                    // Update conversation history with this exchange
-                    updateMessageHistory(senderId, userText, aiReply);
-                    
-                    // First send the reply text
-                    await message.reply(aiReply, m, sock);
-                    
-                    // Then send the wallpaper images directly
-                    await sendWallpaperImages(m, sock, searchResults.results);
-                    
-                    // Make sure typing indicator is cleared after all operations
-                    await sock.sendPresenceUpdate('paused', m.key.remoteJid);
-                    
-                    // Return the AI reply to prevent duplicate response
-                    return aiReply;
-                    
-                } catch (searchError) {
-                    console.error('Error during wallpaper search:', searchError);
-                    // Fall back to regular prompt if search fails
-                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-                }
-                break;
-                
-            case 'wikipedia':
-                console.log(`Detected Wikipedia request: "${userText}"`);
-                await message.react('📚', m, sock); // React with book emoji
-                
-                try {
-                    // Extract the search term
-                    const searchTerm = extractSearchTerm(userText, 'wikipedia');
-                    // Determine appropriate language based on message content
-                    const language = detectLanguage(userText);
-                    searchResults = await wikipediaSearch(searchTerm, 5, language);
-                    console.log(`Found ${searchResults.results.length} Wikipedia entries`);
-                    
-                    // Create prompt with Wikipedia results
-                    promptMessages = createWikipediaPrompt(userText, searchResults, getMessageHistory(senderId));
-                } catch (searchError) {
-                    console.error('Error during Wikipedia search:', searchError);
-                    // Fall back to regular prompt if search fails
-                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-                }
-                break;
-                
-            case 'realtime':
-                console.log(`Detected real-time info request: "${userText}"`);
-                await message.react('🔍', m, sock); // React to show searching
-                
-                try {
+                    await message.react('🔍', m, sock);
                     searchResults = await googleSearch(userText);
-                    console.log(`Found ${searchResults.results?.length || 0} search results`);
+                    console.log(`Fast fact search found ${searchResults.results?.length || 0} results`);
                     
-                    // Track search stats if available
-                    if (global.aiStats) {
-                        global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
-                    }
-                    
-                    // Only use search results if we actually found any
                     if (searchResults.results && searchResults.results.length > 0) {
-                        // Create prompt with search results
                         promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
-                    } else {
-                        console.log("No search results found, using regular prompt");
+                        
+                        // Track search stats if available
+                        if (global.aiStats) {
+                            global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
+                        }
+                        
+                        const response = await getGroqCompletion(promptMessages);
+                        const aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
+                        
+                        // Update conversation history with this exchange
+                        updateMessageHistory(senderId, userText, aiReply);
+                        
+                        // Make sure to clear typing indicator even for fast facts
+                        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                        return aiReply;
+                    }
+                    // If no search results or search failed, continue with normal classification
+                } catch (searchError) {
+                    console.error('Error during fast fact search:', searchError);
+                    // Continue with normal classification
+                }
+            }
+            
+            // Classify the query type using AI instead of keyword detection
+            const queryType = await classifyQueryType(userText);
+            console.log(`Query classified as: ${queryType}`);
+            
+            // Handle the query based on its type
+            switch (queryType) {
+                case 'admin':
+                    promptMessages = createAdminContactPrompt(userText);
+                    await forwardMessageToAdmin(m, userText, sock);
+                    break;
+                    
+                case 'botinfo':
+                    promptMessages = createBotInfoPrompt(userText);
+                    break;
+                    
+                case 'wallpaper':
+                    console.log(`Detected wallpaper request: "${userText}"`);
+                    await message.react('🖼️', m, sock); // React with image emoji
+                    
+                    try {
+                        // Extract the search term
+                        const searchTerm = extractSearchTerm(userText, 'wallpaper');
+                        console.log(`Searching wallpapers for: "${searchTerm}"`);
+                        
+                        // Fetch wallpapers from API
+                        searchResults = await wallpaperSearch(searchTerm);
+                        console.log(`Found ${searchResults.results?.length || 0} wallpapers`);
+                        
+                        // Only continue if we actually found wallpapers
+                        if (!searchResults.results || searchResults.results.length === 0) {
+                            console.log("No wallpapers found, using regular prompt");
+                            promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                            break;
+                        }
+                        
+                        // Create prompt with wallpaper results
+                        promptMessages = createWallpaperPrompt(userText, searchResults, getMessageHistory(senderId));
+                        
+                        // Generate AI response
+                        const response = await getGroqCompletion(promptMessages);
+                        const aiReply = response.choices[0]?.message?.content || "I found some wallpapers for you. I'll send them right away.";
+                        
+                        // Update conversation history with this exchange
+                        updateMessageHistory(senderId, userText, aiReply);
+                        
+                        // First send the reply text
+                        await message.reply(aiReply, m, sock);
+                        
+                        // Then send the wallpaper images directly
+                        await sendWallpaperImages(m, sock, searchResults.results);
+                        
+                        // Make sure typing indicator is cleared after all operations
+                        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                        
+                        // Return the AI reply to prevent duplicate response
+                        return aiReply;
+                        
+                    } catch (searchError) {
+                        console.error('Error during wallpaper search:', searchError);
+                        // Fall back to regular prompt if search fails
                         promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
                     }
-                } catch (searchError) {
-                    console.error('Error during search:', searchError);
-                    // Fall back to regular prompt if search fails
-                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-                }
-                break;
-                
-            case 'webpage':
-                console.log(`Detected webpage extraction request: "${userText}"`);
-                await message.react('🌐', m, sock); // React with globe emoji
-                
-                try {
-                    // Extract URL from the message
-                    const url = extractUrl(userText);
+                    break;
                     
-                    if (!url) {
-                        await message.reply("I couldn't find a valid URL in your message. Please provide a URL to extract content from.", m, sock);
-                        return "I couldn't find a valid URL in your message. Please provide a URL to extract content from.";
+                case 'wikipedia':
+                    console.log(`Detected Wikipedia request: "${userText}"`);
+                    await message.react('📚', m, sock); // React with book emoji
+                    
+                    try {
+                        // Extract the search term
+                        const searchTerm = extractSearchTerm(userText, 'wikipedia');
+                        // Determine appropriate language based on message content
+                        const language = detectLanguage(userText);
+                        searchResults = await wikipediaSearch(searchTerm, 5, language);
+                        console.log(`Found ${searchResults.results.length} Wikipedia entries`);
+                        
+                        // Create prompt with Wikipedia results
+                        promptMessages = createWikipediaPrompt(userText, searchResults, getMessageHistory(senderId));
+                    } catch (searchError) {
+                        console.error('Error during Wikipedia search:', searchError);
+                        // Fall back to regular prompt if search fails
+                        promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
                     }
+                    break;
                     
-                    console.log(`Extracting HTML from URL: ${url}`);
-                    const extractionResults = await extractHtml(url);
+                case 'realtime':
+                    console.log(`Detected real-time info request: "${userText}"`);
+                    await message.react('🔍', m, sock); // React to show searching
                     
-                    if (!extractionResults.result) {
-                        await message.reply(`I couldn't extract content from the URL: ${url}. The website might block extraction or the URL might be invalid.`, m, sock);
-                        return `I couldn't extract content from the URL: ${url}. The website might block extraction or the URL might be invalid.`;
+                    try {
+                        searchResults = await googleSearch(userText);
+                        console.log(`Found ${searchResults.results?.length || 0} search results`);
+                        
+                        // Track search stats if available
+                        if (global.aiStats) {
+                            global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
+                        }
+                        
+                        // Only use search results if we actually found any
+                        if (searchResults.results && searchResults.results.length > 0) {
+                            // Create prompt with search results
+                            promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
+                        } else {
+                            console.log("No search results found, using regular prompt");
+                            promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                        }
+                    } catch (searchError) {
+                        console.error('Error during search:', searchError);
+                        // Fall back to regular prompt if search fails
+                        promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
                     }
+                    break;
                     
-                    // Create prompt with HTML extraction results
-                    promptMessages = createHtmlExtractionPrompt(userText, extractionResults, getMessageHistory(senderId));
-                } catch (extractionError) {
-                    console.error('Error during HTML extraction:', extractionError);
-                    // Fall back to regular prompt if extraction fails
-                    promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
-                }
-                break;
-                
-            case 'general':
-            default:
-                // Get chat history for this sender
-                const history = getMessageHistory(senderId);
-                promptMessages = createRegularPrompt(userText, history);
-                break;
+                case 'webpage':
+                    console.log(`Detected webpage extraction request: "${userText}"`);
+                    await message.react('🌐', m, sock); // React with globe emoji
+                    
+                    try {
+                        // Extract URL from the message
+                        const url = extractUrl(userText);
+                        
+                        if (!url) {
+                            await message.reply("I couldn't find a valid URL in your message. Please provide a URL to extract content from.", m, sock);
+                            return "I couldn't find a valid URL in your message. Please provide a URL to extract content from.";
+                        }
+                        
+                        console.log(`Extracting HTML from URL: ${url}`);
+                        const extractionResults = await extractHtml(url);
+                        
+                        if (!extractionResults.result) {
+                            await message.reply(`I couldn't extract content from the URL: ${url}. The website might block extraction or the URL might be invalid.`, m, sock);
+                            return `I couldn't extract content from the URL: ${url}. The website might block extraction or the URL might be invalid.`;
+                        }
+                        
+                        // Create prompt with HTML extraction results
+                        promptMessages = createHtmlExtractionPrompt(userText, extractionResults, getMessageHistory(senderId));
+                    } catch (extractionError) {
+                        console.error('Error during HTML extraction:', extractionError);
+                        // Fall back to regular prompt if extraction fails
+                        promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                    }
+                    break;
+                    
+                case 'general':
+                default:
+                    // Get chat history for this sender
+                    const history = getMessageHistory(senderId);
+                    promptMessages = createRegularPrompt(userText, history);
+                    break;
+            }
         }
         
         // Call the Groq API
@@ -619,4 +663,61 @@ function detectLanguage(text) {
     
     // Default to English
     return 'en';
+}
+
+/**
+ * Check if a message is a greeting
+ * @param {string} text - Message text
+ * @returns {boolean} - True if it's a greeting
+ */
+function isGreeting(text) {
+    const greetings = [
+        'hi', 'hello', 'hey', 'hola', 'greetings', 'sup', 'whats up', 
+        'good morning', 'good afternoon', 'good evening', 'howdy', 'yo',
+        'hiya', 'heya', 'hai', 'bonjour', 'namaste', 'hallo', 'hi there'
+    ];
+    
+    const lowercaseText = text.toLowerCase().trim();
+    
+    return greetings.some(greeting => 
+        lowercaseText === greeting || 
+        lowercaseText.startsWith(greeting + ' ') ||
+        lowercaseText.endsWith(' ' + greeting)
+    );
+}
+
+/**
+ * Check if a message is asking about the admin
+ * @param {string} text - Message text
+ * @returns {boolean} - True if asking about admin
+ */
+function isAskingAboutAdmin(text) {
+    const adminKeywords = [
+        'admin', 'owner', 'creator', 'who made', 'who created', 
+        'your creator', 'your owner', 'who owns', 'who programmed',
+        'who developed', 'developer', 'admin info', 'admin contact',
+        'admin number', 'contact admin', 'talk to admin'
+    ];
+    
+    const lowercaseText = text.toLowerCase().trim();
+    
+    return adminKeywords.some(keyword => lowercaseText.includes(keyword));
+}
+
+/**
+ * Count how many admin-related inquiries are in the chat history
+ * @param {Array} history - Chat history
+ * @returns {number} - Count of admin inquiries
+ */
+function countAdminInquiries(history) {
+    let count = 0;
+    
+    for (let i = 0; i < history.length; i++) {
+        const item = history[i];
+        if (item.role === 'user' && isAskingAboutAdmin(item.content)) {
+            count++;
+        }
+    }
+    
+    return count;
 }

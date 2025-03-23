@@ -168,6 +168,19 @@ const config = {
   get ENABLE_AI_HTML_EXTRACT() {
     return this.get('ENABLE_AI_HTML_EXTRACT', 'true') === 'true';
   },
+
+  // Admin information
+  get ADMIN_NAME() {
+    return this.get('ADMIN_NAME', 'Bot Admin');
+  },
+
+  get ADMIN_EMAIL() {
+    return this.get('ADMIN_EMAIL', '');
+  },
+
+  get ADMIN_BIO() {
+    return this.get('ADMIN_BIO', 'WhatsApp Bot Administrator');
+  },
   
   // Create required directories
   createDirectories: () => {
@@ -206,6 +219,14 @@ const config = {
       
       // Reload config
       reloadConfig();
+      
+      // Update the config object
+      this[key] = value;
+      
+      // Ensure we're handling the new admin fields
+      if (key === 'ADMIN_NAME' || key === 'ADMIN_EMAIL' || key === 'ADMIN_BIO') {
+        console.log(`Updated admin information: ${key} = ${value}`);
+      }
       
       return true;
     } catch (error) {

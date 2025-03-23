@@ -1517,3 +1517,28 @@ textarea.form-control {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
+
+/* Admin Information Section Styles */
+.config-section h3 {
+    margin-top: 25px;
+    color: #3498db;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.config-description {
+    margin-bottom: 15px;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+textarea.form-control {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.description {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    margin-top: 5px;
+}
