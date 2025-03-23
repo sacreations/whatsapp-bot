@@ -40,9 +40,12 @@ Available commands (only suggest when truly relevant):
 YOUR PRIMARY GOAL is to be helpful, knowledgeable, and provide direct answers when possible, only suggesting commands when they're actually the best solution.`;
 
 /**
- * Template for regular user interaction
+ * Create a prompt for regular queries
+ * @param {string} userMessage - The user message
+ * @param {Array} messageHistory - Previous message history
+ * @returns {Array} - Array of prompt messages
  */
-export function createRegularPrompt(userMessage, chatHistory = []) {
+export function createRegularPrompt(userMessage, messageHistory = []) {
     // Get current Sri Lanka time and date
     const sriLankaTime = getSriLankaTime();
     
@@ -66,9 +69,9 @@ Be respectful and follow these guidelines:
     const promptMessages = [systemPrompt];
     
     // Include message history if available
-    if (chatHistory && chatHistory.length > 0) {
-        chatHistory = chatHistory.slice(-10);  // Use the most recent 10 exchanges for context
-        for (const item of chatHistory) {
+    if (messageHistory && messageHistory.length > 0) {
+        messageHistory = messageHistory.slice(-10);  // Use the most recent 10 exchanges for context
+        for (const item of messageHistory) {
             promptMessages.push(item);
         }
     }
@@ -83,26 +86,32 @@ Be respectful and follow these guidelines:
 }
 
 /**
- * Template for when the user requests to contact the admin
- * 
- * This prompt will guide the AI to respond appropriately to
- * admin contact requests
+ * Create a prompt for admin contact inquiries
+ * @param {string} userMessage - The user message
+ * @returns {Array} - Array of prompt messages
  */
 export function createAdminContactPrompt(userMessage) {
     // Get current Sri Lanka time and date
     const sriLankaTime = getSriLankaTime();
     
-    const specialSystemPrompt = `${SYSTEM_PROMPT}
+    const systemPrompt = {
+        role: "system",
+        content: `You are ${config.BOT_NAME}, a helpful WhatsApp assistant.
+The user is asking about the bot admin/owner.
+The current date and time in Sri Lanka is: ${sriLankaTime.fullString}
 
-Special instruction: The user is asking to contact the admin or owner. 
-Indicate that you'll forward their message to the admin. 
-Ask them if there's anything specific they want to tell the admin.
-Don't make up responses from the admin - just confirm you'll forward the message.
-The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
-
+Provide a polite response explaining that you are a bot assistant created by ${config.ADMIN_NAME || 'the admin'}.
+Don't share personal information or specific contact details about the admin.
+If the user insists on contacting the admin directly, suggest they can ask their question to you first.
+Do not offer to forward their message to the admin.`
+    };
+    
     return [
-        { role: "system", content: specialSystemPrompt },
-        { role: "user", content: userMessage }
+        systemPrompt,
+        {
+            role: "user",
+            content: userMessage
+        }
     ];
 }
 

@@ -78,31 +78,4 @@ export async function sendWallpaperImages(m, sock, wallpapers) {
     }
 }
 
-/**
- * Forward a message to the admin
- * @param {Object} m - Message object 
- * @param {string} userText - The user's message
- * @param {Object} sock - WhatsApp socket
- * @returns {Promise<boolean>} - Success status
- */
-export async function forwardMessageToAdmin(m, userText, sock, adminNumber) {
-    try {
-        // Get the original sender info
-        const sender = m.key.remoteJid;
-        const senderName = m.pushName || 'Unknown User';
-        
-        // Forward to admin
-        const adminMessage = `📨 *Message from user:*\n` +
-            `👤 *${senderName}* (${sender})\n\n` +
-            `💬 "${userText}"`;
-        
-        // Send to admin using owner number from config
-        await sock.sendMessage(adminNumber, { text: adminMessage });
-        
-        console.log(`Forwarded message to admin from ${senderName} (${sender})`);
-        return true;
-    } catch (error) {
-        console.error('Error forwarding message to admin:', error);
-        return false;
-    }
-}
+// Admin message forwarding function has been removed
