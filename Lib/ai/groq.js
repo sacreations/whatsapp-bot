@@ -26,8 +26,14 @@ export function createGroqClient() {
 function filterThinkingPart(text) {
     if (!text) return "";
     
-    // Replace <think>...</think> blocks with empty string
-    return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    // Remove content between <think> and </think> tags
+    const filteredText = text.replace(/<think>[\s\S]*?<\/think>/g, "");
+    
+    // Also handle other common thinking patterns
+    return filteredText
+        .replace(/^<think>[\s\S]*?<\/think>\s*/i, "") // Remove at start of message
+        .replace(/\n*<think>[\s\S]*?<\/think>\s*/gi, "") // Remove anywhere with newlines
+        .trim();
 }
 
 // Function to get completion from Groq API with caching and key rotation
@@ -103,6 +109,12 @@ export async function getGroqCompletion(messages, options = {}) {
         
         // Parse response
         const data = await response.json();
+        
+        // Filter thinking parts from the response if present
+        if (data.choices && data.choices.length > 0 && data.choices[0].message) {
+            const originalContent = data.choices[0].message.content;
+            data.choices[0].message.content = filterThinkingPart(originalContent);
+        }
         
         // Update AI stats if available
         if (global.aiStats) {
