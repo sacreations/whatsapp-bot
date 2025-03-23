@@ -6,7 +6,6 @@ import {
     createSearchEnhancedPrompt,
     createWikipediaPrompt,
     createWallpaperPrompt,
-    createQueryClassificationPrompt,
     createHtmlExtractionPrompt,
     createCommandMatchPrompt
 } from './prompts.js';
@@ -20,12 +19,11 @@ import {
 import config from '../../Config.js';
 import message from '../chat/messageHandler.js';
 
-// Message history cache (very simple implementation)
-const messageHistory = new Map();
-const MAX_HISTORY_LENGTH = config.AI_CONTEXT_LENGTH || 5;  // Maximum number of previous exchanges to include
-
-// Track first-time users
-const firstTimeUsers = new Set();
+// Import modularized components
+import { getMessageHistory, updateMessageHistory, isFirstTimeInteraction, countAdminInquiries } from './history/messageHistory.js';
+import { classifyQueryType, checkForCommandMatch, generateCommandSuggestion, isFastFactQuestion } from './classifiers/queryClassifier.js';
+import { sendWallpaperImages, forwardMessageToAdmin } from './handlers/mediaHandler.js';
+import { isGreeting, isAskingAboutAdmin, extractUrl, extractSearchTerm, detectLanguage, updateTypingStatus } from './utils/aiUtils.js';
 
 /**
  * Process a message with AI and get a response
@@ -45,7 +43,7 @@ export async function processMessageWithAI(m, sock, userText) {
         console.log(`AI processing message: "${userText}"`);
         
         // Check if this is a first-time user (no message history)
-        const isFirstTime = !messageHistory.has(senderId) || messageHistory.get(senderId).length === 0;
+        const isFirstTime = !getMessageHistory(senderId) || getMessageHistory(senderId).length === 0;
         
         // Handle greeting for first-time users
         if (isFirstTime && userText && isGreeting(userText)) {
@@ -90,7 +88,7 @@ export async function processMessageWithAI(m, sock, userText) {
             
             if (matchingCommand !== 'none') {
                 // This query should be handled by suggesting a bot command
-                const commandResponse = await generateCommandSuggestion(userText, matchingCommand);
+                const commandResponse = await generateCommandSuggestion(userText, matchingCommand, config);
                 
                 // Update conversation history
                 updateMessageHistory(senderId, userText, commandResponse);
@@ -121,7 +119,7 @@ export async function processMessageWithAI(m, sock, userText) {
                         updateMessageHistory(senderId, userText, aiReply);
                         
                         // Make sure to clear typing indicator even for fast facts
-                        await updateTypingStatus('paused');
+                        await updateTypingStatus(sock, m.key.remoteJid, 'paused');
                         return aiReply;
                     }
                     // If no search results or search failed, continue with normal classification
@@ -139,7 +137,7 @@ export async function processMessageWithAI(m, sock, userText) {
             switch (queryType) {
                 case 'admin':
                     promptMessages = createAdminContactPrompt(userText);
-                    await forwardMessageToAdmin(m, userText, sock);
+                    await forwardMessageToAdmin(m, userText, sock, config.OWNER_NUMBER);
                     break;
                     
                 case 'botinfo':
@@ -183,7 +181,7 @@ export async function processMessageWithAI(m, sock, userText) {
                         await sendWallpaperImages(m, sock, searchResults.results);
                         
                         // Make sure typing indicator is cleared after all operations
-                        await sock.sendPresenceUpdate('paused', m.key.remoteJid);
+                        await updateTypingStatus(sock, m.key.remoteJid, 'paused');
                         
                         // Return the AI reply to prevent duplicate response
                         return aiReply;
@@ -291,29 +289,13 @@ export async function processMessageWithAI(m, sock, userText) {
         updateMessageHistory(senderId, userText, aiReply);
         
         // Ensure typing indicator is cleared after all processing
-        const updateTypingStatus = async (status) => {
-            if (sock && typeof sock.sendPresenceUpdate === 'function') {
-                try {
-                    await sock.sendPresenceUpdate(status, m.key.remoteJid);
-                } catch (e) {
-                    console.error(`Error updating presence: ${e.message}`);
-                }
-            }
-        };
-
-        await updateTypingStatus('paused');
+        await updateTypingStatus(sock, m.key.remoteJid, 'paused');
         
         return aiReply;
     } catch (error) {
         console.error('Error processing message with AI:', error);
         // Clear typing indicator on error
-        if (sock && typeof sock.sendPresenceUpdate === 'function') {
-            try {
-                await sock.sendPresenceUpdate('paused', m.key.remoteJid);
-            } catch (e) {
-                console.error(`Error clearing typing indicator: ${e.message}`);
-            }
-        }
+        await updateTypingStatus(sock, m.key.remoteJid, 'paused');
         return "I'm having trouble connecting to my brain right now. Please try again later.";
     }
 }
