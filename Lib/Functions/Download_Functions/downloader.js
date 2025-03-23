@@ -538,8 +538,8 @@ export async function downloadMedia(url, platform, options = {}) {
         
         let downloadedPath;
         
-        // Check if FFmpeg processing is disabled
-        const skipFfmpeg = config.DISABLE_FFMPEG_PROCESSING === true;
+        // Check if FFmpeg processing is disabled - Fix: Properly convert string 'true' to boolean
+        const skipFfmpeg = config.DISABLE_FFMPEG_PROCESSING === true || config.DISABLE_FFMPEG_PROCESSING === 'true';
         
         if (skipFfmpeg) {
             console.log('FFmpeg processing is disabled, using direct download');
@@ -577,7 +577,9 @@ export async function downloadMedia(url, platform, options = {}) {
             case 'instagram':
                 downloadedPath = await downloadFromInstagram(url); // Corrected function name
                 // Apply FFmpeg only if not disabled
-                if (!skipFfmpeg && downloadedPath) {
+                if (skipFfmpeg) {
+                    console.log('Skipping FFmpeg processing for Instagram media (disabled in config)');
+                } else if (downloadedPath) {
                     console.log('Applying FFmpeg processing to Instagram media');
                     const processedPath = await optimizeVideoForUniversalCompatibility(
                         downloadedPath, 
@@ -590,7 +592,9 @@ export async function downloadMedia(url, platform, options = {}) {
             case 'facebook':
                 downloadedPath = await downloadFromFacebook(url); // Corrected function name
                 // Apply FFmpeg only if not disabled
-                if (!skipFfmpeg && downloadedPath) {
+                if (skipFfmpeg) {
+                    console.log('Skipping FFmpeg processing for Facebook video (disabled in config)');
+                } else if (downloadedPath) {
                     console.log('Applying FFmpeg processing to Facebook video');
                     const processedPath = await optimizeVideoForUniversalCompatibility(
                         downloadedPath, 
