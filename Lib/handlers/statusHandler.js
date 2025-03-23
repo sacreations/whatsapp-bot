@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { findContactNameByNumber } from '../utils/contactsManager.js';
+import { EventEmitter } from 'events';
 
 // Status directory for saving statuses if needed
 const statusDir = path.join(process.cwd(), 'downloads', 'statuses');
@@ -31,6 +32,9 @@ if (fs.existsSync(contactsPath)) {
         console.error('Error reading contacts file:', error);
     }
 }
+
+// Global event emitter for status updates
+const statusEvents = new EventEmitter();
 
 /**
  * Save contact information to contacts.json
@@ -205,6 +209,16 @@ async function saveStatusMedia(status, statusType, contactName) {
         const displayName = contactName || 'Unknown';
         console.log(`Saved status media: ${filepath} from ${displayName} (JID: ${rawJid})`);
         
+        // Emit status saved event for admin panel
+        statusEvents.emit('status-saved', {
+            id: status.id,
+            participant: status.participant,
+            contactName: contactName ? contactName : status.participant.split('@')[0],
+            timestamp: Date.now(),
+            type: statusType === 'image' ? 'image' : 'video',
+            path: filepath
+        });
+        
         return {
             filepath,
             sender,
@@ -216,4 +230,9 @@ async function saveStatusMedia(status, statusType, contactName) {
         console.error('Error saving status media:', error);
         return null;
     }
+}
+
+// Expose status events for admin panel
+export function getStatusEventEmitter() {
+    return statusEvents;
 }

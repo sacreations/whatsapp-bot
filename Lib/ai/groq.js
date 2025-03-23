@@ -1,4 +1,7 @@
+import { v4 as uuidv4 } from 'uuid';
 import config from '../../Config.js';
+import apiKeyRotation from './apiKeyRotation.js';
+import responseCache from './responseCache.js';
 import Groq from 'groq-sdk';
 
 /**
@@ -27,54 +30,92 @@ function filterThinkingPart(text) {
     return text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
 }
 
-/**
- * Get a completion from Groq API
- * 
- * @param {Array} messages - Array of message objects with role and content
- * @param {Object} options - Additional options for the API call
- * @returns {Promise<Object>} The completion response
- */
+// Function to get completion from Groq API with caching and key rotation
 export async function getGroqCompletion(messages, options = {}) {
     try {
-        const client = createGroqClient();
-        
-        if (!client) {
-            throw new Error('Failed to initialize Groq client');
-        }
-        
-        // Get model from config, default to LLaMA if not set
-        const model = config.AI_MODEL || "llama-3.3-70b-versatile";
-        console.log(`Using AI model: ${model}`);
-        
-        const defaultOptions = {
-            model: model,
-            temperature: parseFloat(config.AI_TEMPERATURE || "0.7"),
-            max_completion_tokens: 1024,
-            top_p: 1,
-            stream: false
+        // Generate a cache key based on the messages
+        const cacheQuery = messages.map(m => `${m.role}: ${m.content}`).join('\n');
+        const cacheOptions = {
+            model: options.model || config.AI_MODEL,
+            temperature: options.temperature || config.AI_TEMPERATURE
         };
         
-        // Merge with custom options
-        const finalOptions = { ...defaultOptions, ...options };
-        
-        // Make the API call
-        const response = await client.chat.completions.create({
-            messages,
-            ...finalOptions
-        });
-        
-        // If using the deepseek model, filter out the thinking part from responses
-        if (model === "deepseek-r1-distill-qwen-32b" && response.choices && response.choices.length > 0) {
-            for (const choice of response.choices) {
-                if (choice.message && choice.message.content) {
-                    choice.message.content = filterThinkingPart(choice.message.content);
-                }
+        // Check if a cached response exists
+        const cachedResponse = responseCache.getCachedResponse(cacheQuery, cacheOptions);
+        if (cachedResponse) {
+            console.log('Using cached AI response');
+            
+            // Update AI stats if available
+            if (global.aiStats) {
+                global.aiStats.cacheHits = (global.aiStats.cacheHits || 0) + 1;
             }
+            
+            return cachedResponse;
         }
         
-        return response;
+        // If no cached response, proceed with API call
+        
+        // Get API key from rotation system
+        let apiKey = apiKeyRotation.getNextKey('groq');
+        
+        // Fall back to config key if no rotated key available
+        if (!apiKey) {
+            console.log('No rotated API key available, using config key');
+            apiKey = config.GROQ_API_KEY;
+        }
+        
+        // Check if we have a valid API key
+        if (!apiKey) {
+            throw new Error('No Groq API key available');
+        }
+        
+        // Prepare request options
+        const defaultModel = config.AI_MODEL || 'llama-3.3-70b-versatile';
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: options.model || defaultModel,
+                messages: messages,
+                temperature: options.temperature || parseFloat(config.AI_TEMPERATURE || 0.7),
+                max_tokens: options.max_completion_tokens || 2048,
+                top_p: options.top_p || 1,
+                stream: false
+            })
+        };
+        
+        // Generate a unique request ID for logging
+        const requestId = uuidv4().substring(0, 8);
+        console.log(`[${requestId}] Sending request to Groq API with model: ${requestOptions.body.model}`);
+        
+        // Call Groq API
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', requestOptions);
+        
+        // Handle errors
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[${requestId}] Groq API error (${response.status}):`, errorText);
+            throw new Error(`Groq API error: ${response.status} - ${errorText}`);
+        }
+        
+        // Parse response
+        const data = await response.json();
+        
+        // Update AI stats if available
+        if (global.aiStats) {
+            global.aiStats.messagesProcessed = (global.aiStats.messagesProcessed || 0) + 1;
+            global.aiStats.cacheMisses = (global.aiStats.cacheMisses || 0) + 1;
+        }
+        
+        // Cache the response
+        responseCache.cacheResponse(cacheQuery, data, cacheOptions);
+        
+        return data;
     } catch (error) {
-        console.error('Error calling Groq API:', error);
+        console.error('Error getting completion from Groq:', error);
         throw error;
     }
 }

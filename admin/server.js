@@ -1494,6 +1494,101 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Server error: ' + err.message });
 });
 
+// Import the status event emitter
+import { getStatusEventEmitter } from '../Lib/handlers/statusHandler.js';
+
+// Initialize WebSocket for real-time updates
+import { Server as WebSocketServer } from 'ws';
+let wss;
+
+// Start WebSocket server when admin panel starts
+app.listen(PORT, () => {
+    console.log(`Admin panel server running on http://localhost:${PORT}`);
+    
+    // Create WebSocket server for real-time updates
+    wss = new WebSocketServer({ port: PORT + 1 });
+    console.log(`WebSocket server running on port ${PORT + 1}`);
+    
+    // Handle WebSocket connections
+    wss.on('connection', (ws) => {
+        console.log('New WebSocket client connected');
+        
+        // Send initial connection confirmation
+        ws.send(JSON.stringify({ 
+            type: 'connected',
+            message: 'Connected to WhatsApp Bot WebSocket server'
+        }));
+        
+        // Handle client disconnection
+        ws.on('close', () => {
+            console.log('WebSocket client disconnected');
+        });
+    });
+    
+    // Listen for status updates and broadcast to WebSocket clients
+    const statusEmitter = getStatusEventEmitter();
+    statusEmitter.on('status-saved', (statusData) => {
+        // Broadcast status update to all connected clients
+        if (wss.clients.size > 0) {
+            const message = JSON.stringify({
+                type: 'status-update',
+                data: statusData
+            });
+            
+            wss.clients.forEach(client => {
+                if (client.readyState === 1) { // OPEN
+                    client.send(message);
+                }
+            });
+        }
+    });
+    
+    // Also connect to memory monitoring for admin alerts
+    import('../Lib/utils/memoryMonitor.js').then(({ default: memoryMonitor }) => {
+        setInterval(() => {
+            const memoryInfo = memoryMonitor.takeMemorySnapshot();
+            
+            // If memory is in warning or critical state, broadcast to admin panel
+            if (memoryInfo.health !== 'normal' && wss.clients.size > 0) {
+                const message = JSON.stringify({
+                    type: 'memory-alert',
+                    data: {
+                        health: memoryInfo.health,
+                        rss: memoryInfo.memoryUsage.formatted.rss,
+                        heapUsed: memoryInfo.memoryUsage.formatted.heapUsed,
+                        timestamp: Date.now()
+                    }
+                });
+                
+                wss.clients.forEach(client => {
+                    if (client.readyState === 1) { // OPEN
+                        client.send(message);
+                    }
+                });
+            }
+        }, 60000); // Check every minute
+    });
+});
+
+// Add a new API endpoint to get system stats
+app.get('/api/system-stats', requireAuth, async (req, res) => {
+    try {
+        const { getSystemStats } = await import('../index.js');
+        const stats = getSystemStats();
+        
+        res.json({
+            success: true,
+            stats
+        });
+    } catch (error) {
+        console.error('Error getting system stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get system stats'
+        });
+    }
+});
+
 // Start server only if this file is run directly (not imported)
 const startServer = () => {
   app.listen(PORT, () => {
