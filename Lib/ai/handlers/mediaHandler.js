@@ -56,7 +56,7 @@ export async function sendWallpaperImages(m, sock, wallpapers) {
         }
         
         // React with success emoji after sending all wallpapers
-        await message.react('✅', m, sock);
+        await message.react('✨', m, sock); // Changed from ✅ to ✨ (sparkles)
         
         // Clear typing indicator after all wallpapers are sent
         await sock.sendPresenceUpdate('paused', m.key.remoteJid);
@@ -67,6 +67,7 @@ export async function sendWallpaperImages(m, sock, wallpapers) {
         // If error sending images, let the user know
         try {
             await message.reply("I found some wallpapers but had trouble sending them. Please try again.", m, sock);
+            await message.react('😔', m, sock); // Add sad face reaction on error
             // Make sure to clear typing indicator even after error
             await sock.sendPresenceUpdate('paused', m.key.remoteJid);
         } catch (replyError) {

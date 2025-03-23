@@ -237,4 +237,20 @@ const message = {
     }
 };
 
+// Reaction emojis for different scenarios
+export const reactionEmojis = {
+    thinking: '🤔',      // When processing a complex request
+    success: '✨',       // When successfully completing a task
+    error: '😔',         // When an error occurs
+    search: '🧠',        // When searching for information
+    downloading: '📲',   // When downloading content
+    media: '🎨',         // When handling media
+    wiki: '📚',          // When looking up Wikipedia
+    web: '📄',           // When extracting web content
+    waiting: '⏳',       // When waiting for something
+    greeting: '👋',      // When greeting a user
+    thanks: '😊',        // When user says thanks
+    custom: '👌'         // For custom confirmations
+};
+
 export default message;

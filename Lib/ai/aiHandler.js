@@ -100,7 +100,7 @@ export async function processMessageWithAI(m, sock, userText) {
             if (isFastFactQuestion(userText)) {
                 console.log("Detected fast fact question, prioritizing search");
                 try {
-                    await message.react('🔍', m, sock);
+                    await message.react('🧠', m, sock); // Changed from 🔍 to 🧠 (brain)
                     searchResults = await googleSearch(userText);
                     console.log(`Fast fact search found ${searchResults.results?.length || 0} results using ${searchResults.searchEngine}`);
                     
@@ -146,7 +146,7 @@ export async function processMessageWithAI(m, sock, userText) {
                     
                 case 'wallpaper':
                     console.log(`Detected wallpaper request: "${userText}"`);
-                    await message.react('🖼️', m, sock); // React with image emoji
+                    await message.react('🎨', m, sock); // Changed from 🖼️ to 🎨 (artist palette)
                     
                     try {
                         // Extract the search term
@@ -195,7 +195,7 @@ export async function processMessageWithAI(m, sock, userText) {
                     
                 case 'wikipedia':
                     console.log(`Detected Wikipedia request: "${userText}"`);
-                    await message.react('📚', m, sock); // React with book emoji
+                    await message.react('📚', m, sock); // Keep 📚 as it's good
                     
                     try {
                         // Extract the search term
@@ -216,7 +216,7 @@ export async function processMessageWithAI(m, sock, userText) {
                     
                 case 'realtime':
                     console.log(`Detected real-time info request: "${userText}"`);
-                    await message.react('🔍', m, sock); // React to show searching
+                    await message.react('🌐', m, sock); // Changed from 🔍 to 🌐 (globe)
                     
                     try {
                         searchResults = await googleSearch(userText);
@@ -244,7 +244,7 @@ export async function processMessageWithAI(m, sock, userText) {
                     
                 case 'webpage':
                     console.log(`Detected webpage extraction request: "${userText}"`);
-                    await message.react('🌐', m, sock); // React with globe emoji
+                    await message.react('📄', m, sock); // Changed from 🌐 to 📄 (page)
                     
                     try {
                         // Extract URL from the message
