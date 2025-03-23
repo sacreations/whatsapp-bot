@@ -466,3 +466,32 @@ export async function processWithAI(m, sock) {
         return false;
     }
 }
+
+/**
+ * Handle automatic media downloads from detected links
+ * @param {Object} m - Message object
+ * @param {Object} sock - Socket connection
+ */
+async function handleAutoMediaDownload(m, sock) {
+    try {
+        // Skip if auto media download is disabled
+        if (!config.ENABLE_AUTO_MEDIA_DOWNLOAD) return false;
+        
+        // Extract the message text
+        const text = getMessageText(m);
+        if (!text) return false;
+
+        // Fix: Use detectSocialMediaLink instead of undefined detectPlatform function
+        const linkInfo = detectSocialMediaLink(text);
+        if (!linkInfo) return false;
+
+        console.log(`Auto-detected media link: ${linkInfo.url} (${linkInfo.platform})`);
+
+        // Handle the media download
+        await handleMediaDownload(m, sock, linkInfo);
+        return true;
+    } catch (error) {
+        console.error('Error in auto media download:', error);
+        return false;
+    }
+}
