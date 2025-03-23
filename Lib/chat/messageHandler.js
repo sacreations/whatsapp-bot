@@ -2,6 +2,7 @@ import fs from 'fs';
 import axios from 'axios';
 import { Readable } from 'stream';
 import config from '../../Config.js';
+import { filterThinkingPart } from '../ai/groq.js';
 
 const message = {
     /**
@@ -9,7 +10,10 @@ const message = {
      */
     reply: async (text, m, sock) => {
         try {
-            await sock.sendMessage(m.key.remoteJid, { text }, { quoted: m });
+            // Safety filter to ensure no thinking parts slip through
+            const filteredText = filterThinkingPart(text);
+            
+            await sock.sendMessage(m.key.remoteJid, { text: filteredText }, { quoted: m });
             // Clear typing indicator after sending message
             await sock.sendPresenceUpdate('paused', m.key.remoteJid);
             return true;

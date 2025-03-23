@@ -1,4 +1,4 @@
-import { getGroqCompletion } from './groq.js';
+import { getGroqCompletion, filterThinkingPart } from './groq.js';
 import { 
     createRegularPrompt, 
     createAdminContactPrompt, 
@@ -283,7 +283,10 @@ export async function processMessageWithAI(m, sock, userText) {
         
         // Call the Groq API
         const response = await getGroqCompletion(promptMessages);
-        const aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
+        let aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
+        
+        // Apply final thinking part filter before sending
+        aiReply = filterThinkingPart(aiReply);
         
         // Update conversation history with this exchange
         updateMessageHistory(senderId, userText, aiReply);

@@ -26,13 +26,20 @@ export function createGroqClient() {
 function filterThinkingPart(text) {
     if (!text) return "";
     
-    // Remove content between <think> and </think> tags
-    const filteredText = text.replace(/<think>[\s\S]*?<\/think>/g, "");
-    
-    // Also handle other common thinking patterns
-    return filteredText
-        .replace(/^<think>[\s\S]*?<\/think>\s*/i, "") // Remove at start of message
-        .replace(/\n*<think>[\s\S]*?<\/think>\s*/gi, "") // Remove anywhere with newlines
+    // Handle multiple formats of thinking sections
+    return text
+        // Standard <think> tags
+        .replace(/<think>[\s\S]*?<\/think>/g, "")
+        // Tags without closing
+        .replace(/<think>[\s\S]*$/, "")
+        // Line-based thinking patterns
+        .replace(/^<think>.*$/gm, "")
+        // Specific occurrences like "<think> ... </think>"
+        .replace(/\s*<think>\s+[\s\S]*?\s+<\/think>\s*/g, " ")
+        // Handle the closing tag at the end without proper opening
+        .replace(/\s*<\/think>\s*$/, "")
+        // Clean up multiple consecutive spaces that might result
+        .replace(/\s{2,}/g, " ")
         .trim();
 }
 
@@ -110,10 +117,16 @@ export async function getGroqCompletion(messages, options = {}) {
         // Parse response
         const data = await response.json();
         
-        // Filter thinking parts from the response if present
+        // Filter thinking parts from the response if present - ensure it works
         if (data.choices && data.choices.length > 0 && data.choices[0].message) {
             const originalContent = data.choices[0].message.content;
+            // Apply enhanced filtering
             data.choices[0].message.content = filterThinkingPart(originalContent);
+            
+            // Log if content was modified (for debugging)
+            if (originalContent !== data.choices[0].message.content) {
+                console.log("Filtered thinking parts from AI response");
+            }
         }
         
         // Update AI stats if available
@@ -131,3 +144,6 @@ export async function getGroqCompletion(messages, options = {}) {
         throw error;
     }
 }
+
+// Export the filter function so it can be used elsewhere
+export { filterThinkingPart };

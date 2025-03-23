@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { saveLink } from '../utils/linkStorage.js';
 import { processMessageWithAI } from '../ai/aiHandler.js';
+import { filterThinkingPart } from '../ai/groq.js';
 
 /**
  * Get message type from the message object
@@ -327,7 +328,13 @@ export async function handleAutoReply(m, sock) {
                 // Check if AI and Search are both enabled
                 if (config.ENABLE_AI_AUTO_REPLY) {
                     // Call with the correct parameter order
-                    const aiResponse = await processMessageWithAI(m, sock, messageText);
+                    let aiResponse = await processMessageWithAI(m, sock, messageText);
+                    
+                    // Make sure to filter thinking parts before sending reply
+                    if (aiResponse) {
+                        // Apply safety filter
+                        aiResponse = filterThinkingPart(aiResponse);
+                    }
                     
                     // Check if the response is suggesting a command and that command exists
                     const commandMatch = aiResponse.match(new RegExp(`${config.PREFIX}(\\w+)`));
