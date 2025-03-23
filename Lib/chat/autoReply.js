@@ -49,21 +49,39 @@ function isFirstTimeInteraction(userId) {
 }
 
 /**
- * Detect social media platform from URL
+ * Detect social media links in a message
+ * @param {string} text - Message text
+ * @returns {Object|null} - Link info or null if no link found
  */
-function detectPlatform(url) {
-    const platforms = [
-        { name: 'YouTube', regex: /youtu\.?be(.com)?/ },
-        { name: 'TikTok', regex: /tiktok\.com/ },
-        { name: 'Instagram', regex: /instagram\.com/ },
-        { name: 'Facebook', regex: /facebook\.com|fb\.watch/ },
-        { name: 'Twitter', regex: /twitter\.com|x\.com/ }
-    ];
+function detectSocialMediaLink(text) {
+    // Clean the URL if it contains whitespace or surrounding characters
+    const cleanedText = text.replace(/\n/g, ' ').trim();
     
-    for (const platform of platforms) {
-        if (platform.regex.test(url)) {
-            return platform.name;
-        }
+    // Extract URLs from text
+    const urlMatch = cleanedText.match(/https?:\/\/[^\s]+/i);
+    if (!urlMatch) return null;
+    
+    const url = urlMatch[0];
+    
+    // Detect platform based on URL
+    if (url.match(/youtu\.?be/i)) {
+        return { platform: 'youtube', url };
+    } else if (url.match(/instagram\.com\/(p|reel|stories|tv)\/|instagr\.am\/(p|reel|stories|tv)\/|instagram\.com\/[^\/]+\/(p|reel|stories|tv)\/|ig\.me/i)) {
+        // Enhanced Instagram pattern to match all link formats:
+        // - instagram.com/p/CODE/
+        // - instagram.com/reel/CODE/
+        // - instagram.com/stories/USER/CODE/
+        // - instagram.com/tv/CODE/
+        // - instagr.am/... (shortened URLs)
+        // - instagram.com/USERNAME/p/CODE/ (profile-specific posts)
+        // - ig.me/... (shortened URLs)
+        return { platform: 'instagram', url };
+    } else if (url.match(/tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com/i)) {
+        return { platform: 'tiktok', url };
+    } else if (url.match(/facebook\.com\/|fb\.watch\/|fb\.me\/|facebook\.com\/watch/i)) {
+        return { platform: 'facebook', url };
+    } else if (url.match(/twitter\.com\/|t\.co\/|x\.com\//i)) {
+        return { platform: 'twitter', url };
     }
     
     return null;
@@ -78,82 +96,86 @@ function extractUrls(text) {
 }
 
 /**
- * Handle social media download based on detected platform
+ * Handle media download from social media links
  */
-async function handleMediaDownload(m, sock, url, platform) {
+async function handleMediaDownload(m, sock, link) {
     try {
-        await message.react('⏳', m, sock);
+        // Extract message info
+        const isGroup = m.key.remoteJid.endsWith('@g.us');
+        const groupId = isGroup ? m.key.remoteJid : null;
         
-        // Download media, which will now include optimization
-        let mediaPath;
-        try {
-            // For YouTube, check if it's an audio request (if URL contains &audio or ?audio)
-            const isAudioRequest = url.includes('audio');
-            
-            // Get compression settings from config
-            const compressionLevel = config.MEDIA_COMPRESSION_LEVEL;
-            const maxResolution = config.MAX_VIDEO_RESOLUTION;
-            
-            mediaPath = await downloadMedia(url, platform, { 
-                isAudio: platform === 'YouTube' && isAudioRequest,
-                compressionLevel: compressionLevel,
-                maxResolution: maxResolution
-            });
-        } catch (error) {
-            await message.react('❌', m, sock);
-            return await message.reply(`Failed to download media from ${platform}: ${error.message}`, m, sock);
+        // Check if group is allowed for downloads
+        let isAllowed = !isGroup; // Individual chats always allowed
+        if (isGroup && config.ALLOWED_DOWNLOAD_GROUPS) {
+            isAllowed = config.ALLOWED_DOWNLOAD_GROUPS.includes(groupId);
+            console.log(`Group ${groupId} allowed: ${isAllowed}`);
         }
         
-        if (!mediaPath) {
-            await message.react('❌', m, sock);
-            return await message.reply(`Failed to download media from ${platform}`, m, sock);
+        // If not allowed and link saving is enabled, save link instead of downloading
+        if (!isAllowed && config.ENABLE_LINK_SAVING === true) {
+            await message.reply(`Media download not enabled for this group. I've saved this link for you.`, m, sock);
+            await saveSocialMediaLink(m, link.url, link.platform);
+            return;
         }
         
-        // Send the appropriate media type based on file extension and platform
-        try {
-            console.log(`Sending media from ${platform}, path: ${mediaPath}`);
-            
-            if (mediaPath.endsWith('.mp3')) {
-                // Send as audio
-                await message.sendAudio(mediaPath, false, m, sock);
-            } else if (mediaPath.endsWith('.mp4')) {
-                // Send as video with proper attribution
-                await message.sendVideo(mediaPath, "", m, sock);
-            } else if (mediaPath.endsWith('.jpg') || mediaPath.endsWith('.jpeg') || mediaPath.endsWith('.png')) {
-                // Send as image
-                await message.sendImage(mediaPath, "", m, sock);
-            } else {
-                // Send as document for other formats
-                await message.sendDocument(
-                    mediaPath, 
-                    `${platform}_media${path.extname(mediaPath)}`,
-                    null,
-                    m, 
-                    sock
-                );
-            }
-            
-            // Delete the file after sending to save space
-            if (fs.existsSync(mediaPath)) {
-                fs.unlinkSync(mediaPath);
-                console.log(`Deleted temporary file: ${mediaPath}`);
-            }
-            
-            await message.react('✅', m, sock);
-        } catch (sendError) {
-            console.error(`Error sending ${platform} media:`, sendError);
-            await message.react('❌', m, sock);
-            await message.reply(`Error sending media: ${sendError.message}`, m, sock);
-            
-            // Clean up file if sending fails
-            if (fs.existsSync(mediaPath)) {
-                fs.unlinkSync(mediaPath);
-            }
+        // If not allowed and link saving is disabled, just inform
+        if (!isAllowed) {
+            await message.reply(`Media download is not enabled for this group.`, m, sock);
+            return;
         }
+        
+        // React to the message to indicate download started
+        await message.react(reactionEmojis.downloading, m, sock);
+        
+        // Show typing indicator
+        await sock.sendPresenceUpdate('composing', m.key.remoteJid);
+        
+        // Download the media
+        console.log(`Starting ${link.platform} download: ${link.url}`);
+        
+        // For YouTube, first check if audio requested
+        const isAudioRequest = 
+            m.message?.conversation?.toLowerCase().includes('audio') || 
+            (m.message?.extendedTextMessage?.text && 
+             m.message.extendedTextMessage.text.toLowerCase().includes('audio'));
+        
+        const options = {
+            isAudio: isAudioRequest && link.platform === 'youtube'
+        };
+        
+        const downloadedPath = await downloadMedia(link.url, link.platform, options);
+        
+        // Add delay to avoid quick successive messages
+        await new Promise(r => setTimeout(r, 1000));
+        
+        if (options.isAudio) {
+            // Send as audio
+            await message.sendAudio(downloadedPath, true, m, sock);
+        } else if (link.platform === 'youtube' || 
+                 link.platform === 'facebook' || 
+                 link.platform === 'tiktok' ||
+                 link.platform === 'instagram') {
+            // Send as video
+            await message.sendVideo(downloadedPath, `Here's your ${link.platform} video`, m, sock);
+        } else {
+            // Send as file for anything else
+            await message.sendDocument(
+                downloadedPath,
+                `${link.platform}_media.mp4`,
+                'video/mp4',
+                m, sock
+            );
+        }
+        
+        // React to indicate success
+        await message.react(reactionEmojis.success, m, sock);
+        
     } catch (error) {
-        console.error(`Error downloading from ${platform}:`, error);
-        await message.react('❌', m, sock);
-        await message.reply(`Failed to download: ${error.message}`, m, sock);
+        console.error(`Error downloading media: ${error}`);
+        
+        // React to indicate error and inform user
+        await message.react(reactionEmojis.error, m, sock);
+        await message.reply(`Sorry, I couldn't download that media: ${error.message}`, m, sock);
     }
 }
 
