@@ -22,12 +22,6 @@ const configManager = {
         this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
         this.autoMediaToggle = document.getElementById('auto-media-toggle');
         
-        // Add event listener for the Admin Info save button
-        const saveAdminInfoBtn = document.getElementById('save-admin-info');
-        if (saveAdminInfoBtn) {
-            saveAdminInfoBtn.addEventListener('click', this.saveAdminInfo.bind(this));
-        }
-        
         this.setupEventListeners();
         this.loadConfig();
     },
@@ -35,6 +29,15 @@ const configManager = {
     setupEventListeners: function() {
         if (this.configForm) {
             this.configForm.addEventListener('submit', this.handleConfigSubmit.bind(this));
+        }
+        
+        // Add event listener for admin info save button
+        const saveAdminInfoBtn = document.getElementById('save-admin-info');
+        if (saveAdminInfoBtn) {
+            saveAdminInfoBtn.addEventListener('click', this.saveAdminInfo.bind(this));
+            console.log('Admin info save button listener attached');
+        } else {
+            console.warn('Admin info save button not found in DOM');
         }
         
         if (this.autoReplyToggle) {
@@ -258,12 +261,15 @@ const configManager = {
      * Save only admin information fields
      */
     saveAdminInfo: async function() {
+        console.log('Save admin info button clicked');
         try {
             const adminInfo = {
                 ADMIN_NAME: document.getElementById('ADMIN_NAME').value,
                 ADMIN_EMAIL: document.getElementById('ADMIN_EMAIL').value,
                 ADMIN_BIO: document.getElementById('ADMIN_BIO').value
             };
+            
+            console.log('Saving admin info:', adminInfo);
             
             // Fetch current config first
             const response = await fetch('/api/config');
@@ -300,5 +306,15 @@ const configManager = {
         }
     }
 };
+
+// Add DOMContentLoaded event to ensure the button exists when we try to add the listener
+document.addEventListener('DOMContentLoaded', function() {
+    // Try to add the event listener again after DOM is fully loaded
+    const saveAdminInfoBtn = document.getElementById('save-admin-info');
+    if (saveAdminInfoBtn) {
+        saveAdminInfoBtn.addEventListener('click', configManager.saveAdminInfo.bind(configManager));
+        console.log('Admin info save button listener attached on DOMContentLoaded');
+    }
+});
 
 window.configManager = configManager;
