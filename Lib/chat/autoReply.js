@@ -311,8 +311,25 @@ export async function handleAutoReply(m, sock) {
             if (isGroup) {
                 const isBotMentioned = messageText.includes('@' + sock.user.id.split(':')[0]) || 
                                       messageText.toLowerCase().includes(config.BOT_NAME.toLowerCase());
-                                      
-                const isReplyToBot = m.message?.extendedTextMessage?.contextInfo?.participant === sock.user.id;
+                
+                // Enhanced reply detection with debug logging
+                let isReplyToBot = false;
+                const contextInfo = m.message?.extendedTextMessage?.contextInfo;
+                
+                if (contextInfo) {
+                    // Log the structure to debug
+                    console.log("Reply detected, checking if it's to the bot...");
+                    console.log("Bot ID:", sock.user.id);
+                    console.log("Context participant:", contextInfo.participant);
+                    console.log("Context quotedParticipant:", contextInfo.quotedParticipant);
+                    console.log("Context stanzaId:", contextInfo.stanzaId);
+                    
+                    // Check multiple possible locations for the bot ID
+                    isReplyToBot = contextInfo.participant === sock.user.id || 
+                                  contextInfo.quotedParticipant === sock.user.id ||
+                                  (contextInfo.quotedMessage && contextInfo.participant && 
+                                   contextInfo.participant.includes(sock.user.id.split(':')[0]));
+                }
                 
                 if (!isBotMentioned && !isReplyToBot) {
                     return false;
