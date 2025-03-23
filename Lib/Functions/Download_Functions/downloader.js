@@ -684,7 +684,16 @@ async function optimizeVideoForUniversalCompatibility(inputPath, outputPath) {
         }
         
         // Calculate matching width while maintaining aspect ratio
-        const maxWidth = Math.floor((width / height) * maxHeight);
+        // FIX: Ensure width is always an even number by rounding to nearest even number
+        let maxWidth = Math.floor((width / height) * maxHeight);
+        if (maxWidth % 2 !== 0) {
+            maxWidth = maxWidth + 1; // Make it even
+        }
+        
+        // FIX: Also ensure height is even
+        if (maxHeight % 2 !== 0) {
+            maxHeight = maxHeight + 1;
+        }
         
         // Set up video filter parameters
         let vfParams = [];
