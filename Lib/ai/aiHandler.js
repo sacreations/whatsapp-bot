@@ -22,7 +22,7 @@ import message from '../chat/messageHandler.js';
 // Import modularized components
 import { getMessageHistory, updateMessageHistory, isFirstTimeInteraction, countAdminInquiries } from './history/messageHistory.js';
 import { classifyQueryType, checkForCommandMatch, generateCommandSuggestion, isFastFactQuestion } from './classifiers/queryClassifier.js';
-import { sendWallpaperImages, forwardMessageToAdmin } from './handlers/mediaHandler.js';
+import { sendWallpaperImages } from './handlers/mediaHandler.js';
 import { isGreeting, isAskingAboutAdmin, extractUrl, extractSearchTerm, detectLanguage, updateTypingStatus } from './utils/aiUtils.js';
 
 /**
@@ -137,7 +137,6 @@ export async function processMessageWithAI(m, sock, userText) {
             switch (queryType) {
                 case 'admin':
                     promptMessages = createAdminContactPrompt(userText);
-                    await forwardMessageToAdmin(m, userText, sock, config.OWNER_NUMBER);
                     break;
                     
                 case 'botinfo':
