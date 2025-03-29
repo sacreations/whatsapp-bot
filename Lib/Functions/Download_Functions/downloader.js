@@ -4,6 +4,10 @@ import path from 'path';
 import config from '../../../Config.js';
 import { downloadYouTubeVideo } from './ytDownloader.js';
 
+// URL cache to prevent duplicate requests
+const urlCache = new Map();
+const CACHE_EXPIRATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+
 // Ensure download directory exists
 const downloadDir = path.resolve(config.DOWNLOAD_FOLDER);
 
@@ -22,6 +26,17 @@ const Tiktok_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/tiktok?u
 const Instagram_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/instagram?url=';
 const Facebook_apiEndpoint = 'https://delirius-apiofc.vercel.app/download/facebook?url=';
 
+/**
+ * Clean expired entries from URL cache
+ */
+function cleanUrlCache() {
+    const now = Date.now();
+    for (const [key, cacheEntry] of urlCache.entries()) {
+        if (now - cacheEntry.timestamp > CACHE_EXPIRATION) {
+            urlCache.delete(key);
+        }
+    }
+}
 
 /**
  * Generate a random filename
@@ -138,32 +153,63 @@ async function downloadFromFacebook(url) {
  */
 export async function downloadMedia(url, platform, options = {}) {
     try {
-        let directUrl;
+        // Generate cache key using URL and platform
+        const cacheKey = `${platform.toLowerCase()}:${url}`;
         
-        switch (platform.toLowerCase()) {
-            case 'youtube':
-                // You'll need to modify ytDownloader.js to return direct URL
-                directUrl = await downloadYouTubeVideo(url);
-                break;
-                
-            case 'tiktok':
-                directUrl = await downloadFromTikTok(url);
-                break;
-                
-            case 'instagram':
-                directUrl = await downloadFromInstagram(url);
-                break;
-                
-            case 'facebook':
-                directUrl = await downloadFromFacebook(url);
-                break;
-                
-            default:
-                throw new Error(`Unsupported platform: ${platform}`);
+        // Check if we have a cached result
+        if (urlCache.has(cacheKey)) {
+            const cachedResult = urlCache.get(cacheKey);
+            console.log(`Using cached URL for ${platform}: ${cachedResult.url}`);
+            return cachedResult.url;
         }
         
-        console.log(`Successfully retrieved direct media URL: ${directUrl}`);
-        return directUrl;
+        // Clean expired cache entries
+        cleanUrlCache();
+        
+        // Create a promise and immediately store it in the cache to handle concurrent requests
+        let resultPromise = (async () => {
+            let directUrl;
+            
+            switch (platform.toLowerCase()) {
+                case 'youtube':
+                    directUrl = await downloadYouTubeVideo(url);
+                    break;
+                    
+                case 'tiktok':
+                    directUrl = await downloadFromTikTok(url);
+                    break;
+                    
+                case 'instagram':
+                    directUrl = await downloadFromInstagram(url);
+                    break;
+                    
+                case 'facebook':
+                    directUrl = await downloadFromFacebook(url);
+                    break;
+                    
+                default:
+                    throw new Error(`Unsupported platform: ${platform}`);
+            }
+            
+            console.log(`Successfully retrieved direct media URL: ${directUrl}`);
+            
+            // Update cache with the actual result
+            urlCache.set(cacheKey, {
+                url: directUrl,
+                timestamp: Date.now()
+            });
+            
+            return directUrl;
+        })();
+        
+        // Store the promise in the cache
+        urlCache.set(cacheKey, {
+            url: resultPromise,
+            timestamp: Date.now()
+        });
+        
+        // Wait for the result and return it
+        return await resultPromise;
     } catch (error) {
         console.error(`Error retrieving media URL:`, error);
         throw error;
