@@ -56,7 +56,7 @@ const getDownloadId = async (videoUrl) => {
 };
 
 // Function to download YouTube video
-const downloadYouTubeVideo = async () => {
+const downloadYouTubeVideo = async (videoUrl) => {
   const progressId = await getDownloadId(videoUrl); 
 
   const options = {
