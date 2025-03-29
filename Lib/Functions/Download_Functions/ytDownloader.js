@@ -1,365 +1,93 @@
 import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
 
 // RapidAPI configuration for YouTube downloads
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || 'ae868540e2mshdad303e6eb2f586p10c49ejsnfc99a77044eb';
-const RAPIDAPI_HOST = 'ytstream-download-youtube-videos.p.rapidapi.com';
-const RAPIDAPI_URL = 'https://ytstream-download-youtube-videos.p.rapidapi.com/dl';
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
-/**
- * Extract YouTube video ID from different URL formats
- */
-function extractVideoId(url) {
-  const patterns = [
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i,
-    /^([^"&?\/\s]{11})$/i
-  ];
+// Function to get progressId for downloading YouTube video
+const getDownloadId = async (videoUrl) => {
+  // convert url to ID
+  const getYouTubeVideoID = (videoUrl) => {
+    const patterns = [
+      /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/, // Covers most YouTube formats
+      /(?:youtube\.com\/(?:shorts\/))([a-zA-Z0-9_-]{11})/,
+      /(?:youtube\.com\/(?:.*?v=))([a-zA-Z0-9_-]{11})/,
+      /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    ];
   
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match && match[1]) {
-      return match[1];
+    for (let pattern of patterns) {
+      const match = videoUrl.match(pattern);
+      if (match) {
+        return match[1]; 
+      }
     }
+    return null; 
+  };
+
+  const videoID = getYouTubeVideoID(videoUrl);
+  if (!videoID) {
+    throw new Error('Invalid YouTube URL');
   }
   
-  return null;
-}
+  const options = {
+    method: 'GET',
+    url: 'https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/download',
+    params: {
+      format: '720',
+      id: `${videoID}`,
+      audioQuality: '128',
+      addInfo: 'false'
+    },
+    headers: {
+      'x-rapidapi-key': RAPIDAPI_KEY,
+      'x-rapidapi-host': 'youtube-mp4-mp3-downloader.p.rapidapi.com'
+    }
+  };
 
-/**
- * Download YouTube video using RapidAPI
- * @param {string} url - YouTube URL
- * @param {string} outputPath - Output file path
- * @param {boolean} isAudio - Whether to download audio only
- * @returns {Promise<object>} - Downloaded file info
- */
-export const downloadYoutubeVideo = async (url, outputPath, quality = '720p') => {
   try {
-    console.log(`Downloading video from: ${url}`);
-    
-    // Extract video ID from URL
-    const videoId = extractVideoId(url);
-    if (!videoId) {
-      throw new Error('Could not extract YouTube video ID');
+    const response = await axios.request(options);
+    if (response.data && response.data.success) {
+      return response.data.progressId;
     }
-    
-    console.log(`Fetching video data for ID: ${videoId}`);
-    
-    // Fetch video information from RapidAPI
-    const response = await axios({
-      method: 'GET',
-      url: RAPIDAPI_URL,
-      params: { id: videoId },
-      headers: {
-        'X-RapidAPI-Key': RAPIDAPI_KEY,
-        'X-RapidAPI-Host': RAPIDAPI_HOST
-      }
-    });
-    
-    // Check if the response is valid
-    if (!response.data || response.data.status !== 'OK') {
-      throw new Error('Invalid response from YouTube API');
-    }
-    
-    console.log('Successfully fetched video data from API');
-    
-    // Get available formats
-    const { formats, adaptiveFormats } = response.data;
-    
-    // Select the best format based on quality preference
-    let downloadUrl;
-    
-    // First try to find the exact quality requested
-    if (adaptiveFormats) {
-      const videoFormats = adaptiveFormats.filter(
-        f => f.mimeType.includes('video/mp4') && f.qualityLabel === quality
-      );
-      
-      if (videoFormats.length > 0) {
-        downloadUrl = videoFormats[0].url;
-      }
-    }
-    
-    // If exact quality not found, try to find the best available MP4
-    if (!downloadUrl && adaptiveFormats) {
-      // Filter for MP4 video formats and sort by resolution
-      const videoFormats = adaptiveFormats
-        .filter(f => f.mimeType.includes('video/mp4') && f.qualityLabel)
-        .sort((a, b) => {
-          // Extract height from qualityLabel (e.g. "720p" -> 720)
-          const heightA = parseInt(a.qualityLabel) || 0;
-          const heightB = parseInt(b.qualityLabel) || 0;
-          return heightB - heightA;  // Sort in descending order
-        });
-      
-      if (videoFormats.length > 0) {
-        downloadUrl = videoFormats[0].url;
-        console.log(`Selected video quality: ${videoFormats[0].qualityLabel}`);
-      }
-    }
-    
-    // If still no URL, try formats array
-    if (!downloadUrl && formats && formats.length > 0) {
-      downloadUrl = formats[0].url;
-      console.log('Using combined audio/video format');
-    }
-    
-    // If still no URL found, throw error
-    if (!downloadUrl) {
-      throw new Error('No suitable download URL found');
-    }
-    
-    console.log('Downloading video content...');
-    
-    // Download the video
-    const videoResponse = await axios({
-      method: 'GET',
-      url: downloadUrl,
-      responseType: 'stream'
-    });
-    
-    // Save to file
-    const writer = fs.createWriteStream(outputPath);
-    videoResponse.data.pipe(writer);
-    
-    return new Promise((resolve, reject) => {
-      writer.on('finish', () => {
-        console.log(`Download completed: ${outputPath}`);
-        resolve({
-          filePath: outputPath,
-          title: response.data.title || 'YouTube Video',
-          method: 'rapidapi'
-        });
-      });
-      
-      writer.on('error', (error) => {
-        console.error('Error writing file:', error);
-        reject(error);
-      });
-    });
+    throw new Error("Download ID not found in response");
   } catch (error) {
-    console.error('YouTube video download error:', error);
-    throw new Error(`Failed to download video: ${error.message}`);
+    console.error("Error getting download ID:", error.message);
+    throw error;
   }
 };
 
-/**
- * Download YouTube audio using RapidAPI
- * @param {string} url - YouTube URL
- * @param {string} outputPath - Output file path
- * @returns {Promise<object>} - Downloaded file info
- */
-export const downloadYoutubeAudio = async (url, outputPath) => {
+// Function to download YouTube video
+const downloadYouTubeVideo = async () => {
+  const progressId = await getDownloadId(videoUrl); 
+
+  const options = {
+    method: 'GET',
+    url: 'https://youtube-mp4-mp3-downloader.p.rapidapi.com/api/v1/progress',
+    params: {
+      id: `${progressId}`, 
+    },
+    headers: {
+      'x-rapidapi-key': RAPIDAPI_KEY,
+      'x-rapidapi-host': 'youtube-mp4-mp3-downloader.p.rapidapi.com'
+    }
+  };
+
   try {
-    console.log(`Downloading audio from: ${url}`);
-    
-    // Extract video ID from URL
-    const videoId = extractVideoId(url);
-    if (!videoId) {
-      throw new Error('Could not extract YouTube video ID');
+    const response = await axios.request(options);
+
+    while (response.data.status !== "Finished") {
+      console.log("Waiting for download to finish...");
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      const response = await axios.request(options);
     }
-    
-    // Fetch video information from RapidAPI
-    const response = await axios({
-      method: 'GET',
-      url: RAPIDAPI_URL,
-      params: { id: videoId },
-      headers: {
-        'X-RapidAPI-Key': RAPIDAPI_KEY,
-        'X-RapidAPI-Host': RAPIDAPI_HOST
-      }
-    });
-    
-    // Check if the response is valid
-    if (!response.data || response.data.status !== 'OK') {
-      throw new Error('Invalid response from YouTube API');
+    if (!response.data || !response.data.downloadUrl) {
+      throw new Error("Download URL not found in response");
     }
-    
-    // Find the best audio format
-    const { adaptiveFormats } = response.data;
-    
-    // Select the audio format
-    let downloadUrl;
-    
-    if (adaptiveFormats) {
-      // Filter for audio formats and sort by bitrate
-      const audioFormats = adaptiveFormats
-        .filter(f => f.mimeType && f.mimeType.includes('audio'))
-        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-      
-      if (audioFormats.length > 0) {
-        downloadUrl = audioFormats[0].url;
-        console.log(`Selected audio format with bitrate: ${audioFormats[0].bitrate}`);
-      }
-    }
-    
-    // If no audio format found, throw error
-    if (!downloadUrl) {
-      throw new Error('No suitable audio format found');
-    }
-    
-    console.log('Downloading audio content...');
-    
-    // Download the audio
-    const audioResponse = await axios({
-      method: 'GET',
-      url: downloadUrl,
-      responseType: 'stream'
-    });
-    
-    // Save to file
-    const writer = fs.createWriteStream(outputPath);
-    audioResponse.data.pipe(writer);
-    
-    return new Promise((resolve, reject) => {
-      writer.on('finish', () => {
-        console.log(`Audio download completed: ${outputPath}`);
-        resolve({
-          filePath: outputPath,
-          title: response.data.title || 'YouTube Audio',
-          method: 'rapidapi'
-        });
-      });
-      
-      writer.on('error', (error) => {
-        console.error('Error writing audio file:', error);
-        reject(error);
-      });
-    });
+    console.log("Download completed successfully!");
+    return response.downloadUrl;
   } catch (error) {
-    console.error('YouTube audio download error:', error);
-    throw new Error(`Failed to download audio: ${error.message}`);
+    console.error("Error downloading video:", error.message);
+    throw error;
   }
 };
 
-/**
- * Download a YouTube video or audio
- * @param {string} url - YouTube URL
- * @param {string} outputPath - Where to save the file
- * @param {boolean} isAudio - Whether to download as audio
- * @param {Object} options - Additional options
- * @returns {Promise<string>} - Path to downloaded file
- */
-export async function downloadYouTube(url, outputPath, isAudio = false, options = {}) {
-    try {
-        console.log(`Downloading YouTube ${isAudio ? 'audio' : 'video'}: ${url}`);
-        
-        // Set download options without any post-processing
-        const downloadOptions = {
-            // No quality filtering or FFmpeg post-processing
-            noPostProcessing: true,  // Skip all post-processing
-            format: isAudio ? 'bestaudio' : 'best', // Get best quality directly
-            output: outputPath,
-            limitRate: options.maxBitrate || '1.5M'
-        };
-        
-        // Execute the download with yt-dlp (using direct download - no FFmpeg)
-        const ytDlpPath = await getYtDlpPath();
-        
-        // Build the yt-dlp command
-        let ytDlpArgs = [
-            url,
-            '--no-check-certificate',
-            '--no-cache-dir',
-            '--no-part',
-            '--quiet'
-        ];
-        
-        // Add format selection based on audio/video
-        if (isAudio) {
-            ytDlpArgs.push('-f', 'bestaudio');
-            ytDlpArgs.push('--extract-audio');
-            ytDlpArgs.push('--audio-format', 'mp3');
-        } else {
-            // For direct video download without FFmpeg processing:
-            ytDlpArgs.push('-f', 'best');
-        }
-        
-        // Add output path
-        ytDlpArgs.push('-o', outputPath);
-        
-        // Execute yt-dlp command
-        console.log(`Executing: ${ytDlpPath} ${ytDlpArgs.join(' ')}`);
-        await execCommand(ytDlpPath, ytDlpArgs);
-        
-        // Verify file exists
-        if (!fs.existsSync(outputPath)) {
-            throw new Error(`Download completed but file not found: ${outputPath}`);
-        }
-        
-        console.log(`YouTube download complete: ${outputPath}`);
-        return outputPath;
-    } catch (error) {
-        console.error(`Error downloading YouTube video:`, error);
-        throw error;
-    }
-}
-
-/**
- * Execute a command with given arguments
- * @param {string} command - Command to execute
- * @param {Array<string>} args - Command arguments
- * @returns {Promise<string>} - Command output
- */
-async function execCommand(command, args) {
-    return new Promise((resolve, reject) => {
-        const proc = spawn(command, args);
-        let stdout = '';
-        let stderr = '';
-        
-        proc.stdout.on('data', (data) => {
-            stdout += data.toString();
-        });
-        
-        proc.stderr.on('data', (data) => {
-            stderr += data.toString();
-        });
-        
-        proc.on('close', (code) => {
-            if (code === 0) {
-                resolve(stdout);
-            } else {
-                reject(new Error(`Command failed with code ${code}: ${stderr}`));
-            }
-        });
-        
-        proc.on('error', (err) => {
-            reject(err);
-        });
-    });
-}
-
-/**
- * Search for YouTube videos
- * @param {string} query - Search query
- * @param {number} limit - Number of results to return
- * @returns {Promise<Array>} - Array of search results
- */
-export const searchYouTube = async (query, limit = 1) => {
-  try {
-    // Direct URL search if URL is provided
-    if (query.match(/youtu\.?be/)) {
-      return [{ url: query }];
-    }
-    
-    // Using a simple search API for YouTube
-    const searchUrl = `https://yt-api-omega.vercel.app/search?query=${encodeURIComponent(query)}&limit=${limit}`;
-    const response = await axios.get(searchUrl);
-    
-    if (!response.data || !response.data.items) {
-      throw new Error('Invalid search response');
-    }
-    
-    return response.data.items.map(item => ({
-      title: item.title,
-      url: item.url,
-      thumbnail: item.thumbnail,
-      duration: item.duration,
-      views: item.views,
-      uploadedAt: item.uploadedAt
-    }));
-  } catch (error) {
-    console.error('YouTube search error:', error.message);
-    throw new Error(`Failed to search YouTube videos: ${error.message}`);
-  }
-};
+export { getDownloadId, downloadYouTubeVideo };
