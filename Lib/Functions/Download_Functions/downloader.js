@@ -237,6 +237,8 @@ export async function downloadMedia(url, platform, options = {}) {
         }
         
         console.log(`Successfully downloaded media: ${downloadedPath}`);
+        // convert download path to string 
+        downloadedPath = downloadedPath.toString();
         return downloadedPath;
     } catch (error) {
         console.error(`Error downloading media:`, error);
