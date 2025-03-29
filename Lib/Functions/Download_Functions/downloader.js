@@ -33,7 +33,7 @@ function generateFilename(platform, extension) {
 }
 
 /**
- * Download media from TikTok using API
+ * Get direct media URL from TikTok using API
  */
 async function downloadFromTikTok(url) {
     try {
@@ -46,30 +46,11 @@ async function downloadFromTikTok(url) {
         const isNewApiStructure = mediaData.meta && mediaData.meta.media && mediaData.meta.media.length > 0;
         
         let videoUrl;
-        let isPreOptimized = false; // Flag to indicate if the video is already optimized
         
         if (isNewApiStructure) {
             console.log('Using new TikTok API response structure with direct media');
             
             const media = mediaData.meta.media[0];
-            
-            if (media.org) {
-                console.log('Using pre-optimized "org" version from TikTok API');
-                videoUrl = media.org;
-                isPreOptimized = true;  // Mark as pre-optimized to skip FFMPEG later
-            } else if (media.hd) {
-                videoUrl = media.hd;
-            } else if (media.wm) {
-                videoUrl = media.wm;
-            } else {
-                throw new Error('No valid video URL found in response');
-            }
-        } else {
-            if (!response.data.data.meta || !response.data.data.meta.media) {
-                throw new Error('Invalid API response structure');
-            }
-            
-            const media = response.data.data.meta.media[0];
             videoUrl = media.hd || media.org;
             
             if (!videoUrl) {
@@ -77,31 +58,16 @@ async function downloadFromTikTok(url) {
             }
         }
         
-        const filename = generateFilename('TikTok', 'mp4');
-        const writeStream = fs.createWriteStream(filename);
-        
-        const videoResponse = await axios({
-            method: 'get',
-            url: videoUrl,
-            responseType: 'stream'
-        });
-        
-        videoResponse.data.pipe(writeStream);
-        
-        return new Promise((resolve, reject) => {
-            writeStream.on('finish', () => {
-                resolve({ path: filename, isPreOptimized });
-            });
-            writeStream.on('error', reject);
-        });
+        console.log('Retrieved direct TikTok URL:', videoUrl);
+        return videoUrl;
     } catch (error) {
-        console.error('TikTok download error:', error);
-        throw new Error(`Failed to download TikTok video: ${error.message}`);
+        console.error('TikTok URL retrieval error:', error);
+        throw new Error(`Failed to retrieve TikTok video URL: ${error.message}`);
     }
 }
 
 /**
- * Download media from Instagram using API
+ * Get direct media URL from Instagram using API
  */
 async function downloadFromInstagram(url) {
     try {
@@ -117,32 +83,16 @@ async function downloadFromInstagram(url) {
             throw new Error('No media URL found in response');
         }
         
-        const isVideo = true; // Placeholder - implement a proper check if needed
-        const extension = isVideo ? 'mp4' : 'jpg';
-        
-        const filename = generateFilename('Instagram', extension);
-        const writeStream = fs.createWriteStream(filename);
-        
-        const mediaResponse = await axios({
-            method: 'get',
-            url: mediaUrl,
-            responseType: 'stream'
-        });
-        
-        mediaResponse.data.pipe(writeStream);
-        
-        return new Promise((resolve, reject) => {
-            writeStream.on('finish', () => resolve(filename));
-            writeStream.on('error', reject);
-        });
+        console.log('Retrieved direct Instagram URL:', mediaUrl);
+        return mediaUrl;
     } catch (error) {
-        console.error('Instagram download error:', error);
-        throw new Error(`Failed to download Instagram media: ${error.message}`);
+        console.error('Instagram URL retrieval error:', error);
+        throw new Error(`Failed to retrieve Instagram media URL: ${error.message}`);
     }
 }
 
 /**
- * Download media from Facebook using API
+ * Get direct media URL from Facebook using API
  */
 async function downloadFromFacebook(url) {
     try {
@@ -171,77 +121,51 @@ async function downloadFromFacebook(url) {
             throw new Error('Could not extract video URL');
         }
         
-        const filename = generateFilename('Facebook', 'mp4');
-        const writeStream = fs.createWriteStream(filename);
-        
-        const videoResponse = await axios({
-            method: 'get',
-            url: videoUrl,
-            responseType: 'stream'
-        });
-        
-        videoResponse.data.pipe(writeStream);
-        
-        return new Promise((resolve, reject) => {
-            writeStream.on('finish', () => resolve(filename));
-            writeStream.on('error', reject);
-        });
+        console.log('Retrieved direct Facebook URL:', videoUrl);
+        return videoUrl;
     } catch (error) {
-        console.error('Facebook download error:', error);
-        throw new Error(`Failed to download Facebook video: ${error.message}`);
+        console.error('Facebook URL retrieval error:', error);
+        throw new Error(`Failed to retrieve Facebook video URL: ${error.message}`);
     }
 }
 
 /**
- * Download and process media from various platforms
+ * Get direct media URLs from various platforms
  * @param {string} url - Media URL
  * @param {string} platform - Platform name (YouTube, TikTok, etc.)
  * @param {Object} options - Download options
- * @returns {Promise<string>} - Path to downloaded media
+ * @returns {Promise<string>} - Direct URL to media
  */
 export async function downloadMedia(url, platform, options = {}) {
     try {
-        // Parse options
-        const isAudio = options.isAudio || false;
-        
-        // Generate unique filename
-        const timestamp = new Date().getTime();
-        const randomString = Math.random().toString(36).substring(2, 8);
-        const extension = isAudio ? 'mp3' : 'mp4';
-        const filename = `${platform}_${timestamp}_${randomString}.${extension}`;
-        const outputPath = path.join(downloadDir, filename);
-        
-        let downloadedPath;
-        
-        const skipFfmpeg = config.DISABLE_FFMPEG_PROCESSING === true || config.DISABLE_FFMPEG_PROCESSING === 'true';
+        let directUrl;
         
         switch (platform.toLowerCase()) {
             case 'youtube':
-                downloadedPath = await downloadYouTubeVideo(url);
+                // You'll need to modify ytDownloader.js to return direct URL
+                directUrl = await downloadYouTubeVideo(url);
                 break;
                 
             case 'tiktok':
-                downloadedPath = await downloadFromTikTok(url);
+                directUrl = await downloadFromTikTok(url);
                 break;
                 
             case 'instagram':
-                downloadedPath = await downloadFromInstagram(url);
+                directUrl = await downloadFromInstagram(url);
                 break;
                 
             case 'facebook':
-                downloadedPath = await downloadFromFacebook(url);
+                directUrl = await downloadFromFacebook(url);
                 break;
                 
             default:
                 throw new Error(`Unsupported platform: ${platform}`);
         }
         
-        console.log(`Successfully downloaded media: ${downloadedPath}`);
-        // convert download path to string 
-        downloadedPath = downloadedPath.toString();
-        return downloadedPath;
+        console.log(`Successfully retrieved direct media URL: ${directUrl}`);
+        return directUrl;
     } catch (error) {
-        console.error(`Error downloading media:`, error);
+        console.error(`Error retrieving media URL:`, error);
         throw error;
     }
 }
