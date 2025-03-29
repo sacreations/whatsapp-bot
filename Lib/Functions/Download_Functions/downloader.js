@@ -51,7 +51,7 @@ async function downloadFromTikTok(url) {
             console.log('Using new TikTok API response structure with direct media');
             
             const media = mediaData.meta.media[0];
-            videoUrl = media.hd || media.org;
+            videoUrl = media.org;
             
             if (!videoUrl) {
                 throw new Error('No valid video URL found in response');
