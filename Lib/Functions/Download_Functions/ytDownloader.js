@@ -72,18 +72,34 @@ const downloadYouTubeVideo = async (videoUrl) => {
   };
 
   try {
-    const response = await axios.request(options);
-
-    while (response.data.status !== "Finished") {
+    let response = await axios.request(options);
+    let attempts = 0;
+    const maxAttempts = 60; // Maximum waiting time: 60 seconds
+    
+    while (response.data.status !== "Finished" && attempts < maxAttempts) {
       console.log("Waiting for download to finish...");
-      await new Promise(resolve => setTimeout(resolve, 1000)); 
-      const response = await axios.request(options);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      response = await axios.request(options);
+      attempts++;
     }
+    
+    if (attempts >= maxAttempts) {
+      throw new Error("Download timed out after 60 seconds");
+    }
+
     if (!response.data || !response.data.downloadUrl) {
       throw new Error("Download URL not found in response");
     }
+    
     console.log("Download completed successfully!");
-    return response.downloadUrl;
+    // Make sure we return a string URL, not an object
+    const downloadUrl = response.data.downloadUrl;
+    
+    if (typeof downloadUrl !== 'string') {
+      throw new Error("Invalid download URL format received");
+    }
+    
+    return downloadUrl;
   } catch (error) {
     console.error("Error downloading video:", error.message);
     throw error;
