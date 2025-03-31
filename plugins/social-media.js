@@ -148,12 +148,9 @@ bot({
         const mediaPath = mediaResult.url;
         const isLocalFile = mediaResult.isLocalFile;
         
-        // Check file extension to determine how to send
-        if (mediaPath.endsWith('.mp4')) {
-            await message.sendVideo(mediaPath, 'Downloaded from Instagram', m, sock);
-        } else {
-            await message.sendImage(mediaPath, 'Downloaded from Instagram', m, sock);
-        }
+
+        await message.sendVideo(mediaPath, 'Downloaded from Instagram', m, sock);
+
         
         // Clean up file only if it's local
         if (isLocalFile && fs.existsSync(mediaPath)) {
