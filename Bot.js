@@ -112,12 +112,6 @@ async function connectToWhatsApp() {
         }
     });
     
-    // Handle reconnection
-    sock.ev.on('creds.update', () => {
-        // Update the socket reference in the presence manager
-        updateSocketReference(sock);
-    });
-    
     // Handle messages
     sock.ev.on('messages.upsert', async ({ messages }) => {
         for (const m of messages) {
