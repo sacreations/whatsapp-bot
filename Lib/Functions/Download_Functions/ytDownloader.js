@@ -3,27 +3,46 @@ import axios from 'axios';
 // RapidAPI configuration for YouTube downloads
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 
+/**
+ * Extract YouTube video ID from different URL formats
+ * @param {string} url - The YouTube URL
+ * @returns {string} - The video ID
+ */
+function extractVideoId(url) {
+    // Handle various YouTube URL formats
+    let videoId = null;
+    
+    // Pattern 1: Regular YouTube URL (youtube.com/watch?v=VIDEO_ID)
+    const regularMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu.be\/|youtube\.com\/embed\/)([^&?/]+)/);
+    if (regularMatch && regularMatch[1]) {
+        videoId = regularMatch[1];
+    }
+    
+    // Pattern 2: YouTube shorts URL (youtube.com/shorts/VIDEO_ID)
+    const shortsMatch = url.match(/youtube\.com\/shorts\/([^&?/]+)/);
+    if (shortsMatch && shortsMatch[1]) {
+        videoId = shortsMatch[1];
+    }
+    
+    // If no match found, try a more generic approach
+    if (!videoId) {
+        const fallbackMatch = url.match(/[?&]v=([^&]+)/);
+        if (fallbackMatch && fallbackMatch[1]) {
+            videoId = fallbackMatch[1];
+        }
+    }
+    
+    if (!videoId) {
+        throw new Error('Could not extract video ID from URL: ' + url);
+    }
+    
+    console.log(`Extracted YouTube video ID: ${videoId} from URL: ${url}`);
+    return videoId;
+}
+
 // Function to get progressId for downloading YouTube video
 const getDownloadId = async (videoUrl) => {
-  // convert url to ID
-  const getYouTubeVideoID = (videoUrl) => {
-    const patterns = [
-      /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/, // Covers most YouTube formats
-      /(?:youtube\.com\/(?:shorts\/))([a-zA-Z0-9_-]{11})/,
-      /(?:youtube\.com\/(?:.*?v=))([a-zA-Z0-9_-]{11})/,
-      /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
-    ];
-  
-    for (let pattern of patterns) {
-      const match = videoUrl.match(pattern);
-      if (match) {
-        return match[1]; 
-      }
-    }
-    return null; 
-  };
-
-  const videoID = getYouTubeVideoID(videoUrl);
+  const videoID = extractVideoId(videoUrl);
   if (!videoID) {
     throw new Error('Invalid YouTube URL');
   }
