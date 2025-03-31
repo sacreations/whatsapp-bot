@@ -7,6 +7,7 @@ import { downloadYouTubeVideo } from './ytDownloader.js';
 // URL cache to prevent duplicate requests
 const urlCache = new Map();
 const CACHE_EXPIRATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+const activeDownloads = new Set(); // Track URLs currently being downloaded
 
 // Ensure download directory exists
 const downloadDir = path.resolve(config.DOWNLOAD_FOLDER);
@@ -156,6 +157,25 @@ export async function downloadMedia(url, platform, options = {}) {
         // Generate cache key using URL and platform
         const cacheKey = `${platform.toLowerCase()}:${url}`;
         
+        // Normalize URL to prevent duplicates
+        url = url.split('&')[0]; // Remove query parameters
+        
+        // Check if this URL is currently being downloaded
+        if (activeDownloads.has(cacheKey)) {
+            console.log(`Download already in progress for ${url}, waiting...`);
+            // Wait for the existing download to complete
+            while (activeDownloads.has(cacheKey)) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            // Check if the result is now in cache
+            if (urlCache.has(cacheKey)) {
+                const cachedResult = urlCache.get(cacheKey);
+                console.log(`Using cached URL for ${platform}: ${cachedResult.url}`);
+                return cachedResult.url;
+            }
+        }
+        
         // Check if we have a cached result
         if (urlCache.has(cacheKey)) {
             const cachedResult = urlCache.get(cacheKey);
@@ -166,8 +186,10 @@ export async function downloadMedia(url, platform, options = {}) {
         // Clean expired cache entries
         cleanUrlCache();
         
-        // Create a promise and immediately store it in the cache to handle concurrent requests
-        let resultPromise = (async () => {
+        // Mark this URL as currently being downloaded
+        activeDownloads.add(cacheKey);
+        
+        try {
             let directUrl;
             
             switch (platform.toLowerCase()) {
@@ -199,17 +221,15 @@ export async function downloadMedia(url, platform, options = {}) {
                 timestamp: Date.now()
             });
             
+            // Remove from active downloads
+            activeDownloads.delete(cacheKey);
+            
             return directUrl;
-        })();
-        
-        // Store the promise in the cache
-        urlCache.set(cacheKey, {
-            url: resultPromise,
-            timestamp: Date.now()
-        });
-        
-        // Wait for the result and return it
-        return await resultPromise;
+        } catch (error) {
+            // Remove from active downloads on error
+            activeDownloads.delete(cacheKey);
+            throw error;
+        }
     } catch (error) {
         console.error(`Error retrieving media URL:`, error);
         throw error;

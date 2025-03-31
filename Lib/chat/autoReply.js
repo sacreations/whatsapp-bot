@@ -7,6 +7,24 @@ import { saveLink } from '../utils/linkStorage.js';
 import { processMessageWithAI } from '../ai/aiHandler.js';
 import { filterThinkingPart } from '../ai/groq.js';
 
+// Track processed messages to prevent duplicate processing
+const processedMessages = new Map();
+
+// Set expiration time for processed message tracking (5 minutes)
+const MESSAGE_TRACKING_EXPIRATION = 5 * 60 * 1000;
+
+/**
+ * Periodically clean up the processed messages map to prevent memory leaks
+ */
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, timestamp] of processedMessages.entries()) {
+        if (now - timestamp > MESSAGE_TRACKING_EXPIRATION) {
+            processedMessages.delete(key);
+        }
+    }
+}, 60 * 1000); // Clean up every minute
+
 /**
  * Get message type from the message object
  */
@@ -73,14 +91,32 @@ function detectPlatform(url) {
  * Extract URLs from message text
  */
 function extractUrls(text) {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.match(urlRegex) || [];
+    // More robust URL extraction regex
+    const urlRegex = /(https?:\/\/[^\s\"\'\<\>\(\)]+)/g;
+    
+    // Find all matches
+    const matches = text.match(urlRegex) || [];
+    
+    // Filter duplicates by creating a Set and converting back to array
+    return [...new Set(matches)];
 }
 
 /**
  * Handle social media download based on detected platform
  */
 async function handleMediaDownload(m, sock, url, platform) {
+    // Create a unique ID for this download request
+    const downloadId = `${m.key.id}_${url}`;
+    
+    // Check if we're already processing this download
+    if (processedMessages.has(downloadId)) {
+        console.log(`Skipping duplicate download request: ${url}`);
+        return false;
+    }
+    
+    // Mark this download as being processed
+    processedMessages.set(downloadId, Date.now());
+    
     try {
         await message.react('⏳', m, sock);
         
@@ -94,19 +130,23 @@ async function handleMediaDownload(m, sock, url, platform) {
             const compressionLevel = config.MEDIA_COMPRESSION_LEVEL;
             const maxResolution = config.MAX_VIDEO_RESOLUTION;
             
+            console.log(`Starting download for ${platform}: ${url}`);
             mediaPath = await downloadMedia(url, platform, { 
                 isAudio: platform === 'YouTube' && isAudioRequest,
                 compressionLevel: compressionLevel,
                 maxResolution: maxResolution
             });
+            console.log(`Download completed: ${mediaPath}`);
         } catch (error) {
             await message.react('❌', m, sock);
-            return await message.reply(`Failed to download media from ${platform}: ${error.message}`, m, sock);
+            await message.reply(`Failed to download media from ${platform}: ${error.message}`, m, sock);
+            return false;
         }
         
         if (!mediaPath) {
             await message.react('❌', m, sock);
-            return await message.reply(`Failed to download media from ${platform}`, m, sock);
+            await message.reply(`Failed to download media from ${platform}`, m, sock);
+            return false;
         }
         
         // Send the appropriate media type based on file extension and platform
@@ -122,6 +162,7 @@ async function handleMediaDownload(m, sock, url, platform) {
             }
             
             await message.react('✅', m, sock);
+            return true;
         } catch (sendError) {
             console.error(`Error sending ${platform} media:`, sendError);
             await message.react('❌', m, sock);
@@ -131,11 +172,13 @@ async function handleMediaDownload(m, sock, url, platform) {
             if (fs.existsSync(mediaPath)) {
                 fs.unlinkSync(mediaPath);
             }
+            return false;
         }
     } catch (error) {
         console.error(`Error downloading from ${platform}:`, error);
         await message.react('❌', m, sock);
         await message.reply(`Failed to download: ${error.message}`, m, sock);
+        return false;
     }
 }
 
@@ -208,6 +251,15 @@ export async function handleAutoReply(m, sock) {
             return false;
         }
         
+        // Check if we've already processed this message
+        if (processedMessages.has(m.key.id)) {
+            console.log(`Skipping already processed message: ${m.key.id}`);
+            return false;
+        }
+        
+        // Mark this message as processed
+        processedMessages.set(m.key.id, Date.now());
+        
         const messageType = getMessageType(m);
         const messageText = getMessageText(m);
         const isGroup = m.key.remoteJid.endsWith('@g.us');
@@ -216,13 +268,18 @@ export async function handleAutoReply(m, sock) {
         if (messageType === 'text' && isGroup) {
             const urls = extractUrls(messageText);
             
+            // Process only one social media URL per message to avoid multiple downloads
+            let handledSocialMedia = false;
+            
             for (const url of urls) {
                 const platform = detectPlatform(url);
-                if (platform) {
+                if (platform && !handledSocialMedia) {
                     // If social media downloads are enabled and group is allowed, download directly
                     if (config.ENABLE_SOCIAL_MEDIA_DOWNLOAD && isGroupAllowedForDownloads(m.key.remoteJid)) {
-                        await handleMediaDownload(m, sock, url, platform);
-                        return true;
+                        const success = await handleMediaDownload(m, sock, url, platform);
+                        if (success) {
+                            handledSocialMedia = true;
+                        }
                     } 
                     // If link saving is enabled but downloads are disabled, save the link
                     else if (config.ENABLE_LINK_SAVING) {
@@ -257,13 +314,17 @@ export async function handleAutoReply(m, sock) {
                         if (saved) {
                             await message.reply(`📥 Link from ${platform} saved. It will be processed when downloads are enabled.\n\nUse .savedlinks to view all saved links.`, m, sock);
                             await message.react('📋', m, sock);
+                            handledSocialMedia = true;
                         } else {
                             await message.reply(`This link has already been saved for future download.`, m, sock);
+                            handledSocialMedia = true;
                         }
-                        
-                        return true;
                     }
                 }
+            }
+            
+            if (handledSocialMedia) {
+                return true;
             }
         }
         
