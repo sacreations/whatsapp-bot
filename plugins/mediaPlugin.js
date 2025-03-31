@@ -1,6 +1,6 @@
 import { bot } from '../Lib/chat/commandHandler.js';
 import message from '../Lib/chat/messageHandler.js';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage } from 'baileys';
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';

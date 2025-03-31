@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Readable } from 'stream';
 import config from '../../Config.js';
 import { filterThinkingPart } from '../ai/groq.js';
+import { downloadMediaMessage } from 'baileys';
 
 const message = {
     /**
