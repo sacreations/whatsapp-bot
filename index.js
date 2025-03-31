@@ -11,6 +11,7 @@ import './admin/server.js';
 import memoryMonitor from './Lib/utils/memoryMonitor.js';
 import apiKeyRotation from './Lib/ai/apiKeyRotation.js';
 import responseCache from './Lib/ai/responseCache.js';
+import { startOnlinePresence, stopOnlinePresence } from './Lib/utils/presenceManager.js';
 
 // Create necessary directories
 config.createDirectories();
@@ -65,9 +66,14 @@ function getSystemStats() {
 // Export getSystemStats for the admin panel
 export { getSystemStats };
 
+// When bot is started and socket is ready
+startOnlinePresence(sock);
+
 // Handle process termination
-process.on('SIGINT', () => {
-    console.log('Shutting down...');
+process.on('SIGINT', async () => {
+    console.log('Shutting down bot...');
+    // Stop online presence updates
+    stopOnlinePresence();
     process.exit(0);
 });
 

@@ -78,7 +78,7 @@ async function connectToWhatsApp() {
         browser: ['WhatsAppBot', 'Chrome', '103.0.5060.114'],
         downloadHistory: true,
         syncFullHistory: true,
-        markOnlineOnConnect: !config.HIDE_ONLINE_STATUS, // Hide online status using correct parameter
+        markOnlineOnConnect: true, // Set to always show online
         readReceipts: !config.DISABLE_READ_RECEIPTS // Disable read receipts if configured
     });
     
@@ -110,6 +110,12 @@ async function connectToWhatsApp() {
             // Start cleanup interval
             setInterval(cleanupDownloads, 3600 * 1000); // Cleanup every hour
         }
+    });
+    
+    // Handle reconnection
+    sock.ev.on('creds.update', () => {
+        // Update the socket reference in the presence manager
+        updateSocketReference(sock);
     });
     
     // Handle messages
