@@ -230,13 +230,8 @@ bot({
     try {
         const downloadedPath = await downloadMedia(args, 'Twitter');
         
-        // Check file extension to determine how to send
-        if (downloadedPath.endsWith('.mp4')) {
-            await message.sendVideo(downloadedPath, 'Downloaded from Twitter/X', m, sock);
-        } else {
-            await message.sendImage(downloadedPath, 'Downloaded from Twitter/X', m, sock);
-        }
-        
+        await message.sendVideo(downloadedPath, 'Downloaded from Twitter/X', m, sock);
+
         // Clean up file
         fs.unlinkSync(downloadedPath);
         await message.react('✅', m, sock);
