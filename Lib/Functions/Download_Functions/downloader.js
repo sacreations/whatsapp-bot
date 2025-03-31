@@ -150,7 +150,7 @@ async function downloadFromFacebook(url) {
  * @param {string} url - Media URL
  * @param {string} platform - Platform name (YouTube, TikTok, etc.)
  * @param {Object} options - Download options
- * @returns {Promise<string>} - Direct URL to media
+ * @returns {Promise<Object>} - Object containing media information
  */
 export async function downloadMedia(url, platform, options = {}) {
     try {
@@ -166,13 +166,14 @@ export async function downloadMedia(url, platform, options = {}) {
             // Wait for the existing download to complete
             while (activeDownloads.has(cacheKey)) {
                 await new Promise(resolve => setTimeout(resolve, 500));
+                console.log('Waiting for download to finish...');
             }
             
             // Check if the result is now in cache
             if (urlCache.has(cacheKey)) {
                 const cachedResult = urlCache.get(cacheKey);
                 console.log(`Using cached URL for ${platform}: ${cachedResult.url}`);
-                return cachedResult.url;
+                return cachedResult;
             }
         }
         
@@ -180,7 +181,7 @@ export async function downloadMedia(url, platform, options = {}) {
         if (urlCache.has(cacheKey)) {
             const cachedResult = urlCache.get(cacheKey);
             console.log(`Using cached URL for ${platform}: ${cachedResult.url}`);
-            return cachedResult.url;
+            return cachedResult;
         }
         
         // Clean expired cache entries
@@ -190,41 +191,49 @@ export async function downloadMedia(url, platform, options = {}) {
         activeDownloads.add(cacheKey);
         
         try {
-            let directUrl;
+            let mediaUrl;
             
             switch (platform.toLowerCase()) {
                 case 'youtube':
-                    directUrl = await downloadYouTubeVideo(url);
+                    mediaUrl = await downloadYouTubeVideo(url);
                     break;
                     
                 case 'tiktok':
-                    directUrl = await downloadFromTikTok(url);
+                    mediaUrl = await downloadFromTikTok(url);
                     break;
                     
                 case 'instagram':
-                    directUrl = await downloadFromInstagram(url);
+                    mediaUrl = await downloadFromInstagram(url);
                     break;
                     
                 case 'facebook':
-                    directUrl = await downloadFromFacebook(url);
+                    mediaUrl = await downloadFromFacebook(url);
                     break;
                     
                 default:
                     throw new Error(`Unsupported platform: ${platform}`);
             }
             
-            console.log(`Successfully retrieved direct media URL: ${directUrl}`);
+            console.log(`Successfully retrieved direct media URL: ${mediaUrl}`);
             
-            // Update cache with the actual result
-            urlCache.set(cacheKey, {
-                url: directUrl,
+            // Determine if this is a local file or a direct URL
+            const isLocalFile = !mediaUrl.startsWith('http');
+            
+            // Create result object
+            const result = {
+                url: mediaUrl,
+                isLocalFile: isLocalFile,
                 timestamp: Date.now()
-            });
+            };
+            
+            // Update cache with the result
+            urlCache.set(cacheKey, result);
             
             // Remove from active downloads
             activeDownloads.delete(cacheKey);
+            console.log('Download completed successfully!');
             
-            return directUrl;
+            return result;
         } catch (error) {
             // Remove from active downloads on error
             activeDownloads.delete(cacheKey);

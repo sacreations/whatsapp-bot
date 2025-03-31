@@ -121,7 +121,7 @@ async function handleMediaDownload(m, sock, url, platform) {
         await message.react('⏳', m, sock);
         
         // Download media, which will now include optimization
-        let mediaPath;
+        let mediaResult;
         try {
             // For YouTube, check if it's an audio request (if URL contains &audio or ?audio)
             const isAudioRequest = url.includes('audio');
@@ -131,23 +131,31 @@ async function handleMediaDownload(m, sock, url, platform) {
             const maxResolution = config.MAX_VIDEO_RESOLUTION;
             
             console.log(`Starting download for ${platform}: ${url}`);
-            mediaPath = await downloadMedia(url, platform, { 
+            mediaResult = await downloadMedia(url, platform, { 
                 isAudio: platform === 'YouTube' && isAudioRequest,
                 compressionLevel: compressionLevel,
                 maxResolution: maxResolution
             });
-            console.log(`Download completed: ${mediaPath}`);
+            
+            // Extract the media path from the result
+            const mediaPath = mediaResult.url;
+            const isLocalFile = mediaResult.isLocalFile;
+            
+            console.log(`Download completed: ${mediaPath} (isLocalFile: ${isLocalFile})`);
         } catch (error) {
             await message.react('❌', m, sock);
             await message.reply(`Failed to download media from ${platform}: ${error.message}`, m, sock);
             return false;
         }
         
-        if (!mediaPath) {
+        if (!mediaResult || !mediaResult.url) {
             await message.react('❌', m, sock);
             await message.reply(`Failed to download media from ${platform}`, m, sock);
             return false;
         }
+        
+        const mediaPath = mediaResult.url;
+        const isLocalFile = mediaResult.isLocalFile;
         
         // Send the appropriate media type based on file extension and platform
         try {
@@ -155,8 +163,8 @@ async function handleMediaDownload(m, sock, url, platform) {
 
             await message.sendVideo(mediaPath, "", m, sock);
             
-            // Delete the file after sending to save space
-            if (fs.existsSync(mediaPath)) {
+            // Delete the file after sending to save space (only if it's a local file)
+            if (isLocalFile && fs.existsSync(mediaPath)) {
                 fs.unlinkSync(mediaPath);
                 console.log(`Deleted temporary file: ${mediaPath}`);
             }
@@ -168,8 +176,8 @@ async function handleMediaDownload(m, sock, url, platform) {
             await message.react('❌', m, sock);
             await message.reply(`Error sending media: ${sendError.message}`, m, sock);
             
-            // Clean up file if sending fails
-            if (fs.existsSync(mediaPath)) {
+            // Clean up file if sending fails (only if it's a local file)
+            if (isLocalFile && fs.existsSync(mediaPath)) {
                 fs.unlinkSync(mediaPath);
             }
             return false;

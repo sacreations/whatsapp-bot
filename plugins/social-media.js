@@ -46,20 +46,28 @@ bot({
         await message.reply(`Processing YouTube ${isAudio ? 'audio' : 'video'}... Quality: ${compressionLevel}`, m, sock);
         
         try {
-            const downloadedPath = await downloadMedia(url, 'YouTube', { 
+            const mediaResult = await downloadMedia(url, 'YouTube', { 
                 isAudio, 
                 compressionLevel,
                 maxResolution: compressionLevel === 'low' ? 1080 : 720 // Higher resolution for HQ
             });
             
+            // Extract the media URL from the result
+            const mediaPath = mediaResult.url;
+            const isLocalFile = mediaResult.isLocalFile;
+            
             if (isAudio) {
-                await message.sendAudio(downloadedPath, false, m, sock);
+                await message.sendAudio(mediaPath, false, m, sock);
             } else {
-                await message.sendVideo(downloadedPath, 'Downloaded from YouTube', m, sock);
+                await message.sendVideo(mediaPath, 'Downloaded from YouTube', m, sock);
             }
             
-            // Clean up file after sending
-            fs.unlinkSync(downloadedPath);
+            // Only delete if it's a local file
+            if (isLocalFile && fs.existsSync(mediaPath)) {
+                fs.unlinkSync(mediaPath);
+                console.log(`Deleted temporary file: ${mediaPath}`);
+            }
+            
             await message.react('✅', m, sock);
         } catch (error) {
             console.error('Error downloading YouTube content:', error);
@@ -95,11 +103,17 @@ bot({
     await message.reply('Processing TikTok video...', m, sock);
     
     try {
-        const downloadedPath = await downloadMedia(args, 'TikTok');
-        await message.sendVideo(downloadedPath, 'Downloaded from TikTok', m, sock);
+        const mediaResult = await downloadMedia(args, 'TikTok');
+        const mediaPath = mediaResult.url;
+        const isLocalFile = mediaResult.isLocalFile;
         
-        // Clean up file
-        fs.unlinkSync(downloadedPath);
+        await message.sendVideo(mediaPath, 'Downloaded from TikTok', m, sock);
+        
+        // Clean up file only if it's local
+        if (isLocalFile && fs.existsSync(mediaPath)) {
+            fs.unlinkSync(mediaPath);
+        }
+        
         await message.react('✅', m, sock);
     } catch (error) {
         console.error('Error downloading TikTok content:', error);
@@ -130,17 +144,22 @@ bot({
     await message.reply('Processing Instagram content...', m, sock);
     
     try {
-        const downloadedPath = await downloadMedia(args, 'Instagram');
+        const mediaResult = await downloadMedia(args, 'Instagram');
+        const mediaPath = mediaResult.url;
+        const isLocalFile = mediaResult.isLocalFile;
         
         // Check file extension to determine how to send
-        if (downloadedPath.endsWith('.mp4')) {
-            await message.sendVideo(downloadedPath, 'Downloaded from Instagram', m, sock);
+        if (mediaPath.endsWith('.mp4')) {
+            await message.sendVideo(mediaPath, 'Downloaded from Instagram', m, sock);
         } else {
-            await message.sendImage(downloadedPath, 'Downloaded from Instagram', m, sock);
+            await message.sendImage(mediaPath, 'Downloaded from Instagram', m, sock);
         }
         
-        // Clean up file
-        fs.unlinkSync(downloadedPath);
+        // Clean up file only if it's local
+        if (isLocalFile && fs.existsSync(mediaPath)) {
+            fs.unlinkSync(mediaPath);
+        }
+        
         await message.react('✅', m, sock);
     } catch (error) {
         console.error('Error downloading Instagram content:', error);
@@ -171,11 +190,17 @@ bot({
     await message.reply('Processing Facebook video...', m, sock);
     
     try {
-        const downloadedPath = await downloadMedia(args, 'Facebook');
-        await message.sendVideo(downloadedPath, 'Downloaded from Facebook', m, sock);
+        const mediaResult = await downloadMedia(args, 'Facebook');
+        const mediaPath = mediaResult.url;
+        const isLocalFile = mediaResult.isLocalFile;
         
-        // Clean up file
-        fs.unlinkSync(downloadedPath);
+        await message.sendVideo(mediaPath, 'Downloaded from Facebook', m, sock);
+        
+        // Clean up file only if it's local
+        if (isLocalFile && fs.existsSync(mediaPath)) {
+            fs.unlinkSync(mediaPath);
+        }
+        
         await message.react('✅', m, sock);
     } catch (error) {
         console.error('Error downloading Facebook content:', error);
