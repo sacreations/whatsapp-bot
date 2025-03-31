@@ -1,5 +1,6 @@
 import config from '../../Config.js';
 import message from './messageHandler.js';
+import { jidDecode } from 'baileys';
 
 // Store for commands
 const commands = [];

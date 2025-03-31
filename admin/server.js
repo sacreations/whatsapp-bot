@@ -11,6 +11,8 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 // Import the config module
 import config from '../Config.js';
+// Check for any baileys imports and update them
+import { downloadMediaMessage } from 'baileys';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
