@@ -88,7 +88,7 @@ async function downloadFromTikTok(url, m, sock) {
             
             // send message to user about its a slideshow video and need some time to process
             if (m && sock) {
-                await message.reply('This is a TikTok slideshow video. It may take some time to process. Please wait...', m, sock);  
+                await message.reply('TikTok slideshow video detected. It may take some time to process. Please wait...', m, sock);  
             }
 
             if (!config.TIKTOK_FALLBACK_API_KEY) {
