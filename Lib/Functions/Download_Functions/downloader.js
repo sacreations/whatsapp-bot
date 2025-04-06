@@ -53,8 +53,9 @@ function generateFilename(platform, extension) {
  * Get direct media URL from TikTok using API
  * @param {string} url - TikTok URL
  * @param {object} m - Message object for sending responses
+ * @param {object} sock - Socket object for sending presence updates
  */
-async function downloadFromTikTok(url, m) {
+async function downloadFromTikTok(url, m, sock) {
     try {
         // Try primary API first
         try {
@@ -86,8 +87,8 @@ async function downloadFromTikTok(url, m) {
             console.log('Primary TikTok API failed, attempting fallback API for slideshow video...');
             
             // send message to user about its a slideshow video and need some time to process
-            if (m) {
-                await message.reply('This is a TikTok slideshow video. It may take some time to process. Please wait...', m);  
+            if (m && sock) {
+                await message.reply('This is a TikTok slideshow video. It may take some time to process. Please wait...', m, sock);  
             }
 
             if (!config.TIKTOK_FALLBACK_API_KEY) {
@@ -229,7 +230,8 @@ export async function downloadMedia(url, platform, m, options = {}) {
                     break;
                     
                 case 'tiktok':
-                    mediaUrl = await downloadFromTikTok(url, m);
+                    // Pass the sock object from m to downloadFromTikTok
+                    mediaUrl = await downloadFromTikTok(url, m, options.sock);
                     break;
                     
                 case 'instagram':

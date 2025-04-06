@@ -134,7 +134,8 @@ async function handleMediaDownload(m, sock, url, platform) {
             mediaResult = await downloadMedia(url, platform, m, { 
                 isAudio: platform === 'YouTube' && isAudioRequest,
                 compressionLevel: compressionLevel,
-                maxResolution: maxResolution
+                maxResolution: maxResolution,
+                sock: sock // Pass the sock object to downloadMedia
             });
             
             // Extract the media path from the result
