@@ -98,11 +98,22 @@ async function downloadFromTikTok(url, m, sock) {
             const fallbackUrl = `https://v3.sacreations.live/download/tiktok?url=${url}&api-key=${config.TIKTOK_FALLBACK_API_KEY}`;
             const fallbackResponse = await axios.get(fallbackUrl);
             
-            if (!fallbackResponse.data || !fallbackResponse.data.result || !fallbackResponse.data.result.video) {
-                throw new Error('Invalid fallback API response structure');
+            // Handle new response structure from fallback API
+            if (!fallbackResponse.data || fallbackResponse.data.status !== 200) {
+                throw new Error('Invalid fallback API response: Status not 200');
             }
             
-            const videoUrl = fallbackResponse.data.result.video;
+            // Check if we have Data and downloads in the response
+            if (!fallbackResponse.data.Data || !fallbackResponse.data.Data.downloads) {
+                throw new Error('Invalid fallback API response structure: Missing Data.downloads');
+            }
+            
+            // Extract video URL from the correct location in the response
+            const videoUrl = fallbackResponse.data.Data.downloads.videoUrl;
+            if (!videoUrl) {
+                throw new Error('No video URL found in fallback API response');
+            }
+            
             console.log('Retrieved TikTok slideshow URL from fallback API:', videoUrl);
             return videoUrl;
         }
