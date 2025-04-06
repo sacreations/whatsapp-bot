@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import config from '../../../Config.js';
 import { downloadYouTubeVideo } from './ytDownloader.js';
+import message from '../../chat/messageHandler.js';  // Fix the import path
 
 // URL cache to prevent duplicate requests
 const urlCache = new Map();
@@ -50,32 +51,60 @@ function generateFilename(platform, extension) {
 
 /**
  * Get direct media URL from TikTok using API
+ * @param {string} url - TikTok URL
+ * @param {object} m - Message object for sending responses
  */
-async function downloadFromTikTok(url) {
+async function downloadFromTikTok(url, m) {
     try {
-        const response = await axios.get(Tiktok_apiEndpoint + url);
-        if (!response.data || !response.data.data) {
-            throw new Error('Invalid API response structure');
-        }
-        
-        const mediaData = response.data.data;
-        const isNewApiStructure = mediaData.meta && mediaData.meta.media && mediaData.meta.media.length > 0;
-        
-        let videoUrl;
-        
-        if (isNewApiStructure) {
-            console.log('Using new TikTok API response structure with direct media');
-            
-            const media = mediaData.meta.media[0];
-            videoUrl = media.org;
-            
-            if (!videoUrl) {
-                throw new Error('No valid video URL found in response');
+        // Try primary API first
+        try {
+            const response = await axios.get(Tiktok_apiEndpoint + url);
+            if (!response.data || !response.data.data) {
+                throw new Error('Invalid API response structure');
             }
+            
+            const mediaData = response.data.data;
+            const isNewApiStructure = mediaData.meta && mediaData.meta.media && mediaData.meta.media.length > 0;
+            
+            let videoUrl;
+            
+            if (isNewApiStructure) {
+                console.log('Using new TikTok API response structure with direct media');
+                
+                const media = mediaData.meta.media[0];
+                videoUrl = media.org;
+                
+                if (!videoUrl) {
+                    throw new Error('No valid video URL found in response');
+                }
+            }
+            
+            console.log('Retrieved direct TikTok URL:', videoUrl);
+            return videoUrl;
+        } catch (primaryApiError) {
+            // If primary API fails, likely a slideshow video, try fallback API
+            console.log('Primary TikTok API failed, attempting fallback API for slideshow video...');
+            
+            // send message to user about its a slideshow video and need some time to process
+            if (m) {
+                await message.reply('This is a TikTok slideshow video. It may take some time to process. Please wait...', m);  
+            }
+
+            if (!config.TIKTOK_FALLBACK_API_KEY) {
+                throw new Error('Fallback API key not configured for TikTok slideshow videos');
+            }
+            
+            const fallbackUrl = `https://v3.sacreations.live/download/tiktok?url=${url}&api-key=${config.TIKTOK_FALLBACK_API_KEY}`;
+            const fallbackResponse = await axios.get(fallbackUrl);
+            
+            if (!fallbackResponse.data || !fallbackResponse.data.result || !fallbackResponse.data.result.video) {
+                throw new Error('Invalid fallback API response structure');
+            }
+            
+            const videoUrl = fallbackResponse.data.result.video;
+            console.log('Retrieved TikTok slideshow URL from fallback API:', videoUrl);
+            return videoUrl;
         }
-        
-        console.log('Retrieved direct TikTok URL:', videoUrl);
-        return videoUrl;
     } catch (error) {
         console.error('TikTok URL retrieval error:', error);
         throw new Error(`Failed to retrieve TikTok video URL: ${error.message}`);
@@ -149,10 +178,11 @@ async function downloadFromFacebook(url) {
  * Get direct media URLs from various platforms
  * @param {string} url - Media URL
  * @param {string} platform - Platform name (YouTube, TikTok, etc.)
+ * @param {object} m - Message object for notifications
  * @param {Object} options - Download options
  * @returns {Promise<Object>} - Object containing media information
  */
-export async function downloadMedia(url, platform, options = {}) {
+export async function downloadMedia(url, platform, m, options = {}) {
     try {
         // Generate cache key using URL and platform
         const cacheKey = `${platform.toLowerCase()}:${url}`;
@@ -199,7 +229,7 @@ export async function downloadMedia(url, platform, options = {}) {
                     break;
                     
                 case 'tiktok':
-                    mediaUrl = await downloadFromTikTok(url);
+                    mediaUrl = await downloadFromTikTok(url, m);
                     break;
                     
                 case 'instagram':

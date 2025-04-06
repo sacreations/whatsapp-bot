@@ -182,6 +182,10 @@ const config = {
     return this.get('ADMIN_BIO', 'WhatsApp Bot Administrator');
   },
   
+  get TIKTOK_FALLBACK_API_KEY() {
+    return this.get('TIKTOK_FALLBACK_API_KEY', '');
+  },
+  
   // Create required directories
   createDirectories: () => {
     const dirs = [config.DOWNLOAD_FOLDER];

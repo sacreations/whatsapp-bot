@@ -131,7 +131,7 @@ async function handleMediaDownload(m, sock, url, platform) {
             const maxResolution = config.MAX_VIDEO_RESOLUTION;
             
             console.log(`Starting download for ${platform}: ${url}`);
-            mediaResult = await downloadMedia(url, platform, { 
+            mediaResult = await downloadMedia(url, platform, m, { 
                 isAudio: platform === 'YouTube' && isAudioRequest,
                 compressionLevel: compressionLevel,
                 maxResolution: maxResolution
