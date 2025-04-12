@@ -1514,7 +1514,6 @@ app.post('/api/whatsapp/privacy/read-receipts', requireAuth, async (req, res) =>
     }
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
   res.status(500).json({ success: false, message: 'Server error: ' + err.message });
@@ -1635,7 +1634,6 @@ app.get('/api/system-stats', requireAuth, async (req, res) => {
     }
 });
 
-// Check if this module is being run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   startServer();
 } else {
@@ -1644,5 +1642,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`Admin panel initialized on port ${PORT}`);
 }
 
-// Export the app for potential future use
 export default app;
