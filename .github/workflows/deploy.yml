@@ -1,0 +1,28 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main  
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+    
+      - name: set up ssh
+        uses: appsody/ssh-action@0.1.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22 
+          script: |
+            cd /Projects/whatsapp-bot
+            git pull origin main
+            npm install
+            pm2 restart whatsapp-bot
+            pm2 save
