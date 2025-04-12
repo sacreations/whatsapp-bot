@@ -13,6 +13,9 @@ import { v4 as uuidv4 } from 'uuid';
 import config from '../Config.js';
 // Check for any baileys imports and update them
 import { downloadMediaMessage } from 'baileys';
+// Add cluster and os modules for cluster mode support
+import cluster from 'cluster';
+import os from 'os';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +23,16 @@ const __dirname = dirname(__filename);
 
 // Load .env file
 dotenv.config({ path: path.join(__dirname, '..', 'config.env') });
+
+// Function to determine if cluster mode should be enabled
+const shouldUseClusterMode = () => {
+  // Check for environment variable that can disable clustering
+  if (process.env.DISABLE_CLUSTERING === 'true') {
+    return false;
+  }
+  // Enable clustering in production by default
+  return process.env.NODE_ENV === 'production';
+};
 
 // Configure multer for media uploads
 const storage = multer.diskStorage({
@@ -1503,74 +1516,94 @@ import { getStatusEventEmitter } from '../Lib/handlers/statusHandler.js';
 import WebSocket from 'ws'; // Fix: Use default export instead of named export
 let wss;
 
-// Start WebSocket server when admin panel starts
-app.listen(PORT, () => {
-    console.log(`Admin panel server running on http://localhost:${PORT}`);
+// Separate the WebSocket server setup into its own function for cluster mode
+const startWebSocketServer = () => {
+  // Create WebSocket server for real-time updates
+  wss = new WebSocket.Server({ port: PORT + 1 });
+  console.log(`WebSocket server running on port ${PORT + 1}`);
+  
+  // Handle WebSocket connections
+  wss.on('connection', (ws) => {
+    console.log('New WebSocket client connected');
     
-    // Create WebSocket server for real-time updates
-    wss = new WebSocket.Server({ port: PORT + 1 }); // Fix: Use WebSocket.Server constructor
-    console.log(`WebSocket server running on port ${PORT + 1}`);
+    // Send initial connection confirmation
+    ws.send(JSON.stringify({ 
+      type: 'connected',
+      message: 'Connected to WhatsApp Bot WebSocket server'
+    }));
     
-    // Handle WebSocket connections
-    wss.on('connection', (ws) => {
-        console.log('New WebSocket client connected');
-        
-        // Send initial connection confirmation
-        ws.send(JSON.stringify({ 
-            type: 'connected',
-            message: 'Connected to WhatsApp Bot WebSocket server'
-        }));
-        
-        // Handle client disconnection
-        ws.on('close', () => {
-            console.log('WebSocket client disconnected');
-        });
+    // Handle client disconnection
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
     });
-    
-    // Listen for status updates and broadcast to WebSocket clients
-    const statusEmitter = getStatusEventEmitter();
-    statusEmitter.on('status-saved', (statusData) => {
-        // Broadcast status update to all connected clients
-        if (wss.clients.size > 0) {
-            const message = JSON.stringify({
-                type: 'status-update',
-                data: statusData
-            });
-            
-            wss.clients.forEach(client => {
-                if (client.readyState === 1) { // OPEN
-                    client.send(message);
-                }
-            });
+  });
+  
+  // Listen for status updates and broadcast to WebSocket clients
+  const statusEmitter = getStatusEventEmitter();
+  statusEmitter.on('status-saved', (statusData) => {
+    // Broadcast status update to all connected clients
+    if (wss.clients.size > 0) {
+      const message = JSON.stringify({
+        type: 'status-update',
+        data: statusData
+      });
+      
+      wss.clients.forEach(client => {
+        if (client.readyState === 1) { // OPEN
+          client.send(message);
         }
+      });
+    }
+  });
+  
+  // Also connect to memory monitoring for admin alerts
+  import('../Lib/utils/memoryMonitor.js').then(({ default: memoryMonitor }) => {
+    setInterval(() => {
+      const memoryInfo = memoryMonitor.takeMemorySnapshot();
+      
+      // If memory is in warning or critical state, broadcast to admin panel
+      if (memoryInfo.health !== 'normal' && wss.clients.size > 0) {
+        const message = JSON.stringify({
+          type: 'memory-alert',
+          data: {
+            health: memoryInfo.health,
+            rss: memoryInfo.memoryUsage.formatted.rss,
+            heapUsed: memoryInfo.memoryUsage.formatted.heapUsed,
+            timestamp: Date.now()
+          }
+        });
+        
+        wss.clients.forEach(client => {
+          if (client.readyState === 1) { // OPEN
+            client.send(message);
+          }
+        });
+      }
+    }, 60000); // Check every minute
+  });
+};
+
+// Modified server startup code for cluster integration
+const startServer = () => {
+  // Only start the server if we're the ADMIN process or there's no process role (standalone mode)
+  if (!process.env.PROCESS_ROLE || process.env.PROCESS_ROLE === 'admin') {
+    // Start the admin server
+    app.listen(PORT, () => {
+      console.log(`Admin panel server running on http://localhost:${PORT}`);
+      console.log(`Worker ${process.pid} running as admin server`);
     });
     
-    // Also connect to memory monitoring for admin alerts
-    import('../Lib/utils/memoryMonitor.js').then(({ default: memoryMonitor }) => {
-        setInterval(() => {
-            const memoryInfo = memoryMonitor.takeMemorySnapshot();
-            
-            // If memory is in warning or critical state, broadcast to admin panel
-            if (memoryInfo.health !== 'normal' && wss.clients.size > 0) {
-                const message = JSON.stringify({
-                    type: 'memory-alert',
-                    data: {
-                        health: memoryInfo.health,
-                        rss: memoryInfo.memoryUsage.formatted.rss,
-                        heapUsed: memoryInfo.memoryUsage.formatted.heapUsed,
-                        timestamp: Date.now()
-                    }
-                });
-                
-                wss.clients.forEach(client => {
-                    if (client.readyState === 1) { // OPEN
-                        client.send(message);
-                    }
-                });
-            }
-        }, 60000); // Check every minute
-    });
-});
+    // Only start the WebSocket server if we're the first admin process
+    // This prevents port conflicts with multiple admin processes
+    if (process.env.PROCESS_ROLE === 'admin' && 
+        cluster.worker && 
+        cluster.worker.id === 1) {
+      startWebSocketServer();
+    }
+  } else {
+    console.log(`Admin server not started in process ${process.pid} (wrong process role)`);
+  }
+};
 
 // Add a new API endpoint to get system stats
 app.get('/api/system-stats', requireAuth, async (req, res) => {
@@ -1590,13 +1623,6 @@ app.get('/api/system-stats', requireAuth, async (req, res) => {
         });
     }
 });
-
-// Start server only if this file is run directly (not imported)
-const startServer = () => {
-  app.listen(PORT, () => {
-    console.log(`Admin panel server running on http://localhost:${PORT}`);
-  });
-};
 
 // Check if this module is being run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
