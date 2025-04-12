@@ -2,21 +2,12 @@ export default {
   apps: [
     {
       name: "whatsapp-bot",
-      script: "./index.js",
+      script: "./cluster.js",
+      exec_mode: "fork", // your cluster.js already does the clustering
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: "1G",
-      env: {
-        NODE_ENV: "production"
-      }
-    },
-    {
-      name: "whatsapp-admin",
-      script: "./admin/server.js",
-      instances: 1,
-      autorestart: true,
-      watch: false,
+      max_memory_restart: "2G",
       env: {
         NODE_ENV: "production"
       }

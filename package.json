@@ -1,18 +1,20 @@
 {
   "name": "whatsapp-bot",
   "version": "1.0.0",
-  "description": "A WhatsApp bot with plugin-based command system and social media downloaders",
-  "main": "index.js",
+  "description": "WhatsApp Bot with cluster mode support",
+  "main": "cluster.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js",
+    "start": "node cluster.js",
+    "start:single": "node index.js",
     "dev": "nodemon index.js",
     "admin": "node admin/server.js",
     "start:pm2": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop ecosystem.config.js",
     "update-ytdl": "npm install ytdl-core@latest",
     "setup-ytdl": "pip install pytube && npm run install-ytdlp",
-    "install-all": "npm install && npm update"
+    "install-all": "npm install && npm update",
+    "start:cluster": "node cluster.js"
   },
   "keywords": [
     "whatsapp",
@@ -35,7 +37,9 @@
     "pino-pretty": "^10.2.0",
     "qrcode-terminal": "^0.12.0",
     "multer": "^1.4.5-lts.1",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "cluster": "^0.7.7",
+    "os": "^0.1.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

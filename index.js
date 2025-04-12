@@ -16,67 +16,76 @@ import { startOnlinePresence, stopOnlinePresence } from './Lib/utils/presenceMan
 // Create necessary directories
 config.createDirectories();
 
-// Start the bot
-console.log(`Starting ${config.BOT_NAME}...`);
-connectToWhatsApp().catch(err => console.error('Unexpected error starting bot:', err));
-
-// Initialize the WhatsApp bot
-async function initializeBot() {
-    // Initialize memory monitoring (check every 5 minutes)
-    memoryMonitor.startMonitoring(5 * 60 * 1000);
-    console.log('Memory monitoring started');
-    
-    // Initialize API key rotation with primary key from config
-    apiKeyRotation.initKeyManager('groq', {
-        requestsPerKey: 200, // Configure requests per key
-        rotationPeriod: 60 * 60 * 1000 // 1 hour
-    });
-    
-    // Add primary API key from config
-    apiKeyRotation.addPrimaryKey('groq', config.GROQ_API_KEY, 'Primary Config Key');
-    
-    // Initialize response cache
-    responseCache.initCache({
-        maxSize: 500 // Maximum entries in memory
-    });
-}
-
-// Initialize global AI stats if not already present
-if (!global.aiStats) {
-    global.aiStats = {
-        messagesProcessed: 0,
-        searchesPerformed: 0,
-        cacheHits: 0,
-        cacheMisses: 0,
-        bingSearchesFallback: 0
-    };
-}
-
-// Add memory stats to admin API
+// Define getSystemStats at the top level of the module
 function getSystemStats() {
     return {
-        memory: memoryMonitor.getMemoryStats(),
-        cache: responseCache.getCacheStats(),
-        apiKeys: apiKeyRotation.getKeyStats('groq'),
-        aiStats: global.aiStats,
+        memory: memoryMonitor?.getMemoryStats() || { status: 'Not initialized' },
+        cache: responseCache?.getCacheStats() || { status: 'Not initialized' },
+        apiKeys: apiKeyRotation?.getKeyStats('groq') || { status: 'Not initialized' },
+        aiStats: global.aiStats || { status: 'Not initialized' },
         systemUptime: process.uptime()
     };
 }
 
-// Export getSystemStats for the admin panel
+// Export getSystemStats at the top level
 export { getSystemStats };
 
-// When bot is started and socket is ready
-startOnlinePresence(sock);
+// Modify the startup to be cluster-aware
+console.log(`Starting WhatsApp bot in ${process.env.PROCESS_ROLE || 'standalone'} mode (PID: ${process.pid})`);
 
-// Handle process termination
-process.on('SIGINT', async () => {
-    console.log('Shutting down bot...');
-    // Stop online presence updates
-    stopOnlinePresence();
-    process.exit(0);
-});
+// Only start the bot if we're the BOT process or in standalone mode
+if (!process.env.PROCESS_ROLE || process.env.PROCESS_ROLE === 'bot') {
+    // Start the bot
+    console.log(`Starting ${config.BOT_NAME}...`);
+    connectToWhatsApp().catch(err => console.error('Unexpected error starting bot:', err));
 
+    // Initialize the WhatsApp bot
+    async function initializeBot() {
+        // Initialize memory monitoring (check every 5 minutes)
+        memoryMonitor.startMonitoring(5 * 60 * 1000);
+        console.log('Memory monitoring started');
+        
+        // Initialize API key rotation with primary key from config
+        apiKeyRotation.initKeyManager('groq', {
+            requestsPerKey: 200, // Configure requests per key
+            rotationPeriod: 60 * 60 * 1000 // 1 hour
+        });
+        
+        // Add primary API key from config
+        apiKeyRotation.addPrimaryKey('groq', config.GROQ_API_KEY, 'Primary Config Key');
+        
+        // Initialize response cache
+        responseCache.initCache({
+            maxSize: 500 // Maximum entries in memory
+        });
+    }
+
+    // Initialize global AI stats if not already present
+    if (!global.aiStats) {
+        global.aiStats = {
+            messagesProcessed: 0,
+            searchesPerformed: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            bingSearchesFallback: 0
+        };
+    }
+
+    // When bot is started and socket is ready
+    startOnlinePresence(sock);
+
+    // Handle process termination
+    process.on('SIGINT', async () => {
+        console.log('Shutting down bot...');
+        // Stop online presence updates
+        stopOnlinePresence();
+        process.exit(0);
+    });
+} else {
+    console.log('WhatsApp bot not started (wrong process role)');
+}
+
+// Handle uncaught exceptions and unhandled rejections
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
 });
