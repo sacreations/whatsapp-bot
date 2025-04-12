@@ -26,3 +26,5 @@ jobs:
             npm install
             pm2 restart whatsapp-bot
             pm2 save
+
+    
