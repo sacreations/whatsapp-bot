@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22 
           script: |
-            cd /Projects/whatsapp-bot
+            cd Projects/whatsapp-bot
             git pull origin main
             npm install
             pm2 restart whatsapp-bot
