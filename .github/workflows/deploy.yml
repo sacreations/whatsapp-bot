@@ -24,7 +24,7 @@ jobs:
             cd Projects/whatsapp-bot
             git pull origin main
             npm install
-            pm2 restart whatsapp-bot
+            pm2 reload whatsapp-bot
             pm2 save
 
     
