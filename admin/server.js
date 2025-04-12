@@ -16,6 +16,11 @@ import { downloadMediaMessage } from 'baileys';
 // Add cluster and os modules for cluster mode support
 import cluster from 'cluster';
 import os from 'os';
+// Add session store for cluster mode session sharing
+import sessionFileStore from 'session-file-store';
+
+// Create FileStore for sessions
+const FileStore = sessionFileStore(session);
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -23,16 +28,6 @@ const __dirname = dirname(__filename);
 
 // Load .env file
 dotenv.config({ path: path.join(__dirname, '..', 'config.env') });
-
-// Function to determine if cluster mode should be enabled
-const shouldUseClusterMode = () => {
-  // Check for environment variable that can disable clustering
-  if (process.env.DISABLE_CLUSTERING === 'true') {
-    return false;
-  }
-  // Enable clustering in production by default
-  return process.env.NODE_ENV === 'production';
-};
 
 // Configure multer for media uploads
 const storage = multer.diskStorage({
@@ -104,15 +99,31 @@ const app = express();
 const PORT = process.env.ADMIN_PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 
+// Ensure session directory exists
+const sessionDir = path.join(__dirname, '..', 'data', 'sessions');
+if (!fs.existsSync(sessionDir)) {
+  fs.mkdirSync(sessionDir, { recursive: true });
+}
+
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
+  store: new FileStore({
+    path: sessionDir,
+    ttl: 86400, // 1 day
+    retries: 0,
+    reapInterval: 3600 // Clean expired sessions hourly
+  }),
   secret: 'whatsapp-bot-admin-secret',
   resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false, maxAge: 3600000 } // 1 hour
+  saveUninitialized: false, // Don't create session until something stored
+  cookie: { 
+    secure: false,
+    maxAge: 3600000, // 1 hour
+    httpOnly: true
+  }
 }));
 
 // Debug middleware to log requests
