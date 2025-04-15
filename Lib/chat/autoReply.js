@@ -391,8 +391,6 @@ export async function handleAutoReply(m, sock) {
             
             
             try {
-                // Process with AI
-                await message.react('🤖', m, sock); // React to show AI is processing
                 
                 // Check if AI and Search are both enabled
                 if (config.ENABLE_AI_AUTO_REPLY) {
