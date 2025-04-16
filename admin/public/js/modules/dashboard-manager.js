@@ -6,6 +6,7 @@ const dashboardManager = {
     linkSavingToggle: null,
     hideOnlineToggle: null,
     disableReceiptsToggle: null,
+    autoDeleteToggle: null,
     pauseBotToggle: null,
     maintenanceModeToggle: null,
     autoMediaToggle: null,
@@ -29,6 +30,7 @@ const dashboardManager = {
         this.linkSavingToggle = document.getElementById('link-saving-toggle');
         this.hideOnlineToggle = document.getElementById('hide-online-toggle');
         this.disableReceiptsToggle = document.getElementById('disable-receipts-toggle');
+        this.autoDeleteToggle = document.getElementById('auto-delete-toggle');
         this.pauseBotToggle = document.getElementById('pause-bot-toggle');
         this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
         this.autoMediaToggle = document.getElementById('auto-media-toggle');
@@ -83,6 +85,13 @@ const dashboardManager = {
         if (this.linkSavingToggle) {
             this.linkSavingToggle.addEventListener('change', () => {
                 this.updateConfigSetting('ENABLE_LINK_SAVING', this.linkSavingToggle.checked);
+            });
+        }
+        
+        // Auto Delete Messages toggle
+        if (this.autoDeleteToggle) {
+            this.autoDeleteToggle.addEventListener('change', () => {
+                this.updateConfigSetting('ENABLE_AUTO_DELETE', this.autoDeleteToggle.checked);
             });
         }
         
@@ -292,6 +301,10 @@ const dashboardManager = {
                 
                 if (this.linkSavingToggle) {
                     this.linkSavingToggle.checked = config.ENABLE_LINK_SAVING === 'true';
+                }
+                
+                if (this.autoDeleteToggle) {
+                    this.autoDeleteToggle.checked = config.ENABLE_AUTO_DELETE === 'true';
                 }
                 
                 if (this.hideOnlineToggle) {

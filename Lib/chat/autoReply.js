@@ -246,6 +246,32 @@ function isGroupAllowedForAI(groupId) {
 }
 
 /**
+ * Auto-delete messages for privacy
+ * @param {object} m - Message object
+ * @param {object} sock - Socket object
+ * @param {number} delay - Delay before deletion in ms
+ */
+async function autoDeleteMessage(m, sock, delay = 5000) {
+    // Only proceed if auto-delete is enabled in config
+    if (!config.ENABLE_AUTO_DELETE) return;
+    
+    try {
+        // Wait for the specified delay to ensure message was seen
+        setTimeout(async () => {
+            try {
+                // Delete the message (for me only)
+                await sock.chatModify({ clear: { messages: [{ id: m.key.id, fromMe: false, timestamp: m.messageTimestamp }] } }, m.key.remoteJid);
+                console.log(`Auto-deleted message: ${m.key.id}`);
+            } catch (error) {
+                console.error('Error auto-deleting message:', error);
+            }
+        }, delay);
+    } catch (error) {
+        console.error('Error in auto-delete setup:', error);
+    }
+}
+
+/**
  * Main auto-reply handler
  */
 export async function handleAutoReply(m, sock) {
@@ -259,6 +285,9 @@ export async function handleAutoReply(m, sock) {
         if (m.key.fromMe === true) {
             return false;
         }
+        
+        // Try to auto-delete the message for privacy if configured
+        autoDeleteMessage(m, sock, config.AUTO_DELETE_DELAY || 5000);
         
         // Check if we've already processed this message
         if (processedMessages.has(m.key.id)) {
