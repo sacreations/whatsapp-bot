@@ -99,7 +99,7 @@ const groupsManager = {
     
     addGroupTag: function(groupId) {
         if (!this.groupsContainer) return;
-        
+        groupId = groupId.trim();
         // Check if tag already exists
         const existingTags = Array.from(this.groupsContainer.querySelectorAll('.tag'))
                                  .map(tag => tag.getAttribute('data-id'));
@@ -155,7 +155,7 @@ const groupsManager = {
     
     addAiGroupTag: function(groupId) {
         if (!this.aiGroupsContainer) return;
-        
+        groupId = groupId.trim();
         // Check if tag already exists
         const existingTags = Array.from(this.aiGroupsContainer.querySelectorAll('.tag'))
                                  .map(tag => tag.getAttribute('data-id'));

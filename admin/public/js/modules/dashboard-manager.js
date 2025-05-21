@@ -185,11 +185,15 @@ const dashboardManager = {
             });
         }
         
-        // Update temperature display
+        // Update temperature display and save to config
         if (this.aiTemperatureRange && this.tempValueDisplay) {
             this.aiTemperatureRange.addEventListener('input', () => {
                 const temp = parseFloat(this.aiTemperatureRange.value) / 10;
                 this.tempValueDisplay.textContent = temp.toFixed(1);
+            });
+            this.aiTemperatureRange.addEventListener('change', () => {
+                const temp = parseFloat(this.aiTemperatureRange.value) / 10;
+                this.updateConfigSetting('AI_TEMPERATURE', temp.toFixed(1), `AI temperature set to ${temp.toFixed(1)}`);
             });
         }
         

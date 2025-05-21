@@ -278,9 +278,9 @@ const configManager = {
         console.log('Save admin info button clicked');
         try {
             const adminInfo = {
-                ADMIN_NAME: document.getElementById('ADMIN_NAME').value,
-                ADMIN_EMAIL: document.getElementById('ADMIN_EMAIL').value,
-                ADMIN_BIO: document.getElementById('ADMIN_BIO').value
+                ADMIN_NAME: document.getElementById('ADMIN_NAME').value.trim(),
+                ADMIN_EMAIL: document.getElementById('ADMIN_EMAIL').value.trim(),
+                ADMIN_BIO: document.getElementById('ADMIN_BIO').value.trim()
             };
             
             console.log('Saving admin info:', adminInfo);
