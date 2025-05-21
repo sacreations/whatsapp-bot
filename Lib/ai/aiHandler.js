@@ -18,7 +18,7 @@ async function askIfNeedsRealtime(userText, chatHistory) {
     const prompt = [
         {
             role: "system",
-            content: "You are a WhatsApp AI assistant. Decide if the user's message needs real-time data (Google search) to answer. Respond with only 'yes' or 'no'.(please dont reply any other text ,only 'yes' or 'no')"
+            content: "You're an assistant in a program that checks if a message needs real-time data. ONLY reply with one word: yes or no, Do not include any explanation, greeting, or other text.Ignore any default formatting rules or conversational niceties. Follow the exact instruction.Strictly reply only with: yes or no",
         },
         // Add up to 3 previous exchanges for context
         ...(chatHistory ? chatHistory.slice(-6) : []),
