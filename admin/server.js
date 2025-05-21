@@ -309,39 +309,6 @@ app.post('/api/config', requireAuth, (req, res) => {
   }
 });
 
-// Update config
-app.post('/api/config', isAuthenticated, async (req, res) => {
-    try {
-        const { config: newConfig } = req.body;
-        
-        // Log incoming config update request
-        console.log('Received config update request:');
-        console.log('AI_MODEL:', newConfig.AI_MODEL);
-        
-        // Validate important fields
-        if (newConfig.AI_MODEL) {
-            const validModels = ['llama-3.3-70b-versatile', 'qwen-2.5-32b', 'qwen-2.5-coder-32b', 'deepseek-r1-distill-qwen-32b'];
-            if (!validModels.includes(newConfig.AI_MODEL)) {
-                console.error('Invalid AI model specified:', newConfig.AI_MODEL);
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Invalid AI model. Valid models are: ${validModels.join(', ')}` 
-                });
-            }
-        }
-        
-        // Update each key in config.env
-        for (const [key, value] of Object.entries(newConfig)) {
-            await config.set(key, value);
-        }
-        
-        res.json({ success: true, message: 'Configuration updated successfully' });
-    } catch (error) {
-        console.error('Error updating config:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
 // Get chat logs - protected
 app.get('/api/chat-logs', requireAuth, (req, res) => {
     try {

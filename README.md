@@ -84,12 +84,12 @@ The admin dashboard will be available at `http://localhost:3000`
 
 ### AI Auto-Reply
 
-The bot uses Groq AI to provide intelligent responses to user messages. To enable:
+The bot uses Google Gemini AI to provide intelligent responses to user messages. To enable:
 
-1. Get a Groq API key from [groq.com](https://groq.com)
+1. Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Add your API key to the `config.env` file:
    ```
-   GROQ_API_KEY=your_groq_api_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
    ENABLE_AI_AUTO_REPLY=true
    ```
 

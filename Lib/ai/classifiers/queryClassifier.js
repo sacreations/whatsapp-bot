@@ -1,4 +1,4 @@
-import { getGroqCompletion } from '../groq.js';
+import { generateGeminiChatResponse } from '../groq.js';
 import { createQueryClassificationPrompt, createCommandMatchPrompt } from '../prompts.js';
 import { extractUrl } from '../utils/aiUtils.js';
 
@@ -14,13 +14,13 @@ export async function classifyQueryType(query) {
         const classificationPrompt = createQueryClassificationPrompt(query);
         
         // Get AI classification response
-        const response = await getGroqCompletion(classificationPrompt, {
+        const response = await generateGeminiChatResponse(classificationPrompt, {
             temperature: 0.1, // Lower temperature for more consistent classification
             max_completion_tokens: 10 // We just need a single word
         });
         
         // Extract the classification result
-        const result = response.choices[0]?.message?.content?.trim().toLowerCase() || "";
+        const result = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
         
         // Check which type it matches and return it
         const validTypes = ['wikipedia', 'wallpaper', 'realtime', 'admin', 'botinfo', 'webpage', 'general'];
@@ -70,12 +70,12 @@ export async function checkForCommandMatch(query) {
     try {
         const commandMatchPrompt = createCommandMatchPrompt(query);
         
-        const response = await getGroqCompletion(commandMatchPrompt, {
+        const response = await generateGeminiChatResponse(commandMatchPrompt, {
             temperature: 0.1,
             max_completion_tokens: 10
         });
         
-        const result = response.choices[0]?.message?.content?.trim().toLowerCase() || "none";
+        const result = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "none";
         
         // List of valid command matches
         const validCommands = ['time', 'date', 'wallpaper', 'yt', 'tiktok', 'ig', 'fb', 'menu'];

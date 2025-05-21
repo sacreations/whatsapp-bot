@@ -1,4 +1,4 @@
-import { getGroqCompletion, filterThinkingPart } from './groq.js';
+import { generateGeminiChatResponse, filterThinkingPart } from './groq.js';
 import { 
     createRegularPrompt, 
     createAdminContactPrompt, 
@@ -155,8 +155,8 @@ export async function processMessageWithAI(m, sock, userText) {
                             global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
                         }
                         
-                        const response = await getGroqCompletion(promptMessages);
-                        const aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
+                        const response = await generateGeminiChatResponse(promptMessages);
+                        const aiReply = response.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that.";
                         
                         // Update conversation history with this exchange
                         updateMessageHistory(senderId, userText, aiReply);
@@ -210,8 +210,8 @@ export async function processMessageWithAI(m, sock, userText) {
                         promptMessages = createWallpaperPrompt(userText, searchResults, getMessageHistory(senderId));
                         
                         // Generate AI response
-                        const response = await getGroqCompletion(promptMessages);
-                        const aiReply = response.choices[0]?.message?.content || "I found some wallpapers for you. I'll send them right away.";
+                        const response = await generateGeminiChatResponse(promptMessages);
+                        const aiReply = response.candidates?.[0]?.content?.parts?.[0]?.text || "I found some wallpapers for you. I'll send them right away.";
                         
                         // Update conversation history with this exchange
                         updateMessageHistory(senderId, userText, aiReply);
@@ -323,10 +323,10 @@ export async function processMessageWithAI(m, sock, userText) {
             }
         }
         
-        // Call the Groq API
-        const response = await getGroqCompletion(promptMessages);
-        let aiReply = response.choices[0]?.message?.content || "I'm not sure how to respond to that.";
-        
+        // Call the Gemini API instead of Groq
+        const response = await generateGeminiChatResponse(promptMessages);
+        let aiReply = response.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that.";
+
         // Apply final thinking part filter before sending
         aiReply = filterThinkingPart(aiReply);
         

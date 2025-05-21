@@ -196,16 +196,6 @@ const dashboardManager = {
                 this.updateConfigSetting('AI_TEMPERATURE', temp.toFixed(1), `AI temperature set to ${temp.toFixed(1)}`);
             });
         }
-        
-        // AI Model selection
-        if (this.aiModelSelect) {
-            console.log("Setting up AI model selector event listener");
-            this.aiModelSelect.addEventListener('change', () => {
-                const selectedModel = this.aiModelSelect.value;
-                console.log(`AI model changed to: ${selectedModel}`);
-                this.updateConfigSetting('AI_MODEL', selectedModel, `AI Model set to ${selectedModel}`);
-            });
-        }
     },
     
     updateConfigSetting: async function(key, value, successMessage = null) {
@@ -359,20 +349,6 @@ const dashboardManager = {
                     const temp = parseFloat(config.AI_TEMPERATURE);
                     this.aiTemperatureRange.value = (temp * 10).toString();
                     this.tempValueDisplay.textContent = temp.toFixed(1);
-                }
-                
-                // Load AI model selection
-                if (this.aiModelSelect && config.AI_MODEL) {
-                    // Set the selected model
-                    const aiModelOptions = Array.from(this.aiModelSelect.options);
-                    const matchingOption = aiModelOptions.find(option => option.value === config.AI_MODEL);
-                    
-                    if (matchingOption) {
-                        this.aiModelSelect.value = config.AI_MODEL;
-                    } else {
-                        // If model not in list, default to LLaMA
-                        this.aiModelSelect.value = 'llama-3.3-70b-versatile';
-                    }
                 }
                 
             } else {
