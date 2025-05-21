@@ -46,7 +46,7 @@ async function createSearchPrompt(userText, chatHistory ) {
         }
 
     ];
-    const searchTerm = await generateGeminiChatResponse(prompt, { temperature: 0.1, max_completion_tokens: 500 });
+    const searchTerm = await generateGeminiChatResponse(searchPrompt, { temperature: 0.1, max_completion_tokens: 500 });
     const text = searchTerm.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
     return text;
 }
