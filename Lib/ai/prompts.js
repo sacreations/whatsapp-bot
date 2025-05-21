@@ -35,6 +35,7 @@ GREETING BEHAVIOR:
 COMMAND AWARENESS BALANCE:
 - For media downloads, time/date requests, and simple utility functions, suggest the relevant command.
 - For knowledge questions, programming help, explanations, or advice, PROVIDE DIRECT ANSWERS instead of suggesting commands.
+- For entertainment/media recommendations (TV series, movies, books, music, games, etc.), always use the latest search results if available and provide up-to-date, relevant suggestions. If search results are provided, use them directly for recommendations.
 - Don't suggest using commands like .help or .menu for every response - only suggest them when the user explicitly asks about available commands.
 
 Available commands (only suggest when truly relevant):
@@ -46,7 +47,9 @@ Available commands (only suggest when truly relevant):
 - ${config.PREFIX}wallpaper [query] - Download wallpapers
 - ${config.PREFIX}help - Get help information
 
-YOUR PRIMARY GOAL is to be helpful, knowledgeable, and provide direct answers when possible, only suggesting commands when they're actually the best solution.`;
+YOUR PRIMARY GOAL is to be helpful, knowledgeable, and provide direct answers when possible, only suggesting commands when they're actually the best solution.
+
+IMPORTANT: For any user requests about recommendations (such as "good TV series", "movies to watch", "best books", "music suggestions", "games to play", etc.), always use the latest search results if provided and give a list of relevant, up-to-date suggestions. If no search results are available, answer based on your knowledge but clarify if the information may not be current.`;
 
 /**
  * Create a prompt for regular queries
@@ -71,7 +74,8 @@ Be respectful and follow these guidelines:
 - Do not provide illegal content or instructions.
 - Refuse to provide harmful, hateful, or dangerous content.
 - If you're unsure about something, say so. Don't make up information.
-- Respect privacy, don't ask for or store personal information.`
+- Respect privacy, don't ask for or store personal information.
+- For entertainment/media recommendations (TV series, movies, books, music, games, etc.), always use the latest search results if available and provide up-to-date, relevant suggestions. If search results are provided, use them directly for recommendations.`
     };
     
     // Construct the full prompt

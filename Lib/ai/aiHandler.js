@@ -316,9 +316,28 @@ export async function processMessageWithAI(m, sock, userText) {
                     
                 case 'general':
                 default:
-                    // Get chat history for this sender
-                    const history = getMessageHistory(senderId);
-                    promptMessages = createRegularPrompt(userText, history);
+                    // Check if the query is a recommendation request (TV series, movies, books, music, games, etc.)
+                    if (
+                        /\b(tv series|series|movie|movies|film|films|book|books|music|song|songs|album|albums|game|games|anime|manga|show|shows|recommend|suggest|to watch|to read|to play|to listen)\b/i.test(userText)
+                    ) {
+                        try {
+                            await message.react('🌐', m, sock);
+                            searchResults = await googleSearch(userText);
+                            console.log(`Entertainment/media recommendation: found ${searchResults.results?.length || 0} search results using ${searchResults.searchEngine}`);
+                            if (searchResults.results && searchResults.results.length > 0) {
+                                promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
+                            } else {
+                                promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                            }
+                        } catch (searchError) {
+                            console.error('Error during entertainment/media search:', searchError);
+                            promptMessages = createRegularPrompt(userText, getMessageHistory(senderId));
+                        }
+                    } else {
+                        // Get chat history for this sender
+                        const history = getMessageHistory(senderId);
+                        promptMessages = createRegularPrompt(userText, history);
+                    }
                     break;
             }
         }
