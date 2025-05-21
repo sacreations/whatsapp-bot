@@ -12,8 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Import the config module
 import config from '../Config.js';
 // Check for any baileys imports and update them
-import baileys from '@whiskeysockets/baileys';
-const { downloadMediaMessage } = baileys;
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
 // Add cluster and os modules for cluster mode support
 import cluster from 'cluster';
 import os from 'os';
