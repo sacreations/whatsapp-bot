@@ -11,6 +11,26 @@ import { getMessageHistory, updateMessageHistory, countAdminInquiries } from './
 import { isGreeting, isAskingAboutAdmin, updateTypingStatus } from './utils/aiUtils.js';
 import { generateBotInfo, generateCategoryInfo, handleCommandInquiry } from './handlers/botInfoHandler.js';
 
+// --- New: Helper to ask AI if real-time data is needed ---
+async function askIfNeedsRealtime(userText, chatHistory) {
+    // Simple prompt for decision
+    const prompt = [
+        {
+            role: "system",
+            content: "You are a WhatsApp AI assistant. Decide if the user's message needs real-time data (Google search) to answer. Respond with only 'yes' or 'no'."
+        },
+        // Add up to 3 previous exchanges for context
+        ...(chatHistory ? chatHistory.slice(-6) : []),
+        {
+            role: "user",
+            content: userText
+        }
+    ];
+    const response = await generateGeminiChatResponse(prompt, { temperature: 0.1, max_completion_tokens: 5 });
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
+    return text.startsWith('y'); // true if "yes"
+}
+
 /**
  * Process a message with AI and get a response
  * 
@@ -99,12 +119,32 @@ export async function processMessageWithAI(m, sock, userText) {
             return adminInfo;
         }
 
-        // --- ALWAYS USE GOOGLE SEARCH FOR DATA ---
-        await message.react('🌐', m, sock);
-        searchResults = await googleSearch(userText);
-        console.log(`Google search found ${searchResults.results?.length || 0} results using ${searchResults.searchEngine}`);
-        // Pass chatHistory to the prompt for context
-        promptMessages = createSearchEnhancedPrompt(userText, searchResults, chatHistory);
+        // --- New: Ask AI if real-time data is needed ---
+        let needsRealtime = false;
+        try {
+            needsRealtime = await askIfNeedsRealtime(userText, chatHistory);
+        } catch (e) {
+            console.error('Error in real-time decision:', e);
+        }
+
+        if (needsRealtime) {
+            await message.react('🌐', m, sock);
+            searchResults = await googleSearch(userText);
+            console.log(`Google search found ${searchResults.results?.length || 0} results using ${searchResults.searchEngine}`);
+            // Use search-enhanced prompt with chat history
+            promptMessages = createSearchEnhancedPrompt(userText, searchResults, chatHistory);
+        } else {
+            // Use regular prompt with chat history (no search)
+            promptMessages = [
+                {
+                    role: "system",
+                    content: `You are ${config.BOT_NAME}, a helpful WhatsApp assistant. Respond naturally and concisely.`
+                },
+                ...(chatHistory ? chatHistory.slice(-10) : []),
+                { role: "user", content: userText }
+            ];
+        }
+
         const response = await generateGeminiChatResponse(promptMessages);
         let aiReply = response.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that.";
         aiReply = filterThinkingPart(aiReply);
