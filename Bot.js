@@ -10,13 +10,7 @@ import { handleStatus } from './Lib/handlers/statusHandler.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
-import * as baileysAll from '@whiskeysockets/baileys';
-
-console.log('BaileysAll:', baileysAll);
-console.log('Baileys keys:', Object.keys(baileysAll));
-console.log('typeof makeWASocket:', typeof baileysAll.makeWASocket);
-
-process.exit(1); // Stop execution after logging
+import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -38,11 +32,6 @@ const logger = pino({
         }
     }
 });
-
-const { makeWASocket, useMultiFileAuthState, DisconnectReason } = baileysAll;
-
-console.log('Baileys keys:', Object.keys(baileysAll));
-console.log('typeof makeWASocket:', typeof makeWASocket);
 
 /**
  * Load plugins from the plugins directory
