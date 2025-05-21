@@ -133,6 +133,10 @@ const config = {
     return this.get('GROQ_API_KEY', '');
   },
 
+  get GEMINI_API_KEY() {
+    return this.get('GEMINI_API_KEY', '');
+  },
+
   get ENABLE_AI_AUTO_REPLY() {
     return this.get('ENABLE_AI_AUTO_REPLY', 'true') === 'true';
   },
