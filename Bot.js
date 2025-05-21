@@ -11,6 +11,7 @@ import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
 import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import * as baileysAll from '@whiskeysockets/baileys';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -32,6 +33,14 @@ const logger = pino({
         }
     }
 });
+
+console.log('Baileys keys:', Object.keys(baileysAll));
+try {
+    const pkg = await import('@whiskeysockets/baileys/package.json', { assert: { type: "json" } });
+    console.log('Baileys version:', pkg.version);
+} catch (e) {
+    console.log('Could not determine Baileys version:', e);
+}
 
 /**
  * Load plugins from the plugins directory
