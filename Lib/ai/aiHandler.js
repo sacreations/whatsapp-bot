@@ -28,6 +28,7 @@ async function askIfNeedsRealtime(userText, chatHistory) {
     ];
     const response = await generateGeminiChatResponse(prompt, { temperature: 0.1, max_completion_tokens: 5 });
     const text = response.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
+    console.log(`AI decision on real-time data: "${text}"`);
     return text.startsWith('y'); // true if "yes"
 }
 
@@ -48,6 +49,7 @@ async function createSearchPrompt(userText, chatHistory ) {
     ];
     const searchTerm = await generateGeminiChatResponse(searchPrompt, { temperature: 0.1, max_completion_tokens: 500 });
     const text = searchTerm.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
+    console.log(`AI decision on search term: "${text}"`);
     return text;
 }
 
