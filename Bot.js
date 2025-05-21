@@ -1,4 +1,4 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } from 'baileys';
+import * as baileys from 'baileys';
 import pino from 'pino';
 import { Boom } from '@hapi/boom';
 import fs from 'fs';
@@ -66,12 +66,12 @@ async function loadPlugins() {
  * Connect to WhatsApp
  */
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState(
+    const { state, saveCreds } = await baileys.useMultiFileAuthState(
         path.join(sessionDir, config.SESSION_ID)
     );
     
     // Create a new instance of the WhatsApp socket
-    const sock = makeWASocket({
+    const sock = baileys.makeWASocket({
         printQRInTerminal: true,
         auth: state,
         logger,
@@ -94,7 +94,7 @@ async function connectToWhatsApp() {
         
         if (connection === 'close') {
             const shouldReconnect = 
-                (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+                (lastDisconnect.error instanceof Boom)?.output?.statusCode !== baileys.DisconnectReason.loggedOut;
             
             console.log('Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
             
