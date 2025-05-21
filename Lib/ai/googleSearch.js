@@ -10,30 +10,32 @@ export async function googleSearch(query) {
         // Try Google search first
         console.log(`Performing Google search for: ${query}`);
         const apiUrl = `https://delirius-apiofc.vercel.app/search/googlesearch?query=${encodeURIComponent(query)}`;
-        
-        const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            console.log(`Google search failed with status: ${response.status}. Falling back to Bing search.`);
+
+        // Use axios for better error handling and timeout
+        const response = await axios.get(apiUrl, { timeout: 15000 });
+
+        if (!response.data || response.data.status !== true || !Array.isArray(response.data.data)) {
+            console.log(`Google search failed or returned no results. Falling back to Bing search.`);
             return await bingSearch(query); // Fall back to Bing search
         }
-        
-        const data = await response.json();
-        
+
         // Track AI search stats if global container exists
         if (global.aiStats) {
             global.aiStats.searchesPerformed = (global.aiStats.searchesPerformed || 0) + 1;
         }
-        
+
+        // Normalize results to expected format
+        const results = response.data.data.map(item => ({
+            title: item.title || '',
+            description: item.description || '',
+            link: item.url || ''
+        }));
+
         return {
+            type: 'google',
             searchEngine: 'Google',
             query: query,
-            results: data.results || []
+            results
         };
     } catch (error) {
         console.error(`Error in Google search: ${error.message}. Falling back to Bing search.`);

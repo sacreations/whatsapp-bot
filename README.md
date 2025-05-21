@@ -95,7 +95,7 @@ The bot uses Google Gemini AI to provide intelligent responses to user messages.
 
 ### Real-Time Search
 
-The bot can search the web for current information when answering questions, and will use up-to-date search results for recommendations such as TV series, movies, books, music, and games. For example, if you ask for "good zombie tv series to watch" or "best Asian movies", the bot will provide a list of relevant, current suggestions based on real-time search results.
+The bot can search the web for current information when answering questions:
 
 ## Acknowledgments
 
