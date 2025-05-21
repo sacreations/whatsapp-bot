@@ -1,6 +1,7 @@
 import { generateGeminiChatResponse, filterThinkingPart } from './groq.js';
 import { 
-    createSearchEnhancedPrompt
+    createSearchEnhancedPrompt,
+    createRegularPrompt
 } from './prompts.js';
 import { 
     googleSearch
@@ -174,14 +175,7 @@ export async function processMessageWithAI(m, sock, userText) {
             promptMessages = createSearchEnhancedPrompt(userText, searchResults, chatHistory);
         } else {
             // Use regular prompt with chat history (no search)
-            promptMessages = [
-                {
-                    role: "system",
-                    content: `You are ${config.BOT_NAME}, a helpful WhatsApp assistant. Respond naturally and concisely.`
-                },
-                ...(chatHistory ? chatHistory.slice(-10) : []),
-                { role: "user", content: userText }
-            ];
+            promptMessages = createRegularPrompt(userText, chatHistory);
         }
 
         const response = await generateGeminiChatResponse(promptMessages);
