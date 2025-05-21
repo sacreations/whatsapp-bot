@@ -34,10 +34,6 @@ export function isGreeting(text) {
 export function isAskingAboutAdmin(text) {
     const adminKeywords = [
         'admin', 'owner', 'creator', 'who made', 'who created', 
-        'your creator', 'your owner', 'who owns', 'who programmed',
-        'who developed', 'developer', 'admin info', 'admin contact',
-        'admin number', 'contact admin', 'talk to admin',
-        'search it', 'search this', 'look it up', 'look this up', 'google it', 'find it'
     ];
     
     const lowercaseText = text.toLowerCase().trim();
