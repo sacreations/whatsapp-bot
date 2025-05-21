@@ -31,6 +31,28 @@ async function askIfNeedsRealtime(userText, chatHistory) {
     return text.startsWith('y'); // true if "yes"
 }
 
+// --- New: Function to generate good search prompt to google ---
+async function createSearchPrompt(userText, chatHistory ) {
+    const searchPrompt = [
+        {
+            role: "system",
+            content: `You are ${config.BOT_NAME}, a WhatsApp assistant. Decide what search terms to use for Google search based on the user's message. Respond only with best one search term.(e.g. "latest news on AI")`
+        },
+        // Add up to 3 previous exchanges for context
+        ...(chatHistory ? chatHistory.slice(-6) : []),
+        {
+            role: "user",
+            content: userText
+        }
+
+    ];
+    const searchTerm = await generateGeminiChatResponse(prompt, { temperature: 0.1, max_completion_tokens: 500 });
+    const text = searchTerm.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toLowerCase() || "";
+    return text;
+}
+
+        
+
 /**
  * Process a message with AI and get a response
  * 
@@ -129,7 +151,7 @@ export async function processMessageWithAI(m, sock, userText) {
 
         if (needsRealtime) {
             await message.react('🌐', m, sock);
-            searchResults = await googleSearch(userText);
+            searchResults = await googleSearch(await createSearchPrompt(userText, chatHistory));
             console.log(`Google search found ${searchResults.results?.length || 0} results using ${searchResults.searchEngine}`);
             // Use search-enhanced prompt with chat history
             promptMessages = createSearchEnhancedPrompt(userText, searchResults, chatHistory);
