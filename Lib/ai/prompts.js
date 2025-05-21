@@ -80,7 +80,7 @@ Be respectful and follow these guidelines:
     
     // Include message history if available
     if (messageHistory && messageHistory.length > 0) {
-        messageHistory = messageHistory.slice(-10);  // Use the most recent 10 exchanges for context
+        messageHistory = messageHistory.slice(-6);  // Use the most recent 10 exchanges for context
         for (const item of messageHistory) {
             promptMessages.push(item);
         }
@@ -250,9 +250,14 @@ Format the response as a list of options with direct image URLs that they can do
 Be helpful and suggest which one might be best based on what they asked for.
 The current date and time in Sri Lanka is: ${sriLankaTime.fullString}`;
 
+    // Only include the latest 5 messages from chat history
+    const recentHistory = chatHistory && chatHistory.length > 0
+        ? chatHistory.slice(-5)
+        : [];
+
     return [
         { role: "system", content: wallpaperPrompt },
-        ...chatHistory,
+        ...recentHistory,
         { role: "user", content: userMessage }
     ];
 }
