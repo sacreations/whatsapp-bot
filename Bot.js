@@ -12,6 +12,12 @@ import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.
 import { logChatMessage } from './Lib/utils/logger.js';
 import * as baileysAll from '@whiskeysockets/baileys';
 
+console.log('BaileysAll:', baileysAll);
+console.log('Baileys keys:', Object.keys(baileysAll));
+console.log('typeof makeWASocket:', typeof baileysAll.makeWASocket);
+
+process.exit(1); // Stop execution after logging
+
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
