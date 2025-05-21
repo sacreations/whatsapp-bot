@@ -4,8 +4,8 @@ const configManager = {
     socialMediaToggle: null,
     statusViewToggle: null,
     linkSavingToggle: null,
-    hideOnlineToggle: null,         
-    disableReceiptsToggle: null,
+    hideOnlineStatusToggle: null,
+    disableReadReceiptsToggle: null,
     pauseBotToggle: null,
     maintenanceModeToggle: null,
     autoMediaToggle: null,
@@ -16,8 +16,8 @@ const configManager = {
         this.socialMediaToggle = document.getElementById('social-media-toggle');
         this.statusViewToggle = document.getElementById('status-view-toggle');
         this.linkSavingToggle = document.getElementById('link-saving-toggle');
-        this.hideOnlineToggle = document.getElementById('hide-online-toggle');         
-        this.disableReceiptsToggle = document.getElementById('disable-receipts-toggle');
+        this.hideOnlineStatusToggle = document.getElementById('hide-online-status');
+        this.disableReadReceiptsToggle = document.getElementById('disable-read-receipts');
         this.pauseBotToggle = document.getElementById('pause-bot-toggle');
         this.maintenanceModeToggle = document.getElementById('maintenance-mode-toggle');
         this.autoMediaToggle = document.getElementById('auto-media-toggle');
@@ -72,15 +72,15 @@ const configManager = {
             });
         }
 
-        if (this.hideOnlineToggle) {
-            this.hideOnlineToggle.addEventListener('change', async function() {
+        if (this.hideOnlineStatusToggle) {
+            this.hideOnlineStatusToggle.addEventListener('change', async function() {
                 await configManager.updateConfig('HIDE_ONLINE_STATUS', this.checked.toString());
                 showToast('Changes will take effect after bot restart', 'info');
             });
         }
         
-        if (this.disableReceiptsToggle) {
-            this.disableReceiptsToggle.addEventListener('change', async function() {
+        if (this.disableReadReceiptsToggle) {
+            this.disableReadReceiptsToggle.addEventListener('change', async function() {
                 await configManager.updateConfig('DISABLE_READ_RECEIPTS', this.checked.toString());
                 showToast('Changes will take effect after bot restart', 'info');
             });
@@ -191,12 +191,12 @@ const configManager = {
                     this.linkSavingToggle.checked = config.ENABLE_LINK_SAVING === 'true';
                 }
 
-                if (this.hideOnlineToggle) {
-                    this.hideOnlineToggle.checked = config.HIDE_ONLINE_STATUS === 'true';
+                if (this.hideOnlineStatusToggle) {
+                    this.hideOnlineStatusToggle.checked = config.HIDE_ONLINE_STATUS === 'true';
                 }
                 
-                if (this.disableReceiptsToggle) {
-                    this.disableReceiptsToggle.checked = config.DISABLE_READ_RECEIPTS === 'true';
+                if (this.disableReadReceiptsToggle) {
+                    this.disableReadReceiptsToggle.checked = config.DISABLE_READ_RECEIPTS === 'true';
                 }
 
                 if (this.pauseBotToggle) {
