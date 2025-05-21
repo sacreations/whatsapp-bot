@@ -53,7 +53,14 @@ async function createSearchPrompt(userText, chatHistory ) {
     return text;
 }
 
-        
+// function to skip real-time data
+const skipRealtimeKeywords = ['thank', 'thanks', 'ok', 'okay', 'cool', 'welcome', 'lol', 'haha', 'nice', 'great', 'good', 'bye'];
+
+function isCasualReply(text) {
+    return skipRealtimeKeywords.some(keyword => text.toLowerCase().includes(keyword));
+}
+
+
 
 /**
  * Process a message with AI and get a response
@@ -143,14 +150,22 @@ export async function processMessageWithAI(m, sock, userText) {
             return adminInfo;
         }
 
-        // --- New: Ask AI if real-time data is needed ---
+        // --- Ask AI if real-time data is needed ---
         let needsRealtime = false;
-        try {
-            needsRealtime = await askIfNeedsRealtime(userText, chatHistory);
-        } catch (e) {
-            console.error('Error in real-time decision:', e);
-        }
+        if (!isCasualReply(userText) && !isFirstTime) {
+            if (userText.length < 4) {
+                needsRealtime = false;
+            }else{
+                try {
+                needsRealtime = await askIfNeedsRealtime(userText, chatHistory);
+                } catch (e) {
+                console.error('Error in real-time decision:', e);
+            }
 
+            }
+            
+        }
+        
         if (needsRealtime) {
             await message.react('🌐', m, sock);
             searchResults = await googleSearch(await createSearchPrompt(userText, chatHistory));
