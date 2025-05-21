@@ -1,6 +1,7 @@
 import config from '../../Config.js';
 import message from './messageHandler.js';
-import { jidDecode } from 'baileys';
+import baileys from '@whiskeysockets/baileys';
+const { jidDecode } = baileys;
 
 // Store for commands
 const commands = [];

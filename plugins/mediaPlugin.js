@@ -1,6 +1,6 @@
 import { bot } from '../Lib/chat/commandHandler.js';
 import message from '../Lib/chat/messageHandler.js';
-import { downloadMediaMessage } from 'baileys';
+import baileys from '@whiskeysockets/baileys';
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
@@ -10,6 +10,7 @@ import config from '../Config.js';
 import { fileTypeFromBuffer } from 'file-type';
 
 const execAsync = promisify(exec);
+const { downloadMediaMessage } = baileys;
 
 // Helper function to download media from message
 async function downloadMedia(m, messageType) {

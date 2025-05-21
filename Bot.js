@@ -10,7 +10,11 @@ import { handleStatus } from './Lib/handlers/statusHandler.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
-import makeWASocket, { useMultiFileAuthState, DisconnectReason } from 'baileys';
+import baileys, {
+    useMultiFileAuthState,
+    DisconnectReason
+} from '@whiskeysockets/baileys';
+const { makeWASocket } = baileys;
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);

@@ -3,7 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { jidNormalizedUser } from 'baileys';
+import baileys from '@whiskeysockets/baileys';
+const { jidNormalizedUser } = baileys;
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);

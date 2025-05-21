@@ -2,7 +2,8 @@ import config from '../../Config.js';
 import { logChatMessage } from '../utils/logger.js';
 import fs from 'fs';
 import path from 'path';
-import { downloadMediaMessage } from 'baileys';
+import baileys from '@whiskeysockets/baileys';
+const { downloadMediaMessage } = baileys;
 import { findContactNameByNumber } from '../utils/contactsManager.js';
 import { EventEmitter } from 'events';
 
