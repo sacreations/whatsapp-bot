@@ -14,7 +14,7 @@ import baileys, {
     useMultiFileAuthState,
     DisconnectReason
 } from '@whiskeysockets/baileys';
-const { makeWASocket } = baileys;
+import makeWASocket from '@whiskeysockets/baileys';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
