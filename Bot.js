@@ -1,4 +1,3 @@
-import * as baileys from 'baileys';
 import pino from 'pino';
 import { Boom } from '@hapi/boom';
 import fs from 'fs';
@@ -11,6 +10,7 @@ import { handleStatus } from './Lib/handlers/statusHandler.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason } from 'baileys';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -66,12 +66,12 @@ async function loadPlugins() {
  * Connect to WhatsApp
  */
 async function connectToWhatsApp() {
-    const { state, saveCreds } = await baileys.useMultiFileAuthState(
+    const { state, saveCreds } = await useMultiFileAuthState(
         path.join(sessionDir, config.SESSION_ID)
     );
     
     // Create a new instance of the WhatsApp socket
-    const sock = baileys.makeWASocket({
+    const sock = makeWASocket({
         printQRInTerminal: true,
         auth: state,
         logger,
@@ -94,7 +94,7 @@ async function connectToWhatsApp() {
         
         if (connection === 'close') {
             const shouldReconnect = 
-                (lastDisconnect.error instanceof Boom)?.output?.statusCode !== baileys.DisconnectReason.loggedOut;
+                (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
             
             console.log('Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
             
