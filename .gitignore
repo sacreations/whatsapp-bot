@@ -7,9 +7,11 @@ config.env
 
 # WhatsApp sessions
 sessions/
+data/sessions/
 
 # Downloaded media
 downloads/
+temp-uploads/
 
 # Logs
 logs
@@ -17,7 +19,6 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # Runtime data
 pids
@@ -31,6 +32,11 @@ coverage/
 # Temporary files
 *.tmp
 temp/
+
+# Build artifacts
+dist/
+build/
+frontend/build/
 
 # IDE specific files
 .vscode/
