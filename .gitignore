@@ -4,6 +4,8 @@ node_modules/
 # Environment variables
 .env
 config.env
+package-lock.json
+yarn.lock
 
 # WhatsApp sessions
 sessions/
