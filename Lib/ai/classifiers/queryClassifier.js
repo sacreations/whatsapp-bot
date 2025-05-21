@@ -10,6 +10,16 @@ import { extractUrl } from '../utils/aiUtils.js';
  */
 export async function classifyQueryType(query) {
     try {
+        // Directly classify as 'realtime' for explicit search requests
+        const lowerQuery = query.toLowerCase().trim();
+        const searchPhrases = [
+            'search it', 'search this', 'search that', 'look it up', 'look this up', 'look that up',
+            'find it', 'find this', 'find that', 'google it', 'google this', 'google that'
+        ];
+        if (searchPhrases.some(phrase => lowerQuery === phrase || lowerQuery.endsWith(' ' + phrase))) {
+            return 'realtime';
+        }
+        
         // Create a classification prompt
         const classificationPrompt = createQueryClassificationPrompt(query);
         
@@ -156,7 +166,9 @@ export function isFastFactQuestion(text) {
         /^current .* president/, /^president of /,
         /^capital of /,
         /^find /, // Added: "find" as a trigger for fact/realtime
-        /current / // Added: "current" as a trigger for realtime
+        /current /, // Added: "current" as a trigger for realtime
+        /^search (it|this|that)$/, /^look (it|this|that) up$/, /^find (it|this|that)$/, /^google (it|this|that)$/,
+        /search it$/, /search this$/, /search that$/, /look it up$/, /look this up$/, /look that up$/, /google it$/, /google this$/, /google that$/
     ];
     
     // Check if any pattern matches

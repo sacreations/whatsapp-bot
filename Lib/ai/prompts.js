@@ -306,7 +306,7 @@ export function createQueryClassificationPrompt(userMessage) {
 Your task is to analyze the following user message and classify it into exactly one of these categories:
 1. "wikipedia" - The user is asking for factual information about a topic, person, place, concept, history, etc.
 2. "wallpaper" - The user is requesting images, wallpapers, or visual content
-3. "realtime" - The user is asking about current events, news, weather, or other real-time information
+3. "realtime" - The user is asking about current events, news, weather, or other real-time information, or says things like "search it", "look it up", "google it"
 4. "admin" - The user wants to contact the admin/owner of the bot
 5. "botinfo" - The user is asking about the bot itself, its capabilities, or how to use it
 6. "webpage" - The user wants to extract or analyze content from a website or URL

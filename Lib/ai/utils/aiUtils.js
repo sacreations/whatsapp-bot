@@ -13,7 +13,8 @@ export function isGreeting(text) {
     const greetings = [
         'hi', 'hello', 'hey', 'hola', 'greetings', 'sup', 'whats up', 
         'good morning', 'good afternoon', 'good evening', 'howdy', 'yo',
-        'hiya', 'heya', 'hai', 'bonjour', 'namaste', 'hallo', 'hi there'
+        'hiya', 'heya', 'hai', 'bonjour', 'namaste', 'hallo', 'hi there',
+        'search it', 'search this', 'look it up', 'look this up', 'google it', 'find it'
     ];
     
     const lowercaseText = text.toLowerCase().trim();
@@ -35,7 +36,8 @@ export function isAskingAboutAdmin(text) {
         'admin', 'owner', 'creator', 'who made', 'who created', 
         'your creator', 'your owner', 'who owns', 'who programmed',
         'who developed', 'developer', 'admin info', 'admin contact',
-        'admin number', 'contact admin', 'talk to admin'
+        'admin number', 'contact admin', 'talk to admin',
+        'search it', 'search this', 'look it up', 'look this up', 'google it', 'find it'
     ];
     
     const lowercaseText = text.toLowerCase().trim();
