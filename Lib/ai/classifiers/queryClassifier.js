@@ -154,7 +154,9 @@ export function isFastFactQuestion(text) {
         /^which is /, /^which was /, /^which are /,
         /^how many /, /^how much /, /^how old /,
         /^current .* president/, /^president of /,
-        /^capital of /
+        /^capital of /,
+        /^find /, // Added: "find" as a trigger for fact/realtime
+        /current / // Added: "current" as a trigger for realtime
     ];
     
     // Check if any pattern matches

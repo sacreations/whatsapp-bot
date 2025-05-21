@@ -80,7 +80,8 @@ export function extractSearchTerm(text, queryType) {
         'tell me about', 'show me', 'find', 'search for', 'look up', 
         'who is', 'what is', 'where is', 'when was', 'explain',
         'information on', 'info about', 'facts about', 'details about',
-        'images of', 'pictures of', 'wallpaper of', 'wallpapers of'
+        'images of', 'pictures of', 'wallpaper of', 'wallpapers of',
+        'current', // Added: "current" as a phrase
     ];
     
     for (const phrase of commonPhrases) {

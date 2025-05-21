@@ -270,7 +270,9 @@ function isFactualQuery(query) {
         /^how many /, /^how much /, /^how old /,
         /capital of /, /population of /, /founded in /,
         /born in /, /died in /, /inventor of /,
-        /discovery of /, /definition of /, /meaning of /
+        /discovery of /, /definition of /, /meaning of /,
+        /^find /, // Added: "find" as a factual/realtime trigger
+        /current / // Added: "current" as a factual/realtime trigger
     ];
     
     // Check if any pattern matches

@@ -84,7 +84,9 @@ The admin dashboard will be available at `http://localhost:3000`
 
 ### AI Auto-Reply
 
-The bot uses Google Gemini AI to provide intelligent responses to user messages. To enable:
+The bot uses Google Gemini AI to provide intelligent responses to user messages. It is designed to give direct, confident answers for factual and real-time queries, using web search or Wikipedia when needed. The bot avoids unnecessary disclaimers and provides the best available answer based on current information.
+
+To enable:
 
 1. Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Add your API key to the `config.env` file:
@@ -95,7 +97,7 @@ The bot uses Google Gemini AI to provide intelligent responses to user messages.
 
 ### Real-Time Search
 
-The bot can search the web for current information when answering questions:
+The bot can search the web for current information when answering questions. It will use the most relevant facts found and state answers directly and confidently.
 
 ## Acknowledgments
 
