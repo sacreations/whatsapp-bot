@@ -31,8 +31,11 @@ export async function processMessageWithAI(m, sock, userText) {
         // Check if this is a first-time user (no message history)
         const isFirstTime = !getMessageHistory(senderId) || getMessageHistory(senderId).length === 0;
 
+        // Fetch message history for this sender (for context)
+        const chatHistory = getMessageHistory(senderId);
+
         // Handle greeting for first-time users
-        if (isFirstTime && userText && isGreeting(userText)) {
+        if ((!chatHistory || chatHistory.length === 0) && userText && isGreeting(userText)) {
             console.log(`First-time greeting from user: ${senderId}`);
             const adminName = config.ADMIN_NAME || 'the admin';
             const greeting = `Hello! 👋 I'm ${config.BOT_NAME}, a WhatsApp assistant created by ${adminName}. I can help you with questions, download media from social platforms, and more. How can I assist you today?`;
@@ -100,7 +103,8 @@ export async function processMessageWithAI(m, sock, userText) {
         await message.react('🌐', m, sock);
         searchResults = await googleSearch(userText);
         console.log(`Google search found ${searchResults.results?.length || 0} results using ${searchResults.searchEngine}`);
-        promptMessages = createSearchEnhancedPrompt(userText, searchResults, getMessageHistory(senderId));
+        // Pass chatHistory to the prompt for context
+        promptMessages = createSearchEnhancedPrompt(userText, searchResults, chatHistory);
         const response = await generateGeminiChatResponse(promptMessages);
         let aiReply = response.candidates?.[0]?.content?.parts?.[0]?.text || "I'm not sure how to respond to that.";
         aiReply = filterThinkingPart(aiReply);

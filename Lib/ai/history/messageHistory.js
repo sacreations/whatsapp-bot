@@ -91,3 +91,5 @@ function isAskingAboutAdmin(text) {
     
     return adminKeywords.some(keyword => lowercaseText.includes(keyword));
 }
+
+// No changes needed, already supports getMessageHistory and updateMessageHistory
