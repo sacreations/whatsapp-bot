@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
     privacyManager.init();
     statusUpdater.init(); // Initialize the new status updater module
     
+    // Enhanced mobile sidebar functionality
+    initMobileSidebar();
+    
     // Check authentication status
     checkAuthStatus();
     
@@ -28,6 +31,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Initialize enhanced notifications
+    if (typeof showEnhancedToast !== 'undefined') {
+        window.showToast = showEnhancedToast;
+    }
+    
     // Set up toast notifications
-    window.showToast = uiUtils.showToast;
+    window.showToast = window.showToast || uiUtils.showToast;
 });
+
+function initMobileSidebar() {
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    
+    if (sidebarToggle && sidebar && sidebarOverlay) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        });
+        
+        sidebarOverlay.addEventListener('click', function() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        });
+        
+        // Close sidebar when clicking on nav items (mobile)
+        const navItems = document.querySelectorAll('.sidebar-nav ul li');
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('active');
+                    sidebarOverlay.classList.remove('active');
+                }
+            });
+        });
+    }
+}
