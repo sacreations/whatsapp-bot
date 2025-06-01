@@ -39,8 +39,9 @@ function enhanceButtons() {
             // Add ripple effect
             createRipple(e, this);
             
-            // Add loading state for async operations
-            if (this.classList.contains('async-btn')) {
+            // Don't add loading state for form submit buttons - let the form handle it
+            // Only add loading state for non-form buttons
+            if (this.classList.contains('async-btn') && this.type !== 'submit') {
                 addLoadingState(this);
             }
         });
@@ -268,8 +269,19 @@ function addProgressIndicators() {
     const forms = document.querySelectorAll('form');
     
     forms.forEach(form => {
-        form.addEventListener('submit', function() {
-            showProgressBar();
+        form.addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn && submitBtn.classList.contains('async-btn')) {
+                // Add loading state to the submit button
+                const originalContent = submitBtn.innerHTML;
+                const spinner = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                submitBtn.innerHTML = spinner + ' Loading...';
+                submitBtn.disabled = true;
+                
+                // Store original content to restore it later if needed
+                submitBtn.dataset.originalContent = originalContent;
+            }
         });
     });
 }
@@ -362,6 +374,27 @@ function getToastIcon(type) {
     };
     return icons[type] || icons.info;
 }
+
+// Function to restore button state (can be called from login script)
+window.restoreButtonState = function(button) {
+    if (button && button.dataset.originalContent) {
+        button.innerHTML = button.dataset.originalContent;
+        button.disabled = false;
+        delete button.dataset.originalContent;
+    }
+};
+
+// Function to set button loading state manually
+window.setButtonLoading = function(button, loadingText = 'Loading...') {
+    if (button) {
+        const originalContent = button.innerHTML;
+        const spinner = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        button.innerHTML = spinner + ' ' + loadingText;
+        button.disabled = true;
+        button.dataset.originalContent = originalContent;
+    }
+};
 
 // Add CSS animations for tooltips
 const style = document.createElement('style');

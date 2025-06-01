@@ -56,13 +56,18 @@
                 .catch(error => {
                     console.error('Error checking auth status:', error);
                 });
-            
-            loginForm.addEventListener('submit', async function(e) {
+              loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
                 const password = document.getElementById('password').value;
+                const submitBtn = this.querySelector('button[type="submit"]');
                 
                 try {
+                    // Set button to loading state
+                    if (window.setButtonLoading) {
+                        window.setButtonLoading(submitBtn, 'Logging in...');
+                    }
+                    
                     loginMessage.textContent = 'Logging in...';
                     loginMessage.className = '';
                     
@@ -77,17 +82,33 @@
                     if (data.success) {
                         loginMessage.textContent = 'Login successful! Redirecting...';
                         loginMessage.className = 'success';
+                        
+                        // Update button to show success
+                        if (submitBtn) {
+                            submitBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                        }
+                        
                         setTimeout(() => {
                             window.location.href = '/';
                         }, 1000);
                     } else {
                         loginMessage.textContent = 'Invalid password. Please try again.';
                         loginMessage.className = 'error';
+                        
+                        // Restore button state
+                        if (window.restoreButtonState) {
+                            window.restoreButtonState(submitBtn);
+                        }
                     }
                 } catch (error) {
                     console.error('Login error:', error);
                     loginMessage.textContent = 'Error connecting to server. Please try again.';
                     loginMessage.className = 'error';
+                    
+                    // Restore button state
+                    if (window.restoreButtonState) {
+                        window.restoreButtonState(submitBtn);
+                    }
                 }
             });
         });
