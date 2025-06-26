@@ -408,48 +408,32 @@ export async function handleAutoReply(m, sock) {
                     if (commandMatch && commandMatch[1]) {
                         const suggestedCommand = commandMatch[1];
                         
-                        // Send the AI response with the command suggestion
                         await message.reply(aiResponse, m, sock);
                         
-                        // Add a subtle hint to try the command
                         setTimeout(async () => {
                             await message.react('💡', m, sock);
                         }, 500);
                     } else {
-                        // Regular response without command suggestion
+
                         await message.reply(aiResponse, m, sock);
                     }
                     
-                    await message.react('✅', m, sock); // Change reaction when done
+                    await message.react('✅', m, sock); 
                     
 
                     
                     return true;
                 }
-                // Fall back to simple auto-responses if AI is disabled
             } catch (error) {
                 console.error('Error processing AI response:', error);
-                // Clear typing indicator on error
-                
-                // Fall back to simple auto-responses if AI fails
             }
         }
         
         // Simple auto-responses as fallback
         if (messageType === 'text') {
-            // const greetings = ['hi', 'hello', 'hey', 'hola', 'howdy'];
-            
-            // if (greetings.includes(messageText.toLowerCase())) {
-            //     await message.reply(`Hello! How can I help you today? Use ${config.PREFIX}menu to see available commands.`, m, sock);
-            //     return true;
-            // }
-            
-            // // Add more auto-reply patterns as needed
-            
+
         } else if (messageType === 'sticker') {
-            // // Maybe react to stickers
-            // await message.react('👍', m, sock);
-            // return true;
+            
         }
         
         return false;
