@@ -24,7 +24,6 @@ const ROLES = {
   PRIMARY: 'primary',
   BOT_MAIN: 'bot_main',    // Main bot process that handles WhatsApp connection
   BOT_WORKER: 'bot_worker', // Additional bot workers for parallel processing
-  ADMIN: 'admin',
   WORKER: 'worker'
 };
 
@@ -34,11 +33,10 @@ if (cluster.isPrimary) {
   console.log(`Available CPUs: ${numCPUs}`);
   console.log(`Clustering enabled. Starting ${workerCount} workers`);
   
-  // Configure worker distribution
-  const botWorkerCount = Math.max(1, Math.floor(workerCount / 3)); // Allocate ~1/3 to bot workers
-  const adminWorkerCount = Math.max(1, workerCount - botWorkerCount); // The rest for admin
+  // Configure worker distribution - only bot workers now
+  const botWorkerCount = workerCount;
   
-  console.log(`Allocating ${botWorkerCount} bot workers and ${adminWorkerCount} admin workers`);
+  console.log(`Allocating ${botWorkerCount} bot workers`);
   
   // Start one dedicated process for the main WhatsApp bot connection
   const botMainWorker = cluster.fork({ 
@@ -58,12 +56,6 @@ if (cluster.isPrimary) {
     }
   }
   
-  // Start admin panel workers
-  for (let i = 0; i < adminWorkerCount; i++) {
-    const adminWorker = cluster.fork({ PROCESS_ROLE: ROLES.ADMIN });
-    console.log(`Started admin panel worker ${i+1} (PID: ${adminWorker.process.pid})`);
-  }
-  
   // Listen for workers coming online
   cluster.on('online', (worker) => {
     console.log(`Worker ${worker.process.pid} is online`);
@@ -81,13 +73,6 @@ if (cluster.isPrimary) {
         if (botWorker) {
           botWorker.send(msg);
         }
-      } else if (msg.type === 'admin_update') {
-        // Broadcast admin updates to all admin workers
-        Object.values(cluster.workers).forEach(w => {
-          if (w.process.env.PROCESS_ROLE === ROLES.ADMIN) {
-            w.send(msg);
-          }
-        });
       } else if (msg.type === 'task_dispatch') {
         // Distribute tasks to available bot workers
         const botWorkers = Object.values(cluster.workers).filter(
@@ -124,10 +109,6 @@ if (cluster.isPrimary) {
         BOT_WORKER_ID: workerId
       });
       console.log(`Started new WhatsApp bot worker ${workerId} (PID: ${newBotWorker.process.pid})`);
-    } else {
-      console.log('Restarting admin panel worker...');
-      const newAdminWorker = cluster.fork({ PROCESS_ROLE: ROLES.ADMIN });
-      console.log(`Started new admin panel worker (PID: ${newAdminWorker.process.pid})`);
     }
   });
 } else {
@@ -157,9 +138,6 @@ if (cluster.isPrimary) {
         
       console.log(`Worker ${process.pid} starting WhatsApp bot as ${isMainWorker ? 'main connection' : 'worker'} #${global.BOT_WORKER_ID}...`);
       await import('./index.js');
-    } else if (process.env.PROCESS_ROLE === ROLES.ADMIN) {
-      console.log(`Worker ${process.pid} starting admin panel...`);
-      await import('./admin/server.js');
     } else {
       console.error(`Unknown role: ${process.env.PROCESS_ROLE}`);
       process.exit(1);

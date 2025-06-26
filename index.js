@@ -4,11 +4,6 @@ import config from './Config.js';
 // Initialize global variables
 global.sock = null;
 
-// Import admin server if not in cluster mode or we're an admin worker
-if (!global.CLUSTER_MODE || !global.IS_PRIMARY_BOT) {
-  import('./admin/server.js');
-}
-
 // Import new utilities
 import memoryMonitor from './Lib/utils/memoryMonitor.js';
 import apiKeyRotation from './Lib/ai/apiKeyRotation.js';
@@ -65,6 +60,16 @@ if (!global.CLUSTER_MODE || global.IS_PRIMARY_BOT) {
   async function startBot() {
     try {
       await connectToWhatsApp();
+      
+      // Start the simple UI server only after the bot is connected and only for the main process
+      if (!global.CLUSTER_MODE || global.IS_PRIMARY_BOT) {
+        try {
+          const { startSimpleServer } = await import('./simple-ui/server.js');
+          startSimpleServer();
+        } catch (err) {
+          console.log('Simple UI server not available:', err.message);
+        }
+      }
     } catch (err) {
       console.error('Error starting bot:', err);
       console.log('Retrying in 10 seconds...');
