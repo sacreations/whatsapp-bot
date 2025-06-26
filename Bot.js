@@ -11,6 +11,7 @@ import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
 import { makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } from '@whiskeysockets/baileys';
+import qrcode from 'qrcode-terminal';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -72,7 +73,6 @@ async function connectToWhatsApp() {
     
     // Create a new instance of the WhatsApp socket
     const sock = makeWASocket({
-        printQRInTerminal: true,
         auth: state,
         logger,
         browser: ['WhatsAppBot', 'Chrome', '103.0.5060.114'],
@@ -90,7 +90,13 @@ async function connectToWhatsApp() {
     
     // Handle connection events
     sock.ev.on('connection.update', async (update) => {
-        const { connection, lastDisconnect } = update;
+        const { connection, lastDisconnect, qr } = update;
+        
+        // Handle QR code display
+        if (qr) {
+            console.log('QR Code received, scan to connect:');
+            qrcode.generate(qr, { small: true });
+        }
         
         if (connection === 'close') {
             const shouldReconnect = 
@@ -98,17 +104,45 @@ async function connectToWhatsApp() {
             
             console.log('Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
             
+            // Check if it's a 401 error (session expired/invalid)
+            if (lastDisconnect.error instanceof Boom && lastDisconnect.error.output?.statusCode === 401) {
+                console.log('Session expired or invalid. Clearing session and requiring new QR scan...');
+                
+                // Clear the session directory
+                const sessionPath = path.join(sessionDir, config.SESSION_ID);
+                if (fs.existsSync(sessionPath)) {
+                    try {
+                        fs.rmSync(sessionPath, { recursive: true, force: true });
+                        console.log('Session cleared successfully');
+                    } catch (error) {
+                        console.error('Error clearing session:', error);
+                    }
+                }
+                
+                // Wait a bit before reconnecting to avoid immediate retry
+                setTimeout(() => {
+                    console.log('Reconnecting with fresh session...');
+                    connectToWhatsApp();
+                }, 3000);
+                return;
+            }
+            
             // Reconnect if not logged out
             if (shouldReconnect) {
-                connectToWhatsApp();
+                // Add exponential backoff for reconnection
+                setTimeout(() => {
+                    connectToWhatsApp();
+                }, 5000);
             }
         } else if (connection === 'open') {
-            console.log('Connection opened');
+            console.log('✅ Connection opened successfully');
             // Load plugins after connection is established
             await loadPlugins();
             
             // Start cleanup interval
             setInterval(cleanupDownloads, 3600 * 1000); // Cleanup every hour
+        } else if (connection === 'connecting') {
+            console.log('🔄 Connecting to WhatsApp...');
         }
     });
     

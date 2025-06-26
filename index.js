@@ -59,9 +59,20 @@ if (global.CLUSTER_MODE) {
 
 // Only start the WhatsApp connection in the main bot process
 if (!global.CLUSTER_MODE || global.IS_PRIMARY_BOT) {
-  // Start the bot
+  // Start the bot with error handling
   console.log(`Starting ${config.BOT_NAME}...`);
-  connectToWhatsApp().catch(err => console.error('Unexpected error starting bot:', err));
+  
+  async function startBot() {
+    try {
+      await connectToWhatsApp();
+    } catch (err) {
+      console.error('Error starting bot:', err);
+      console.log('Retrying in 10 seconds...');
+      setTimeout(startBot, 10000);
+    }
+  }
+  
+  startBot();
 
   // Initialize the WhatsApp bot
   async function initializeBot() {

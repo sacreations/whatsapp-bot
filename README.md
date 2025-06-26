@@ -72,6 +72,14 @@ An advanced WhatsApp bot with plugin-based commands, social media downloaders, g
 
 5. Scan the QR code with WhatsApp to authenticate
 
+### Session Management
+
+- The bot automatically handles session management
+- If you see "Connection Failure" errors with status 401, the session has expired
+- The bot will automatically clear the invalid session and display a new QR code
+- Simply scan the new QR code to reconnect
+- Session files are stored in the `sessions/` directory
+
 ### Running the Admin Dashboard
 
 ```bash
@@ -98,6 +106,20 @@ To enable:
 ### Real-Time Search
 
 The bot can search the web for current information when answering questions. It will use the most relevant facts found and state answers directly and confidently.
+
+## Troubleshooting
+
+### Connection Issues
+
+- **401 Unauthorized**: Session expired, bot will automatically clear session and show new QR code
+- **Connection timeouts**: Check your internet connection and firewall settings
+- **QR code not appearing**: Ensure terminal supports QR code display or check console logs
+
+### Session Problems
+
+- Delete the `sessions/` directory if you encounter persistent connection issues
+- Restart the bot after clearing sessions
+- Make sure only one instance of the bot is running
 
 ## Acknowledgments
 
