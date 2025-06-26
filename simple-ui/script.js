@@ -1,14 +1,174 @@
 // Global variables
 let currentConfig = {};
 let currentStatuses = [];
+let isAuthenticated = false;
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+let sessionTimer;
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    checkAuthentication();
     initializeTabs();
-    loadConfiguration();
-    loadStatuses();
     setupEventListeners();
 });
+
+// Check if user is already authenticated
+function checkAuthentication() {
+    const authData = localStorage.getItem('botAuth');
+    const loginModal = document.getElementById('loginModal');
+    const mainContainer = document.getElementById('mainContainer');
+    
+    if (authData) {
+        try {
+            const { timestamp, authenticated } = JSON.parse(authData);
+            const now = Date.now();
+                  // Check if session is still valid (30 minutes)
+        if (authenticated && (now - timestamp) < SESSION_TIMEOUT) {
+            isAuthenticated = true;
+            loginModal.style.display = 'none';
+            mainContainer.style.display = 'block';
+            startSessionTimer();
+            addLogoutButton();
+            loadConfiguration();
+            loadStatuses();
+            return;
+        }
+        } catch (error) {
+            console.error('Error parsing auth data:', error);
+        }
+    }
+    
+    // Show login modal
+    loginModal.style.display = 'flex';
+    mainContainer.style.display = 'none';
+    isAuthenticated = false;
+}
+
+// Handle login
+async function handleLogin(event) {
+    event.preventDefault();
+    
+    const password = document.getElementById('loginPassword').value;
+    const errorDiv = document.getElementById('loginError');
+    const loginBtn = document.querySelector('.login-btn');
+    
+    if (!password) {
+        showLoginError('Please enter a password');
+        return;
+    }
+    
+    // Show loading state
+    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+    loginBtn.disabled = true;
+    
+    try {
+        // Verify password with server
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Save authentication state
+            localStorage.setItem('botAuth', JSON.stringify({
+                authenticated: true,
+                timestamp: Date.now()
+            }));
+            
+            isAuthenticated = true;
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'block';
+            
+            startSessionTimer();
+            addLogoutButton();
+            loadConfiguration();
+            loadStatuses();
+            
+            showToast('Login successful!', 'success');
+        } else {
+            showLoginError(result.message || 'Invalid password');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showLoginError('Connection error. Please try again.');
+    } finally {
+        // Reset login button
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+        loginBtn.disabled = false;
+        document.getElementById('loginPassword').value = '';
+    }
+}
+
+// Show login error
+function showLoginError(message) {
+    const errorDiv = document.getElementById('loginError');
+    errorDiv.textContent = message;
+    errorDiv.classList.add('show');
+    
+    setTimeout(() => {
+        errorDiv.classList.remove('show');
+    }, 5000);
+}
+
+// Toggle password visibility
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById('loginPassword');
+    const toggleBtn = document.querySelector('.password-toggle i');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleBtn.className = 'fas fa-eye-slash';
+    } else {
+        passwordInput.type = 'password';
+        toggleBtn.className = 'fas fa-eye';
+    }
+}
+
+// Start session timer
+function startSessionTimer() {
+    clearTimeout(sessionTimer);
+    sessionTimer = setTimeout(() => {
+        logout();
+        showToast('Session expired. Please login again.', 'warning');
+    }, SESSION_TIMEOUT);
+}
+
+// Logout function
+function logout() {
+    localStorage.removeItem('botAuth');
+    isAuthenticated = false;
+    clearTimeout(sessionTimer);
+    
+    document.getElementById('loginModal').style.display = 'flex';
+    document.getElementById('mainContainer').style.display = 'none';
+    
+    // Clear sensitive data
+    currentConfig = {};
+    currentStatuses = [];
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Login form
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    
+    // Toggle switches
+    const toggles = document.querySelectorAll('.toggle-input');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            updateToggle(this.id, this.checked);
+        });
+    });
+    
+    // Status filters
+    document.getElementById('statusFilter').addEventListener('change', filterStatuses);
+    document.getElementById('timeFilter').addEventListener('change', filterStatuses);
+}
 
 // Tab functionality
 function initializeTabs() {
@@ -177,270 +337,12 @@ function getSettingName(elementId) {
     return mapping[elementId] || elementId;
 }
 
-// Save configuration
-async function saveSettings() {
-    try {
-        // Get form values
-        currentConfig.PREFIX = document.getElementById('prefix').value || '.';
-        currentConfig.BOT_NAME = document.getElementById('botName').value || 'WhatsApp Bot';
-        currentConfig.OWNER_NUMBER = document.getElementById('ownerNumber').value || '';
-        
-        // Save to localStorage
-        localStorage.setItem('botConfig', JSON.stringify(currentConfig));
-        
-        // Try to save to server
-        try {
-            const response = await fetch('/api/config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ config: currentConfig })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Settings saved successfully!', 'success');
-                } else {
-                    throw new Error(data.message);
-                }
-            } else {
-                throw new Error('Server error');
-            }
-        } catch (error) {
-            console.log('Could not sync to server, saved locally');
-            showToast('Settings saved locally', 'warning');
-        }
-        
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        showToast('Error saving settings', 'error');
-    }
-}
-
-// Load status updates
-async function loadStatuses() {
-    try {
-        const grid = document.getElementById('statusGrid');
-        grid.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> Loading statuses...</div>';
-        
-        // Try to fetch from server
-        try {
-            const response = await fetch('/api/statuses');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    currentStatuses = data.statuses || [];
-                    displayStatuses();
-                    return;
-                }
-            }
-        } catch (error) {
-            console.log('Server not available for statuses');
-        }
-        
-        // Fallback: Load from localStorage or show empty state
-        const savedStatuses = localStorage.getItem('savedStatuses');
-        if (savedStatuses) {
-            currentStatuses = JSON.parse(savedStatuses);
-            displayStatuses();
-        } else {
-            grid.innerHTML = '<div class="no-data">No saved status updates found.</div>';
-        }
-        
-    } catch (error) {
-        console.error('Error loading statuses:', error);
-        document.getElementById('statusGrid').innerHTML = 
-            '<div class="no-data">Error loading status updates.</div>';
-    }
-}
-
-// Display status updates
-function displayStatuses() {
-    const grid = document.getElementById('statusGrid');
-    
-    if (!currentStatuses || currentStatuses.length === 0) {
-        grid.innerHTML = '<div class="no-data">No saved status updates found.</div>';
-        return;
-    }
-    
-    const filteredStatuses = filterStatusesBySettings();
-    
-    if (filteredStatuses.length === 0) {
-        grid.innerHTML = '<div class="no-data">No status updates match the current filters.</div>';
-        return;
-    }
-    
-    grid.innerHTML = filteredStatuses.map(status => createStatusCard(status)).join('');
-}
-
-// Filter statuses based on current filter settings
-function filterStatusesBySettings() {
-    let filtered = [...currentStatuses];
-    
-    // Filter by type
-    const typeFilter = document.getElementById('statusFilter').value;
-    if (typeFilter !== 'all') {
-        filtered = filtered.filter(status => status.type === typeFilter);
-    }
-    
-    // Filter by time
-    const timeFilter = document.getElementById('timeFilter').value;
-    if (timeFilter !== 'all') {
-        const cutoffTime = getTimeFilterCutoff(timeFilter);
-        filtered = filtered.filter(status => status.timestamp > cutoffTime);
-    }
-    
-    // Sort by newest first
-    filtered.sort((a, b) => b.timestamp - a.timestamp);
-    
-    return filtered;
-}
-
-// Get cutoff time for time filter
-function getTimeFilterCutoff(filter) {
-    const now = Date.now();
-    switch (filter) {
-        case '24h':
-            return now - (24 * 60 * 60 * 1000);
-        case '7d':
-            return now - (7 * 24 * 60 * 60 * 1000);
-        case '30d':
-            return now - (30 * 24 * 60 * 60 * 1000);
-        default:
-            return 0;
-    }
-}
-
-// Create status card HTML
-function createStatusCard(status) {
-    const date = new Date(status.timestamp).toLocaleString();
-    const fileExtension = status.filename ? status.filename.split('.').pop().toLowerCase() : '';
-    const isVideo = ['mp4', 'avi', 'mov', 'mkv'].includes(fileExtension);
-    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension);
-    
-    return `
-        <div class="status-card" data-id="${status.id || status.timestamp}">
-            <div class="status-preview">
-                ${isImage ? 
-                    `<img src="/api/statuses/${status.filename}" alt="Status" onerror="this.parentElement.innerHTML='<i class=\\"fas fa-image placeholder\\"></i>'">` :
-                    isVideo ? 
-                        `<video src="/api/statuses/${status.filename}" muted onerror="this.parentElement.innerHTML='<i class=\\"fas fa-video placeholder\\"></i>'"></video>` :
-                        `<i class="fas fa-file placeholder"></i>`
-                }
-            </div>
-            <div class="status-info">
-                <div class="status-contact">
-                    <i class="fas fa-user"></i>
-                    ${status.contactName || status.contact || 'Unknown'}
-                </div>
-                <div class="status-date">
-                    <i class="fas fa-clock"></i>
-                    ${date}
-                </div>
-                <div class="status-actions">
-                    <button class="status-btn" onclick="viewStatus('${status.filename}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <button class="status-btn" onclick="downloadStatus('${status.filename}')">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                    <button class="status-btn delete" onclick="deleteStatus('${status.id || status.timestamp}', '${status.filename}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// Filter statuses when filter changes
-function filterStatuses() {
-    displayStatuses();
-}
-
-// View status in new tab
-function viewStatus(filename) {
-    if (filename) {
-        window.open(`/api/statuses/${filename}`, '_blank');
-    }
-}
-
-// Download status
-function downloadStatus(filename) {
-    if (filename) {
-        const link = document.createElement('a');
-        link.href = `/api/statuses/${filename}`;
-        link.download = filename;
-        link.click();
-    }
-}
-
-// Delete status
-async function deleteStatus(statusId, filename) {
-    if (!confirm('Are you sure you want to delete this status?')) {
-        return;
-    }
-    
-    try {
-        // Try to delete from server
-        try {
-            const response = await fetch(`/api/statuses/${filename}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Status deleted successfully', 'success');
-                    loadStatuses(); // Reload statuses
-                    return;
-                }
-            }
-        } catch (error) {
-            console.log('Could not delete from server');
-        }
-        
-        // Fallback: Remove from local storage
-        currentStatuses = currentStatuses.filter(status => 
-            (status.id || status.timestamp) !== statusId
-        );
-        localStorage.setItem('savedStatuses', JSON.stringify(currentStatuses));
-        displayStatuses();
-        showToast('Status deleted locally', 'warning');
-        
-    } catch (error) {
-        console.error('Error deleting status:', error);
-        showToast('Error deleting status', 'error');
-    }
-}
-
-// Show toast notification
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast ${type}`;
-    
-    // Show toast
-    setTimeout(() => toast.classList.add('show'), 100);
-    
-    // Hide toast after 3 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}
-
-// Utility function to format file size
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
 // Export functions for global access
 window.saveSettings = saveSettings;
 window.loadStatuses = loadStatuses;
 window.viewStatus = viewStatus;
 window.downloadStatus = downloadStatus;
 window.deleteStatus = deleteStatus;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.handleLogin = handleLogin;
+window.logout = logout;

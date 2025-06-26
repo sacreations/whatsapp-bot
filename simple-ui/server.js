@@ -29,6 +29,77 @@ app.use((req, res, next) => {
     }
 });
 
+// Authentication endpoint
+app.post('/api/auth/login', (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Password is required' 
+            });
+        }
+        
+        // Get admin password from config
+        const configPath = path.join(__dirname, '..', 'config.env');
+        
+        if (!fs.existsSync(configPath)) {
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Configuration file not found' 
+            });
+        }
+        
+        const configContent = fs.readFileSync(configPath, 'utf8');
+        let adminPassword = 'admin123'; // default password
+        
+        // Parse config to find admin password
+        configContent.split('\n').forEach(line => {
+            line = line.trim();
+            if (line.startsWith('ADMIN_PASSWORD=')) {
+                adminPassword = line.split('=')[1] || 'admin123';
+            }
+        });
+        
+        if (password === adminPassword) {
+            console.log('Successful login attempt');
+            res.json({ 
+                success: true, 
+                message: 'Login successful' 
+            });
+        } else {
+            console.log('Failed login attempt with password:', password);
+            res.status(401).json({ 
+                success: false, 
+                message: 'Invalid password' 
+            });
+        }
+    } catch (error) {
+        console.error('Authentication error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Authentication error: ' + error.message 
+        });
+    }
+});
+
+// Middleware to check authentication for protected routes
+function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Authentication required' 
+        });
+    }
+    
+    // For simplicity, we'll skip token validation for now
+    // In a production environment, you should validate JWT tokens
+    next();
+}
+
 // Serve the main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
