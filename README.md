@@ -33,12 +33,19 @@ An advanced WhatsApp bot with plugin-based commands, social media downloaders, g
   - Message sending
   - Statistics and logs
 
+- **Advanced Connection Management**
+  - Automatic session recovery
+  - Exponential backoff for reconnections
+  - Network connectivity checks
+  - Intelligent error handling
+
 ## Setup
 
 ### Prerequisites
 
 - Node.js (v14 or higher)
 - npm (v6 or higher)
+- Stable internet connection
 
 ### Installation
 
@@ -74,11 +81,11 @@ An advanced WhatsApp bot with plugin-based commands, social media downloaders, g
 
 ### Session Management
 
-- The bot automatically handles session management
-- If you see "Connection Failure" errors with status 401, the session has expired
-- The bot will automatically clear the invalid session and display a new QR code
-- Simply scan the new QR code to reconnect
-- Session files are stored in the `sessions/` directory
+- The bot automatically handles session management with intelligent recovery
+- Sessions are stored in the `sessions/` directory
+- If connection issues persist, the bot will automatically clear invalid sessions
+- The bot uses exponential backoff to avoid overwhelming WhatsApp servers
+- Network connectivity is checked before attempting reconnections
 
 ### Running the Admin Dashboard
 
@@ -111,15 +118,63 @@ The bot can search the web for current information when answering questions. It 
 
 ### Connection Issues
 
-- **401 Unauthorized**: Session expired, bot will automatically clear session and show new QR code
-- **Connection timeouts**: Check your internet connection and firewall settings
-- **QR code not appearing**: Ensure terminal supports QR code display or check console logs
+- **405 Method Not Allowed (Connection Failure)**: 
+  - This indicates WhatsApp servers are rejecting the connection
+  - The bot automatically implements exponential backoff (2s, 4s, 8s, 16s, etc.)
+  - After 10 failed attempts, the session is automatically cleared
+  - Check your internet connection and try again
+  - If persistent, wait 15-30 minutes before restarting
+
+- **401 Unauthorized**: 
+  - Session expired or invalid
+  - Bot automatically clears session and shows new QR code
+  - Simply scan the new QR code to reconnect
+
+- **409 Conflict**: 
+  - Another device is using the same WhatsApp account
+  - Log out from other devices or use a different account
+
+- **428 Precondition Required**: 
+  - WhatsApp requires QR code scan
+  - Bot will automatically clear session and show QR code
+
+### Network and Performance Issues
+
+- **Connection timeouts**: 
+  - Check your internet connection stability
+  - Ensure firewall isn't blocking the connection
+  - The bot automatically checks network connectivity before reconnecting
+
+- **QR code not appearing**: 
+  - Ensure terminal supports QR code display
+  - Check console logs for any errors
+  - Try restarting the bot
 
 ### Session Problems
 
-- Delete the `sessions/` directory if you encounter persistent connection issues
-- Restart the bot after clearing sessions
-- Make sure only one instance of the bot is running
+- **Persistent connection failures**:
+  1. Stop the bot (Ctrl+C)
+  2. Delete the `sessions/` directory manually
+  3. Restart the bot
+  4. Scan the new QR code
+
+- **Bot stuck in reconnection loop**:
+  1. Check your internet connection
+  2. Wait for the automatic session clearing (after 10 attempts)
+  3. If needed, manually restart the bot
+
+### Performance Optimization
+
+- **High memory usage**: The bot includes automatic memory monitoring
+- **Multiple failed requests**: API key rotation is implemented for better reliability
+- **Slow responses**: Response caching reduces repeated processing
+
+## Best Practices
+
+- **Stable Internet**: Ensure a stable internet connection for best performance
+- **Regular Monitoring**: Check logs regularly for any connection issues
+- **Session Backup**: The bot handles session management automatically
+- **Resource Management**: The bot includes built-in memory and performance monitoring
 
 ## Acknowledgments
 

@@ -63,6 +63,34 @@ async function loadPlugins() {
     }
 }
 
+// Add connection retry state tracking
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_RECONNECT_DELAY = 2000; // 2 seconds
+
+/**
+ * Calculate exponential backoff delay with jitter
+ */
+function getReconnectDelay(attempt) {
+    const delay = Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), 60000); // Max 60 seconds
+    const jitter = Math.random() * 1000; // Add up to 1 second jitter
+    return delay + jitter;
+}
+
+/**
+ * Check network connectivity before attempting reconnection
+ */
+async function checkNetworkConnectivity() {
+    try {
+        const { default: axios } = await import('axios');
+        await axios.get('https://www.google.com', { timeout: 5000 });
+        return true;
+    } catch (error) {
+        console.log('Network connectivity check failed:', error.message);
+        return false;
+    }
+}
+
 /**
  * Connect to WhatsApp
  */
@@ -96,46 +124,102 @@ async function connectToWhatsApp() {
         if (qr) {
             console.log('QR Code received, scan to connect:');
             qrcode.generate(qr, { small: true });
+            // Reset reconnect attempts on new QR
+            reconnectAttempts = 0;
         }
         
         if (connection === 'close') {
-            const shouldReconnect = 
-                (lastDisconnect.error instanceof Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const error = lastDisconnect.error;
+            const shouldReconnect = !(error instanceof Boom && error.output?.statusCode === DisconnectReason.loggedOut);
             
-            console.log('Connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
+            console.log('Connection closed due to:', error?.message || error, ', reconnecting:', shouldReconnect);
             
-            // Check if it's a 401 error (session expired/invalid)
-            if (lastDisconnect.error instanceof Boom && lastDisconnect.error.output?.statusCode === 401) {
-                console.log('Session expired or invalid. Clearing session and requiring new QR scan...');
+            // Handle specific error codes
+            if (error instanceof Boom) {
+                const statusCode = error.output?.statusCode;
+                const errorData = error.data;
                 
-                // Clear the session directory
-                const sessionPath = path.join(sessionDir, config.SESSION_ID);
-                if (fs.existsSync(sessionPath)) {
-                    try {
-                        fs.rmSync(sessionPath, { recursive: true, force: true });
-                        console.log('Session cleared successfully');
-                    } catch (error) {
-                        console.error('Error clearing session:', error);
-                    }
+                console.log(`Error details - Status: ${statusCode}, Data:`, errorData);
+                
+                // Handle different error scenarios
+                switch (statusCode) {
+                    case 401:
+                        console.log('🔑 Session expired or invalid. Clearing session...');
+                        await clearSessionAndReconnect();
+                        return;
+                        
+                    case 405:
+                        // Method Not Allowed - connection issues
+                        if (errorData?.reason === 'frc' || errorData?.reason === 'cco') {
+                            console.log('🚫 WhatsApp server rejected connection. Implementing backoff...');
+                            reconnectAttempts++;
+                            
+                            if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                                console.log('❌ Maximum reconnection attempts reached. Clearing session...');
+                                await clearSessionAndReconnect();
+                                return;
+                            }
+                            
+                            // Check network connectivity before retrying
+                            const hasNetwork = await checkNetworkConnectivity();
+                            if (!hasNetwork) {
+                                console.log('🌐 No network connectivity. Waiting longer before retry...');
+                                setTimeout(async () => {
+                                    if (await checkNetworkConnectivity()) {
+                                        connectToWhatsApp();
+                                    } else {
+                                        console.log('🌐 Still no network. Will retry again...');
+                                        setTimeout(connectToWhatsApp, 30000); // Wait 30 seconds
+                                    }
+                                }, 10000); // Wait 10 seconds first
+                                return;
+                            }
+                            
+                            const delay = getReconnectDelay(reconnectAttempts - 1);
+                            console.log(`⏳ Attempting reconnection ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${Math.round(delay/1000)}s...`);
+                            
+                            setTimeout(() => {
+                                connectToWhatsApp();
+                            }, delay);
+                            return;
+                        }
+                        break;
+                        
+                    case 409:
+                        // Conflict - another device might be connected
+                        console.log('⚠️ Conflict detected. Another device might be using this session.');
+                        break;
+                        
+                    case 428:
+                        // Precondition Required - need to scan QR again
+                        console.log('📱 Need to scan QR code again.');
+                        await clearSessionAndReconnect();
+                        return;
                 }
-                
-                // Wait a bit before reconnecting to avoid immediate retry
-                setTimeout(() => {
-                    console.log('Reconnecting with fresh session...');
-                    connectToWhatsApp();
-                }, 3000);
-                return;
             }
             
             // Reconnect if not logged out
             if (shouldReconnect) {
-                // Add exponential backoff for reconnection
+                reconnectAttempts++;
+                
+                if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                    console.log('❌ Too many reconnection attempts. Clearing session...');
+                    await clearSessionAndReconnect();
+                    return;
+                }
+                
+                const delay = getReconnectDelay(reconnectAttempts - 1);
+                console.log(`🔄 Reconnecting in ${Math.round(delay/1000)}s (attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+                
                 setTimeout(() => {
                     connectToWhatsApp();
-                }, 5000);
+                }, delay);
             }
         } else if (connection === 'open') {
             console.log('✅ Connection opened successfully');
+            // Reset reconnect attempts on successful connection
+            reconnectAttempts = 0;
+            
             // Load plugins after connection is established
             await loadPlugins();
             
@@ -181,6 +265,34 @@ async function connectToWhatsApp() {
     });
     
     return sock;
+}
+
+/**
+ * Clear session and reconnect with fresh state
+ */
+async function clearSessionAndReconnect() {
+    try {
+        console.log('🧹 Clearing session data...');
+        
+        const sessionPath = path.join(sessionDir, config.SESSION_ID);
+        if (fs.existsSync(sessionPath)) {
+            fs.rmSync(sessionPath, { recursive: true, force: true });
+            console.log('✅ Session cleared successfully');
+        }
+        
+        // Reset reconnect attempts
+        reconnectAttempts = 0;
+        
+        // Wait before reconnecting with fresh session
+        setTimeout(() => {
+            console.log('🔄 Starting fresh connection...');
+            connectToWhatsApp();
+        }, 3000);
+    } catch (error) {
+        console.error('❌ Error clearing session:', error);
+        // Still try to reconnect even if clearing fails
+        setTimeout(connectToWhatsApp, 5000);
+    }
 }
 
 export { connectToWhatsApp };

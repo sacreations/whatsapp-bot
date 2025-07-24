@@ -152,6 +152,62 @@ bot({
     }
 });
 
+// Enhanced network test command with WhatsApp-specific diagnostics
+bot({
+    pattern: 'netdiag',
+    fromMe: true,
+    desc: 'Comprehensive network and WhatsApp connectivity diagnostics'
+}, async (m, sock) => {
+    try {
+        await message.react('🔍', m, sock);
+        
+        let diagInfo = `🔬 *Network Diagnostics*\n\n`;
+        
+        // Test basic connectivity
+        const tests = [
+            { name: 'Google DNS', url: 'https://8.8.8.8', timeout: 3000 },
+            { name: 'Google', url: 'https://www.google.com', timeout: 5000 },
+            { name: 'WhatsApp Web', url: 'https://web.whatsapp.com', timeout: 5000 },
+            { name: 'WhatsApp API', url: 'https://www.whatsapp.com', timeout: 5000 }
+        ];
+        
+        for (const test of tests) {
+            const start = Date.now();
+            try {
+                await axios.get(test.url, { 
+                    timeout: test.timeout,
+                    validateStatus: status => status < 500
+                });
+                const time = Date.now() - start;
+                diagInfo += `✅ ${test.name}: ${time}ms\n`;
+            } catch (error) {
+                diagInfo += `❌ ${test.name}: ${error.code || 'Failed'}\n`;
+            }
+        }
+        
+        // Connection state info
+        diagInfo += `\n📡 *Connection State*\n\n`;
+        diagInfo += `• Socket State: ${sock?.ws?.readyState === 1 ? 'Connected' : 'Disconnected'}\n`;
+        diagInfo += `• Auth State: ${sock?.authState?.creds ? 'Authenticated' : 'Not Authenticated'}\n`;
+        diagInfo += `• User ID: ${sock?.user?.id || 'Unknown'}\n`;
+        
+        // Memory and system info
+        const memUsage = process.memoryUsage();
+        diagInfo += `\n💾 *System Resources*\n\n`;
+        diagInfo += `• Heap Used: ${formatBytes(memUsage.heapUsed)}\n`;
+        diagInfo += `• Heap Total: ${formatBytes(memUsage.heapTotal)}\n`;
+        diagInfo += `• CPU Usage: ${process.cpuUsage().user / 1000}ms\n`;
+        diagInfo += `• Uptime: ${formatUptime(process.uptime())}\n`;
+        
+        await message.reply(diagInfo, m, sock);
+        await message.react('✅', m, sock);
+    } catch (error) {
+        console.error('Error in netdiag command:', error);
+        await message.react('❌', m, sock);
+        return await message.reply(`Error running diagnostics: ${error.message}`, m, sock);
+    }
+});
+
 // Helper function to format bytes
 function formatBytes(bytes) {
     if (bytes === 0) return '0 Bytes';
