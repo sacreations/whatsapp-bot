@@ -2,8 +2,7 @@ import config from '../../Config.js';
 import { logChatMessage } from '../utils/logger.js';
 import fs from 'fs';
 import path from 'path';
-import baileys from '@whiskeysockets/baileys';
-const { downloadMediaMessage } = baileys;
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { findContactNameByNumber } from '../utils/contactsManager.js';
 import { EventEmitter } from 'events';
 
@@ -236,4 +235,5 @@ async function saveStatusMedia(status, statusType, contactName) {
 // Expose status events for admin panel
 export function getStatusEventEmitter() {
     return statusEvents;
+}
 }

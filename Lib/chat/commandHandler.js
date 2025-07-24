@@ -1,7 +1,6 @@
 import config from '../../Config.js';
 import message from './messageHandler.js';
-import baileys from '@whiskeysockets/baileys';
-const { jidDecode } = baileys;
+import { jidDecode } from '@whiskeysockets/baileys';
 
 // Store for commands
 const commands = [];
@@ -107,4 +106,5 @@ export async function handleMessage(m, sock) {
         console.error('Error in message handler:', error);
         return false;
     }
+}
 }

@@ -3,8 +3,7 @@ import axios from 'axios';
 import { Readable } from 'stream';
 import config from '../../Config.js';
 import { filterThinkingPart } from '../ai/groq.js';
-import baileys from '@whiskeysockets/baileys';
-const { downloadMediaMessage } = baileys;
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
 
 const message = {
     /**
@@ -259,4 +258,5 @@ export const reactionEmojis = {
     custom: '👌'         // For custom confirmations
 };
 
+export default message;
 export default message;

@@ -2,9 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import baileys from '@whiskeysockets/baileys';
-
-const { downloadMediaMessage } = baileys;
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -211,5 +209,7 @@ export function getChatLogs(limit = 100) {
     } catch (error) {
         console.error('Error reading logs:', error);
         return [];
+    }
+}
     }
 }

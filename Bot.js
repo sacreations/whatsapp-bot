@@ -10,7 +10,7 @@ import { handleStatus } from './Lib/handlers/statusHandler.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, downloadMediaMessage } from '@whiskeysockets/baileys';
+import makeWASocket, { useMultiFileAuthState, DisconnectReason, downloadMediaMessage, Browsers } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 
 // Get current directory
@@ -103,11 +103,20 @@ async function connectToWhatsApp() {
     const sock = makeWASocket({
         auth: state,
         logger,
-        browser: ['WhatsAppBot', 'Chrome', '103.0.5060.114'],
+        browser: Browsers.ubuntu(config.BOT_NAME),
+        printQRInTerminal: true,
         downloadHistory: true,
         syncFullHistory: true,
-        markOnlineOnConnect: true, // Set to always show online
-        readReceipts: !config.DISABLE_READ_RECEIPTS // Disable read receipts if configured
+        markOnlineOnConnect: !config.HIDE_ONLINE_STATUS, // Respect hide online status setting
+        getMessage: async (key) => {
+            // This helps with message retries and poll vote decryption
+            try {
+                // You could implement a message store here if needed
+                return null;
+            } catch (error) {
+                return null;
+            }
+        }
     });
     
     // Make socket available globally

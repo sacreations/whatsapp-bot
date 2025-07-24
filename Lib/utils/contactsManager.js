@@ -3,8 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import baileys from '@whiskeysockets/baileys';
-const { jidNormalizedUser } = baileys;
+import { jidNormalizedUser } from '@whiskeysockets/baileys';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
@@ -224,4 +223,5 @@ export async function getContact(id) {
         console.error('Error getting contact:', error);
         return null;
     }
+}
 }
