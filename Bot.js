@@ -10,7 +10,12 @@ import { handleStatus } from './Lib/handlers/statusHandler.js';
 import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
-import makeWASocket, { useMultiFileAuthState, DisconnectReason, downloadMediaMessage, Browsers } from '@whiskeysockets/baileys';
+// Corrected import for makeWASocket
+import makeWASocket, {
+    useMultiFileAuthState,
+    DisconnectReason,
+    Browsers
+} from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 
 // Get current directory
@@ -100,6 +105,7 @@ async function connectToWhatsApp() {
     );
     
     // Create a new instance of the WhatsApp socket
+    // The makeWASocket function is the default export
     const sock = makeWASocket({
         auth: state,
         logger,
