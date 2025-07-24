@@ -90,7 +90,7 @@ if (cluster.isPrimary) {
   
   // Handle worker crashes
   cluster.on('exit', (worker, code, signal) => {
-    const role = worker.process.env.PROCESS_ROLE;
+    const role = worker.process?.env?.PROCESS_ROLE || 'unknown';
     console.log(`Worker ${worker.process.pid} (${role}) died with code: ${code} and signal: ${signal}`);
     
     // Restart the appropriate type of worker
@@ -102,7 +102,7 @@ if (cluster.isPrimary) {
       });
       console.log(`Started new WhatsApp bot main worker (PID: ${newBotWorker.process.pid})`);
     } else if (role === ROLES.BOT_WORKER) {
-      const workerId = worker.process.env.BOT_WORKER_ID;
+      const workerId = worker.process?.env?.BOT_WORKER_ID || 'unknown';
       console.log(`Restarting WhatsApp bot worker ${workerId}...`);
       const newBotWorker = cluster.fork({ 
         PROCESS_ROLE: ROLES.BOT_WORKER,
