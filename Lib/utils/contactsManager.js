@@ -224,4 +224,4 @@ export async function getContact(id) {
         return null;
     }
 }
-}
+

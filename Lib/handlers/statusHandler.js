@@ -236,4 +236,4 @@ async function saveStatusMedia(status, statusType, contactName) {
 export function getStatusEventEmitter() {
     return statusEvents;
 }
-}
+

@@ -211,5 +211,4 @@ export function getChatLogs(limit = 100) {
         return [];
     }
 }
-    }
-}
+
