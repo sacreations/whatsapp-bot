@@ -11,12 +11,14 @@ import config from './Config.js';
 import { cleanupDownloads } from './Lib/Functions/Download_Functions/downloader.js';
 import { logChatMessage } from './Lib/utils/logger.js';
 // Corrected import for makeWASocket
-import makeWASocket, {
+import Baileys, {
     useMultiFileAuthState,
     DisconnectReason,
     Browsers
 } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
+
+const makeWASocket = Baileys.default;
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
