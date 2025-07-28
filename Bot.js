@@ -70,6 +70,9 @@ async function loadPlugins() {
     }
 }
 
+// Add a global variable for the socket
+let sock;
+
 // Add connection retry state tracking
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
@@ -108,7 +111,7 @@ async function connectToWhatsApp() {
     
     // Create a new instance of the WhatsApp socket
     // The makeWASocket function is the default export
-    const sock = makeWASocket({
+    sock = makeWASocket({
         auth: state,
         logger,
         browser: Browsers.ubuntu(config.BOT_NAME),
@@ -290,6 +293,13 @@ async function connectToWhatsApp() {
 async function clearSessionAndReconnect() {
     try {
         console.log('🧹 Clearing session data...');
+
+        // Properly close the existing socket if it exists
+        if (sock) {
+            await sock.logout();
+            sock.ev.removeAllListeners();
+            sock = null;
+        }
         
         const sessionPath = path.join(sessionDir, config.SESSION_ID);
         if (fs.existsSync(sessionPath)) {
