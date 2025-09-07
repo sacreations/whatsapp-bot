@@ -380,3 +380,15 @@ function filterStatuses() {
     // Dummy implementation: reload statuses (can be improved)
     loadStatuses();
 }
+
+function loadStatuses() {
+    // Basic implementation: show loading or placeholder
+    const statusGrid = document.getElementById('statusGrid');
+    if (!statusGrid) return;
+    statusGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading statuses...</div>';
+    // TODO: Fetch statuses from server and render them
+    // For now, show a placeholder after 1s
+    setTimeout(() => {
+        statusGrid.innerHTML = '<div class="no-data">No statuses found.</div>';
+    }, 1000);
+}
