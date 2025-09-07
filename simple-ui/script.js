@@ -392,3 +392,48 @@ function loadStatuses() {
         statusGrid.innerHTML = '<div class="no-data">No statuses found.</div>';
     }, 1000);
 }
+
+function viewStatus(statusId) {
+    // Basic implementation: show alert
+    showToast(`Viewing status: ${statusId}`, 'info');
+    // TODO: Open status in modal or new window
+}
+
+function downloadStatus(statusId) {
+    // Basic implementation: show alert
+    showToast(`Downloading status: ${statusId}`, 'info');
+    // TODO: Trigger download from server
+}
+
+function deleteStatus(statusId) {
+    // Basic implementation: show confirmation
+    if (confirm(`Delete status ${statusId}?`)) {
+        showToast(`Status ${statusId} deleted`, 'success');
+        // TODO: Delete from server and refresh list
+    }
+}
+
+function showToast(message, type = 'info') {
+    // Basic toast implementation
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    
+    toast.textContent = message;
+    toast.className = `toast ${type} show`;
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+function addLogoutButton() {
+    // Add logout button to header if not already present
+    const header = document.querySelector('.header');
+    if (!header || header.querySelector('.logout-btn')) return;
+    
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'logout-btn';
+    logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+    logoutBtn.onclick = logout;
+    header.appendChild(logoutBtn);
+}
