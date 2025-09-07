@@ -55,12 +55,12 @@ app.post('/api/auth/login', (req, res) => {
         let adminPassword = 'admin123'; // default password
         
         // Parse config to find admin password
-        // configContent.split('\n').forEach(line => {
-        //     line = line.trim();
-        //     if (line.startsWith('ADMIN_PASSWORD=')) {
-        //         adminPassword = line.split('=')[1] || 'admin123';
-        //     }
-        // });
+        configContent.split('\n').forEach(line => {
+            line = line.trim();
+            if (line.startsWith('ADMIN_PASSWORD=')) {
+                adminPassword = line.split('=')[1] || 'admin123';
+            }
+        });
         
         if (password === adminPassword) {
             console.log('Successful login attempt');

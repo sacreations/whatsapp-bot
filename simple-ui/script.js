@@ -70,37 +70,43 @@ async function handleLogin(event) {
             },
             body: JSON.stringify({ password })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             // Save authentication state
             localStorage.setItem('botAuth', JSON.stringify({
                 authenticated: true,
                 timestamp: Date.now()
             }));
-            
+
             isAuthenticated = true;
             document.getElementById('loginModal').style.display = 'none';
             document.getElementById('mainContainer').style.display = 'block';
-            
+
             startSessionTimer();
             addLogoutButton();
             loadConfiguration();
             loadStatuses();
-            
+
             showToast('Login successful!', 'success');
         } else {
             showLoginError(result.message || 'Invalid password');
+            // Do not reset password field if login failed
+            return;
         }
     } catch (error) {
         console.error('Login error:', error);
         showLoginError('Connection error. Please try again.');
+        return;
     } finally {
         // Reset login button
         loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
         loginBtn.disabled = false;
-        document.getElementById('loginPassword').value = '';
+        // Only clear password if login was successful
+        if (isAuthenticated) {
+            document.getElementById('loginPassword').value = '';
+        }
     }
 }
 
