@@ -115,7 +115,6 @@ async function connectToWhatsApp() {
         auth: state,
         logger,
         browser: Browsers.ubuntu(config.BOT_NAME),
-        printQRInTerminal: true,
         downloadHistory: true,
         syncFullHistory: true,
         markOnlineOnConnect: !config.HIDE_ONLINE_STATUS, // Respect hide online status setting
