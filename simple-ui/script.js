@@ -70,43 +70,37 @@ async function handleLogin(event) {
             },
             body: JSON.stringify({ password })
         });
-
+        
         const result = await response.json();
-
+        
         if (result.success) {
             // Save authentication state
             localStorage.setItem('botAuth', JSON.stringify({
                 authenticated: true,
                 timestamp: Date.now()
             }));
-
+            
             isAuthenticated = true;
             document.getElementById('loginModal').style.display = 'none';
             document.getElementById('mainContainer').style.display = 'block';
-
+            
             startSessionTimer();
             addLogoutButton();
             loadConfiguration();
             loadStatuses();
-
+            
             showToast('Login successful!', 'success');
         } else {
             showLoginError(result.message || 'Invalid password');
-            // Do not reset password field if login failed
-            return;
         }
     } catch (error) {
         console.error('Login error:', error);
         showLoginError('Connection error. Please try again.');
-        return;
     } finally {
         // Reset login button
         loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
         loginBtn.disabled = false;
-        // Only clear password if login was successful
-        if (isAuthenticated) {
-            document.getElementById('loginPassword').value = '';
-        }
+        document.getElementById('loginPassword').value = '';
     }
 }
 
@@ -352,88 +346,3 @@ window.deleteStatus = deleteStatus;
 window.togglePasswordVisibility = togglePasswordVisibility;
 window.handleLogin = handleLogin;
 window.logout = logout;
-
-// --- Fix missing function errors ---
-function saveSettings() {
-    // Save settings from form fields to config and server
-    currentConfig.PREFIX = document.getElementById('prefix').value || '.';
-    currentConfig.BOT_NAME = document.getElementById('botName').value || 'WhatsApp Bot';
-    currentConfig.OWNER_NUMBER = document.getElementById('ownerNumber').value || '';
-    localStorage.setItem('botConfig', JSON.stringify(currentConfig));
-    updateUI();
-    showToast('Settings saved!', 'success');
-    // Optionally sync to server
-    fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: currentConfig })
-    }).then(res => res.json()).then(data => {
-        if (data.success) {
-            showToast('Settings synced!', 'success');
-        }
-    }).catch(() => {
-        showToast('Settings saved locally', 'warning');
-    });
-}
-
-function filterStatuses() {
-    // Dummy implementation: reload statuses (can be improved)
-    loadStatuses();
-}
-
-function loadStatuses() {
-    // Basic implementation: show loading or placeholder
-    const statusGrid = document.getElementById('statusGrid');
-    if (!statusGrid) return;
-    statusGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading statuses...</div>';
-    // TODO: Fetch statuses from server and render them
-    // For now, show a placeholder after 1s
-    setTimeout(() => {
-        statusGrid.innerHTML = '<div class="no-data">No statuses found.</div>';
-    }, 1000);
-}
-
-function viewStatus(statusId) {
-    // Basic implementation: show alert
-    showToast(`Viewing status: ${statusId}`, 'info');
-    // TODO: Open status in modal or new window
-}
-
-function downloadStatus(statusId) {
-    // Basic implementation: show alert
-    showToast(`Downloading status: ${statusId}`, 'info');
-    // TODO: Trigger download from server
-}
-
-function deleteStatus(statusId) {
-    // Basic implementation: show confirmation
-    if (confirm(`Delete status ${statusId}?`)) {
-        showToast(`Status ${statusId} deleted`, 'success');
-        // TODO: Delete from server and refresh list
-    }
-}
-
-function showToast(message, type = 'info') {
-    // Basic toast implementation
-    const toast = document.getElementById('toast');
-    if (!toast) return;
-    
-    toast.textContent = message;
-    toast.className = `toast ${type} show`;
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}
-
-function addLogoutButton() {
-    // Add logout button to header if not already present
-    const header = document.querySelector('.header');
-    if (!header || header.querySelector('.logout-btn')) return;
-    
-    const logoutBtn = document.createElement('button');
-    logoutBtn.className = 'logout-btn';
-    logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-    logoutBtn.onclick = logout;
-    header.appendChild(logoutBtn);
-}
