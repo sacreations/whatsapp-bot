@@ -300,10 +300,15 @@ export function cleanupDownloads(maxAgeInHours = 24) {
             const filePath = path.join(downloadDir, file);
             const stats = fs.statSync(filePath);
             
-            if ((now - stats.mtime.getTime()) > (maxAgeInHours * 3600 * 1000)) {
-                fs.unlinkSync(filePath);
-                console.log(`Deleted old file: ${filePath}`);
-            }
+                if ((now - stats.mtime.getTime()) > (maxAgeInHours * 3600 * 1000)) {
+                    if (stats.isDirectory()) {
+                        fs.rmSync(filePath, { recursive: true, force: true });
+                        console.log(`Deleted old directory: ${filePath}`);
+                    } else {
+                        fs.unlinkSync(filePath);
+                        console.log(`Deleted old file: ${filePath}`);
+                    }
+                }
         }
     } catch (error) {
         console.error('Error cleaning up downloads:', error);
