@@ -352,3 +352,31 @@ window.deleteStatus = deleteStatus;
 window.togglePasswordVisibility = togglePasswordVisibility;
 window.handleLogin = handleLogin;
 window.logout = logout;
+
+// --- Fix missing function errors ---
+function saveSettings() {
+    // Save settings from form fields to config and server
+    currentConfig.PREFIX = document.getElementById('prefix').value || '.';
+    currentConfig.BOT_NAME = document.getElementById('botName').value || 'WhatsApp Bot';
+    currentConfig.OWNER_NUMBER = document.getElementById('ownerNumber').value || '';
+    localStorage.setItem('botConfig', JSON.stringify(currentConfig));
+    updateUI();
+    showToast('Settings saved!', 'success');
+    // Optionally sync to server
+    fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: currentConfig })
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            showToast('Settings synced!', 'success');
+        }
+    }).catch(() => {
+        showToast('Settings saved locally', 'warning');
+    });
+}
+
+function filterStatuses() {
+    // Dummy implementation: reload statuses (can be improved)
+    loadStatuses();
+}
