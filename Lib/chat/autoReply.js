@@ -286,7 +286,7 @@ export async function handleAutoReply(m, sock) {
                     // If social media downloads are enabled and group is allowed, download directly
                     if (config.ENABLE_SOCIAL_MEDIA_DOWNLOAD && isGroupAllowedForDownloads(m.key.remoteJid)) {
                         if (platform === 'YouTube') {
-                            message.reply("youtube downloads are not supported at the moment. new updates coming soon!", m, sock);
+                            message.reply("YouTube downloads are currently unavailable. Stay tuned for upcoming updates!", m, sock);
                             return true;
                         }
                         const success = await handleMediaDownload(m, sock, url, platform);
